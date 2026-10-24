@@ -1,0 +1,68 @@
+:root {
+  color-scheme: light;
+  --signal-yellow: #ffd400;
+  --sign-black: #101010;
+  --panel-gray: #f3f3f3;
+  --clear-white: #ffffff;
+  --muted-ink: #5f6266;
+  --rule: #c9cacc;
+  --warning: #7a4b00;
+  --font-display: 'OpenSans_700Bold', 'Open Sans', Arial, sans-serif;
+  --font-body: 'OpenSans_400Regular', 'Open Sans', Arial, sans-serif;
+  --font-medium: 'OpenSans_600SemiBold', 'Open Sans', Arial, sans-serif;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+  background: var(--panel-gray);
+  color: var(--sign-black);
+  font-family: var(--font-body);
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  overscroll-behavior: none;
+}
+
+button,
+a,
+[role='button'] {
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+input,
+textarea,
+select {
+  min-height: 44px;
+  font-size: 16px;
+}
+
+input::placeholder {
+  color: #62656a;
+  opacity: 1;
+}
+
+::selection {
+  background: #101010;
+  color: #ffffff;
+}
+
+:focus-visible {
+  outline: 3px solid #101010;
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  button:hover,
+  a:hover,
+  [role='button']:hover {
+    filter: brightness(0.96);
+  }
+}
