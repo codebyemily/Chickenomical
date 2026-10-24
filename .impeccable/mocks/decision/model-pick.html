@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Chickenomical · Nearby chicken</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --green: #224d36;
+      --green-soft: #41634d;
+      --tomato: #bd3d2b;
+      --yellow: #f6d847;
+      --paper: #fff9e9;
+      --rule: #d8d2be;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #e9e5d8;
+      color: var(--green);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    button { color: inherit; font: inherit; }
+    .app {
+      width: min(100%, 390px);
+      min-height: 100svh;
+      margin: 0 auto;
+      background: var(--paper);
+      display: flex;
+      flex-direction: column;
+    }
+    .topbar { min-height: 60px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--rule); }
+    .brand { font-size: 20px; font-weight: 800; letter-spacing: -.035em; }
+    .sample-tag { padding: 7px 9px; border-radius: 6px; background: var(--tomato); color: #fff; font-size: 10px; line-height: 1; font-weight: 800; letter-spacing: .055em; white-space: nowrap; }
+    main { padding: 12px 20px 16px; flex: 1; }
+    .location { min-height: 58px; display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 10px; border-bottom: 1px solid var(--rule); }
+    .pin { width: 28px; height: 28px; display: grid; place-items: center; }
+    .location-copy strong { display: block; font-size: 14px; line-height: 18px; }
+    .location-copy small { display: block; color: var(--green-soft); font-size: 12px; line-height: 16px; }
+    .address-action, .sort-action {
+      min-height: 44px;
+      border: 1px solid var(--green);
+      border-radius: 9px;
+      background: transparent;
+      padding: 0 11px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .segments {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
+      margin: 13px 0 17px;
+      padding: 4px;
+      border: 1px solid var(--green);
+      border-radius: 11px;
+      background: #f4f0e2;
+    }
+    .segments button {
+      min-height: 40px;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      font-size: 14px;
+      font-weight: 650;
+    }
+    .segments .selected { background: var(--yellow); }
+    .results-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 9px;
+    }
+    h1 { max-width: 205px; margin: 0; font-size: 19px; line-height: 1.12; letter-spacing: -.025em; }
+    .results-sub { margin: 4px 0 0; color: var(--green-soft); font-size: 12px; line-height: 16px; }
+    .sort-action { min-height: 40px; padding: 0 8px; font-size: 11px; }
+    .offers { list-style: none; padding: 0; margin: 0; }
+    .offer { padding: 12px 0; border-bottom: 1px solid var(--rule); }
+    .offer.best {
+      margin: 0 -10px;
+      padding: 12px 10px 11px;
+      border: 0;
+      border-radius: 10px;
+      background: var(--yellow);
+    }
+    .best-label { margin-bottom: 5px; font-size: 10px; line-height: 13px; font-weight: 850; letter-spacing: .075em; }
+    .offer-main { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .store { margin: 0; font-size: 15px; line-height: 19px; font-weight: 750; }
+    .item { margin: 2px 0 0; font-size: 13px; line-height: 17px; }
+    .unit { min-width: 74px; text-align: right; font-variant-numeric: tabular-nums; }
+    .unit strong { display: block; font-size: 22px; line-height: 24px; letter-spacing: -.03em; }
+    .unit span { display: block; font-size: 11px; line-height: 14px; font-weight: 650; }
+    .meta { display: flex; flex-wrap: wrap; gap: 2px 8px; margin-top: 7px; color: var(--green-soft); font-size: 11px; line-height: 15px; font-variant-numeric: tabular-nums; }
+    .best .meta { color: var(--green); }
+    .solver {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 14px;
+      padding: 12px 0;
+      border-top: 2px solid var(--green);
+      border-bottom: 1px solid var(--rule);
+    }
+    .solver-title { margin: 0 0 3px; font-size: 14px; font-weight: 800; }
+    .solver-copy p { margin: 0; font-size: 12px; line-height: 17px; }
+    .solver-copy .combination { color: var(--green-soft); }
+    .solver-total { text-align: right; font-variant-numeric: tabular-nums; }
+    .solver-total span { display: block; font-size: 11px; line-height: 15px; }
+    .solver-total strong { font-size: 21px; line-height: 25px; letter-spacing: -.025em; }
+    .footnote { margin: 9px 0 0; color: var(--green-soft); font-size: 10px; line-height: 14px; }
+    @media (max-width: 350px) {
+      main { padding-left: 15px; padding-right: 15px; }
+      h1 { font-size: 18px; }
+      .meta { font-size: 10px; }
+      .sort-action { padding: 0 6px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">Chickenomical</div>
+      <div class="sample-tag">SAMPLE PRICES · NOT LIVE</div>
+    </header>
+    <main>
+      <section class="location" aria-label="Search location">
+        <span class="pin" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z"/><circle cx="12" cy="10" r="2.2"/></svg>
+        </span>
+        <div class="location-copy"><strong>Current location</strong><small>Search area</small></div>
+        <button class="address-action" type="button">Enter address</button>
+      </section>
+      <div class="segments" role="tablist" aria-label="Chicken type">
+        <button class="selected" type="button" role="tab" aria-selected="true">Nuggets</button>
+        <button type="button" role="tab" aria-selected="false">Tenders</button>
+      </div>
+      <section aria-labelledby="results-title">
+        <div class="results-head">
+          <div>
+            <h1 id="results-title">Lowest price per piece</h1>
+            <p class="results-sub">Nuggets · sample offers</p>
+          </div>
+          <button class="sort-action" type="button">Sort: price per piece</button>
+        </div>
+        <ol class="offers" aria-label="Offers ranked by price per piece">
+          <li class="offer best">
+            <div class="best-label">LOWEST UNIT PRICE</div>
+            <div class="offer-main">
+              <div><p class="store">Sample Store A</p><p class="item">10 pc Nuggets · $4.49 total</p></div>
+              <div class="unit"><strong>45¢</strong><span>per piece</span></div>
+            </div>
+            <div class="meta"><span>2.1 mi · straight-line</span><span>Source: sample menu · checked Oct 23, 10:42 AM</span></div>
+          </li>
+          <li class="offer">
+            <div class="offer-main">
+              <div><p class="store">Sample Store B</p><p class="item">12 pc Nuggets · $5.99 total</p></div>
+              <div class="unit"><strong>50¢</strong><span>per piece</span></div>
+            </div>
+            <div class="meta"><span>4.3 mi · straight-line</span><span>Source: sample menu · checked Oct 23, 10:42 AM</span></div>
+          </li>
+          <li class="offer">
+            <div class="offer-main">
+              <div><p class="store">Sample Store C</p><p class="item">8 pc Nuggets · $4.40 total</p></div>
+              <div class="unit"><strong>55¢</strong><span>per piece</span></div>
+            </div>
+            <div class="meta"><span>3.6 mi · straight-line</span><span>Source: sample menu · checked Oct 23, 10:42 AM</span></div>
+          </li>
+        </ol>
+      </section>
+      <section class="solver" aria-label="Quantity solver example">
+        <div class="solver-copy">
+          <h2 class="solver-title">Quantity solver</h2>
+          <p>At least <strong>20 pieces</strong></p>
+          <p class="combination">2 × 10 pc · Sample Store A</p>
+        </div>
+        <div class="solver-total"><span>Example total</span><strong>$8.98</strong></div>
+      </section>
+      <p class="footnote">Prices, distances, sources and check times are illustrative examples.</p>
+    </main>
+  </div>
+</body>
+</html>

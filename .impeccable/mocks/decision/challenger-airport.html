@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chickenomical — nearby offers</title>
+  <style>
+    * { box-sizing: border-box; }
+    :root { color-scheme: light; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body { margin: 0; background: #f1f1f1; color: #111; }
+    .screen { width: min(100%, 390px); min-height: 844px; margin: 0 auto; padding: 42px 20px 28px; background: #fff; }
+    h1 { margin: 0; font-size: 26px; line-height: 1.1; letter-spacing: -.7px; font-weight: 760; }
+    .location { display: flex; align-items: center; justify-content: space-between; margin-top: 19px; padding: 0 0 13px; border-bottom: 1px solid #d8d8d8; }
+    .location-label, .field-label { display: block; color: #454545; font-size: 11px; line-height: 1.2; font-weight: 650; }
+    .location-name { margin-top: 4px; font-size: 15px; line-height: 1.25; font-weight: 620; }
+    button, input { font: inherit; }
+    button { min-height: 40px; border: 1px solid #111; background: #fff; color: #111; cursor: default; }
+    .change { min-height: 36px; padding: 0 12px; font-size: 13px; font-weight: 650; }
+    .segments { display: grid; grid-template-columns: 1fr 1fr; margin-top: 14px; border: 1px solid #111; }
+    .segments button { border: 0; font-size: 14px; font-weight: 680; }
+    .segments button + button { border-left: 1px solid #111; }
+    .segments .selected { background: #ffd400; }
+    .sort-line { display: flex; justify-content: space-between; align-items: center; margin: 14px 0 10px; font-size: 12px; line-height: 1.25; }
+    .sort-line strong { font-size: 13px; font-weight: 700; }
+    .sort-value { color: #454545; }
+    .sample { padding: 8px 10px; background: #ffd400; font-size: 11px; line-height: 1.2; font-weight: 820; letter-spacing: .035em; }
+    .offers { display: grid; gap: 9px; margin-top: 10px; }
+    .offer { overflow: hidden; border: 1px solid #c9c9c9; border-radius: 12px; background: #fff; }
+    .best-band { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; background: #ffd400; font-size: 10px; line-height: 1.1; font-weight: 820; letter-spacing: .035em; }
+    .best-band strong { white-space: nowrap; font-size: 14px; letter-spacing: -.2px; font-variant-numeric: tabular-nums; }
+    .offer-body { padding: 10px 11px 9px; }
+    .offer-heading, .price-line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+    .restaurant { font-size: 14px; line-height: 1.2; font-weight: 730; }
+    .distance { flex: none; font-size: 11px; font-weight: 680; font-variant-numeric: tabular-nums; }
+    .item { margin-top: 3px; color: #333; font-size: 12px; line-height: 1.2; }
+    .price-line { margin-top: 7px; font-size: 12px; line-height: 1.1; }
+    .total { font-size: 16px; font-weight: 720; font-variant-numeric: tabular-nums; }
+    .unit { font-weight: 750; font-variant-numeric: tabular-nums; }
+    .source { margin-top: 7px; color: #454545; font-size: 10.5px; line-height: 1.25; }
+    .solver { margin-top: 13px; padding: 12px; border: 1px solid #c9c9c9; border-radius: 12px; background: #f3f3f3; }
+    .solver h2 { margin: 0; font-size: 15px; line-height: 1.2; letter-spacing: -.15px; }
+    .solver p { margin: 4px 0 10px; color: #454545; font-size: 11px; line-height: 1.25; }
+    .solver-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: end; }
+    .field-label { margin-bottom: 4px; }
+    input { width: 100%; height: 38px; padding: 0 10px; border: 1px solid #777; border-radius: 4px; background: #fff; color: #111; font-size: 14px; font-variant-numeric: tabular-nums; }
+    .solve { min-height: 38px; padding: 0 12px; background: #111; color: #fff; font-size: 12px; font-weight: 700; }
+    @media (max-width: 350px) { .screen { padding-right: 14px; padding-left: 14px; } }
+  </style>
+</head>
+<body>
+  <main class="screen">
+    <header><h1>Chickenomical</h1></header>
+    <section class="location" aria-label="Search location">
+      <div><span class="location-label">LOCATION</span><div class="location-name">Sample location</div></div>
+      <button class="change" type="button">Change</button>
+    </section>
+    <nav class="segments" aria-label="Chicken type">
+      <button class="selected" type="button" aria-pressed="true">Nuggets</button>
+      <button type="button" aria-pressed="false">Tenders</button>
+    </nav>
+    <div class="sort-line"><strong>Nearby offers</strong><span class="sort-value">Sorted by&nbsp; <b>price / piece</b></span></div>
+    <div class="sample">SAMPLE PRICES · NOT LIVE</div>
+    <section class="offers" aria-label="Offers sorted by price per piece">
+      <article class="offer">
+        <div class="best-band"><span>LOWEST UNIT PRICE · SAMPLE</span><strong>$0.42 / piece</strong></div>
+        <div class="offer-body">
+          <div class="offer-heading"><span class="restaurant">Example Chicken</span><span class="distance">1.2 mi</span></div>
+          <div class="item">Classic nuggets · 10 pieces</div>
+          <div class="price-line"><span>Total</span><span class="total">$4.20</span></div>
+          <div class="source">Pickup · Sample menu · Sample check 9:12 AM · sample distance</div>
+        </div>
+      </article>
+      <article class="offer">
+        <div class="offer-body">
+          <div class="offer-heading"><span class="restaurant">Sample Grill</span><span class="distance">2.4 mi</span></div>
+          <div class="item">Crispy nuggets · 12 pieces</div>
+          <div class="price-line"><span>Total <b class="total">$5.52</b></span><span class="unit">$0.46 / piece</span></div>
+          <div class="source">Pickup · Sample menu · Sample check 9:30 AM · sample distance</div>
+        </div>
+      </article>
+      <article class="offer">
+        <div class="offer-body">
+          <div class="offer-heading"><span class="restaurant">Chicken Basket</span><span class="distance">3.1 mi</span></div>
+          <div class="item">Breaded nuggets · 8 pieces</div>
+          <div class="price-line"><span>Total <b class="total">$3.92</b></span><span class="unit">$0.49 / piece</span></div>
+          <div class="source">Pickup · Sample menu · Sample check 9:05 AM · sample distance</div>
+        </div>
+      </article>
+    </section>
+    <section class="solver" aria-labelledby="solver-title">
+      <h2 id="solver-title">Find the least-cost order</h2>
+      <p>Set a minimum; compare purchasable piece counts.</p>
+      <div class="solver-row">
+        <label><span class="field-label">Minimum pieces</span><input type="number" value="20" aria-label="Minimum pieces"></label>
+        <button class="solve" type="button">Find mix</button>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

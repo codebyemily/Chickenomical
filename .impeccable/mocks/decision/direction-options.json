@@ -1,0 +1,143 @@
+{
+  "title": "Chickenomical's visual direction",
+  "question": "Which visual world should guide the nearby chicken comparison screen?",
+  "options": [
+    {
+      "id": "assigned",
+      "label": "The Guest Check",
+      "kicker": "THE ROLL",
+      "lineage": "Diner guest checks and carbon-copy arithmetic",
+      "thesis": "Every nearby offer reconciles into one clear check: count, total, unit price, source, and time.",
+      "palette": ["#F5F0E6", "#17384A", "#D9543B", "#387764"],
+      "materials": ["matte check stock", "carbon-blue and tomato ink"],
+      "viewport": "A standard mobile app shell leads with current location, nugget or tender selection, and the lowest price per piece; a running tally resolves the cheapest requested quantity below the offers.",
+      "risk": "Literal receipt styling can feel nostalgic and cramped; use no texture or faux paper controls.",
+      "raised": [
+        {"from": "The Console's Action Isolation", "raise": "Keep the quantity solver distinct from filter-reset actions."},
+        {"from": "The Video Feed's Complete First Result", "raise": "Show one fully sourced offer before any scroll or gesture."},
+        {"from": "The Type Specimen's Numeric Discipline", "raise": "Use tabular figures so prices and totals align at a glance."},
+        {"from": "The Reference Page's Provenance Bracket", "raise": "Keep source and check time attached to the exact offer they qualify."}
+      ],
+      "html": ".impeccable/mocks/decision/assigned.html",
+      "htmlFrame": "390x844",
+      "comp": ".impeccable/mocks/decision/assigned.webp"
+    },
+    {
+      "id": "model-pick",
+      "label": "The Weekly Circular",
+      "kicker": "IMPECCABLE'S PICK",
+      "lineage": "Neighborhood grocery circulars and shelf-edge unit-price labels",
+      "thesis": "Make the unit price the thing shoppers see first, then let them inspect the offer behind it.",
+      "palette": ["#F6D847", "#224D36", "#D64B36", "#FFF9E9"],
+      "materials": ["matte flyer paper", "high-contrast ink blocks"],
+      "viewport": "A standard mobile results shell keeps location and category controls familiar; compact offer rows make the unit-price column dominant, with a single savings band on the current best offer.",
+      "risk": "Sale graphics can imply an unverified discount; the highlight must mean lowest verified unit price only.",
+      "html": ".impeccable/mocks/decision/model-pick.html",
+      "htmlFrame": "390x844",
+      "comp": ".impeccable/mocks/decision/model-pick.webp"
+    }
+  ],
+  "challengers": [
+    {
+      "id": "challenger-airport",
+      "label": "Decision Bands",
+      "verdict": "competitive",
+      "lineage": "International airport sign systems",
+      "thesis": "Turn a local price comparison into one crisp next decision, with distance and freshness easy to scan.",
+      "palette": ["#FFD400", "#101010", "#F3F3F3", "#FFFFFF"],
+      "materials": ["matte enamel panel", "black humanist type"],
+      "viewport": "Keep standard app navigation and controls; reserve a strong yellow band for the current best-value offer and use a restrained split-flap update when the ranking changes.",
+      "case": "Competitive on product clarity: distance, status, and a next choice read quickly; weaker audience identification because airport wayfinding is not a food-value cue.",
+      "risk": "Yellow can overpower price evidence or be mistaken for a warning if it fills the whole screen.",
+      "html": ".impeccable/mocks/decision/challenger-airport.html",
+      "htmlFrame": "390x844",
+      "comp": ".impeccable/mocks/decision/challenger-airport.webp",
+      "hero": "https://impeccable.style/worlds/cards/wayfinding-cartography-signage-terminal-yellow-wayfinding-hero.webp"
+    },
+    {
+      "id": "challenger-reference",
+      "label": "The Annotated Price Sheet",
+      "verdict": "declined",
+      "lineage": "Reference-setting pages with a ruling rail and annotation margin",
+      "thesis": "Keep each offer's price, count, source, and check time visibly connected.",
+      "palette": ["#F4EFE2", "#181B1D", "#B83D2E"],
+      "materials": ["unbleached stock", "fine rubric rules"],
+      "viewport": "Use a standard mobile result list; a thin red bracket ties each total to its source note, while controls and navigation stay platform-native.",
+      "case": "Declined on audience identification and task fit: the publishing idiom asks shoppers to read an edition instead of scanning nearby offers.",
+      "kept": "Keep provenance beside the offer it explains, even when the list becomes dense.",
+      "risk": "A rail can become hard to read at phone widths; keep source notes inline with the offer.",
+      "hero": "https://impeccable.style/worlds/cards/rw-centre-rail-reference-setting-hero.webp"
+    },
+    {
+      "id": "challenger-ticket-wallet",
+      "label": "The Ticket Wallet",
+      "verdict": "declined",
+      "lineage": "Jet-age airline ticket wallets and carbon-copy coupons",
+      "thesis": "Sequence a requested quantity from selected offers to one final total.",
+      "palette": ["#142C46", "#C64A37", "#F7F5EF", "#7C6281"],
+      "materials": ["coupon stock", "carbon numerals"],
+      "viewport": "A quantity request becomes a sequence of coupon-like offer states.",
+      "case": "Declined on both axes: itinerary language feels unrelated to local food shopping, and ticket metaphors suggest booking or checkout outside the MVP.",
+      "kept": "Keep active, stale, and unavailable offer states explicit; state changes remain visible.",
+      "risk": "A ticket-book sequence makes the comparison feel transactional.",
+      "hero": "https://impeccable.style/worlds/cards/vernacular-ephemera-jet-age-ticket-wallet-hero.webp"
+    },
+    {
+      "id": "challenger-console",
+      "label": "The Console",
+      "verdict": "declined",
+      "lineage": "Dark-first developer consoles",
+      "thesis": "A dense graphite surface separates work areas with hairline seams.",
+      "palette": ["#171A1D", "#31373B", "#73C7A4", "#E6B85C"],
+      "materials": ["graphite panels", "hairline seams"],
+      "viewport": "A panel grid places location, filters, and results in persistent work areas.",
+      "case": "Declined on both axes: the console reads as a specialist workbench and hides a simple consumer comparison behind technical panels.",
+      "kept": "Give the quantity action its own breathing space, separate from filter reset.",
+      "risk": "A technical dashboard would make the product feel built for operators.",
+      "hero": "https://impeccable.style/worlds/cards/digital-design-canon-dark-first-developer-console-hero.webp"
+    },
+    {
+      "id": "challenger-video-feed",
+      "label": "The Vertical Feed",
+      "verdict": "declined",
+      "lineage": "Full-bleed vertical media feeds",
+      "thesis": "One result fills the screen, then snaps to the next.",
+      "palette": ["#111111", "#FFFFFF"],
+      "materials": ["edge-to-edge media", "soft scrim"],
+      "viewport": "A single offer occupies each full-height page with a gesture-led move to another.",
+      "case": "Declined on both axes: the audience needs to compare several exact offers together, and full-bleed media hides the evidence that makes a result useful.",
+      "kept": "Show one complete, source-attributed offer before any scroll or extra gesture.",
+      "risk": "A swipe-only result flow makes side-by-side comparison difficult.",
+      "hero": "https://impeccable.style/worlds/cards/pop-culture-shelf-vertical-video-feed-surface-hero.webp"
+    },
+    {
+      "id": "challenger-type-specimen",
+      "label": "The Type Specimen",
+      "verdict": "declined",
+      "lineage": "Interactive variable-font specimens",
+      "thesis": "One type axis changes every number and label as the user drags.",
+      "palette": ["#F8F8F5", "#151515", "#C94336"],
+      "materials": ["flat paper", "variable type"],
+      "viewport": "A weight slider morphs the offer list and its price figures together.",
+      "case": "Declined on both axes: font manipulation is not a value-shopper task and animated prices threaten legibility.",
+      "kept": "Use tabular figures so totals align without continuous animation.",
+      "risk": "A moving type system could make factual prices harder to read.",
+      "hero": "https://impeccable.style/worlds/cards/variable-font-specimen-hero.webp"
+    }
+  ],
+  "reroll": {"registers": ["safer", "bolder"]},
+  "buildPath": {"value": "code", "toggle": true},
+  "canon": true,
+  "canonCard": {
+    "label": "The category standard",
+    "thesis": "A polished mobile comparison list with familiar filters, a clear price-per-piece sort, and source-linked offers.",
+    "palette": ["#FFFFFF", "#111827", "#2563EB", "#6B7280"],
+    "materials": ["platform system surfaces", "standard native controls"],
+    "viewport": "A standard location field, category control, unit-price ranking, complete offer rows, and a secondary quantity solver.",
+    "risk": "Familiar by design, with little visual distinction from other comparison apps.",
+    "html": ".impeccable/mocks/decision/canon.html",
+    "htmlFrame": "390x844",
+    "comp": ".impeccable/mocks/decision/canon.webp"
+  },
+  "steer": true
+}
