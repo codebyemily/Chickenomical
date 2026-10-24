@@ -29,7 +29,7 @@ export function PrototypeProvider({ children }: PropsWithChildren) {
   const [area, setArea] = useState<DemoArea>('market');
   const [locationLabel, setLocationLabel] = useState('Market Street · demo area');
   const [refreshStatus, setRefreshStatus] = useState<RefreshStatus>('idle');
-  const [refreshMessage, setRefreshMessage] = useState('No demo refresh has run.');
+  const [refreshMessage, setRefreshMessage] = useState('No sample refresh has run yet.');
 
   const setDemoArea = useCallback((nextArea: DemoArea, nextLabel: string) => {
     setArea(nextArea);
@@ -38,13 +38,13 @@ export function PrototypeProvider({ children }: PropsWithChildren) {
 
   const runMockRefresh = useCallback((result: 'complete' | 'failed' = 'complete') => {
     setRefreshStatus('running');
-    setRefreshMessage('Simulating a local prototype refresh. No network request is sent.');
+    setRefreshMessage('Simulating a local refresh. No network request is sent.');
     setTimeout(() => {
       setRefreshStatus(result);
       setRefreshMessage(
         result === 'complete'
-          ? 'Demo refresh complete. The local fixture did not change.'
-          : 'Demo refresh failed. Existing sample rows remain visible.',
+          ? 'Sample refresh complete. Fixture data remains unchanged.'
+          : 'Sample refresh failed. The existing fixture data remains visible.',
       );
     }, 650);
   }, []);

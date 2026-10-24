@@ -28,12 +28,12 @@ export type DemoLocation = {
 
 const fixture = (sourceRecordId: string) => ({
   sourceRecordId,
-  sourceName: 'Synthetic prototype fixture',
-  channel: 'Pickup · illustrative only',
+  sourceName: 'Synthetic prototype source',
+  channel: 'Pickup · illustrative sample',
 });
 
 export const DEMO_DATA_NOTICE =
-  'Prototype data only. Restaurant examples, locations, prices, distances, sources, and check times are synthetic and are not current menu information.';
+  'Prototype data only. Restaurant examples, locations, prices, distances, sources, and check times are synthetic, not current menu information.';
 
 export const DEMO_LOCATIONS: DemoLocation[] = [
   {
@@ -41,7 +41,7 @@ export const DEMO_LOCATIONS: DemoLocation[] = [
     chain: "McDonald's",
     displayName: 'Market Street · demo location',
     address: 'Fictional address · San Francisco, CA',
-    areaLabel: 'Market Street demo area',
+    areaLabel: 'Market Street demo location',
     distanceMiles: { market: 0.7, 'north-beach': 3.8 },
     offers: [
       {
@@ -53,7 +53,7 @@ export const DEMO_LOCATIONS: DemoLocation[] = [
         pieceCount: 10,
         priceCents: 649,
         freshness: 'sample-recent',
-        mockChecked: 'sample check · 18 min ago',
+        mockChecked: 'sample perch check · 18 min ago',
       },
       {
         id: 'mcd-20-nuggets',
@@ -64,7 +64,7 @@ export const DEMO_LOCATIONS: DemoLocation[] = [
         pieceCount: 20,
         priceCents: 1099,
         freshness: 'sample-recent',
-        mockChecked: 'sample check · 18 min ago',
+        mockChecked: 'sample perch check · 18 min ago',
       },
       {
         id: 'mcd-6-nuggets',
@@ -75,7 +75,7 @@ export const DEMO_LOCATIONS: DemoLocation[] = [
         pieceCount: 6,
         priceCents: 449,
         freshness: 'sample-stale',
-        mockChecked: 'sample check · 4 days ago',
+        mockChecked: 'sample perch check · 4 days ago',
       },
     ],
   },
@@ -84,7 +84,7 @@ export const DEMO_LOCATIONS: DemoLocation[] = [
     chain: "Wendy's",
     displayName: 'Civic Center · demo location',
     address: 'Fictional address · San Francisco, CA',
-    areaLabel: 'Civic Center demo area',
+    areaLabel: 'Civic Center demo location',
     distanceMiles: { market: 1.2, 'north-beach': 2.4 },
     offers: [
       {
@@ -96,7 +96,7 @@ export const DEMO_LOCATIONS: DemoLocation[] = [
         pieceCount: 10,
         priceCents: 599,
         freshness: 'sample-recent',
-        mockChecked: 'sample check · 42 min ago',
+        mockChecked: 'sample perch check · 42 min ago',
       },
       {
         id: 'wendys-4-nuggets',
@@ -107,7 +107,7 @@ export const DEMO_LOCATIONS: DemoLocation[] = [
         pieceCount: 4,
         priceCents: 299,
         freshness: 'sample-stale',
-        mockChecked: 'sample check · 2 days ago',
+        mockChecked: 'sample perch check · 2 days ago',
       },
       {
         id: 'wendys-uncounted-tenders',
@@ -118,7 +118,7 @@ export const DEMO_LOCATIONS: DemoLocation[] = [
         pieceCount: null,
         priceCents: 549,
         freshness: 'incomplete',
-        mockChecked: 'sample check · 42 min ago',
+        mockChecked: 'sample perch check · 42 min ago',
       },
     ],
   },
@@ -127,7 +127,7 @@ export const DEMO_LOCATIONS: DemoLocation[] = [
     chain: 'Popeyes',
     displayName: 'SoMa · demo location',
     address: 'Fictional address · San Francisco, CA',
-    areaLabel: 'SoMa demo area',
+    areaLabel: 'SoMa demo location',
     distanceMiles: { market: 2.1, 'north-beach': 2.9 },
     offers: [
       {
@@ -139,7 +139,7 @@ export const DEMO_LOCATIONS: DemoLocation[] = [
         pieceCount: 3,
         priceCents: 549,
         freshness: 'sample-recent',
-        mockChecked: 'sample check · 31 min ago',
+        mockChecked: 'sample perch check · 31 min ago',
       },
       {
         id: 'popeyes-5-tenders',
@@ -150,7 +150,7 @@ export const DEMO_LOCATIONS: DemoLocation[] = [
         pieceCount: 5,
         priceCents: 849,
         freshness: 'sample-recent',
-        mockChecked: 'sample check · 31 min ago',
+        mockChecked: 'sample perch check · 31 min ago',
       },
       {
         id: 'popeyes-8-nuggets',
@@ -161,7 +161,7 @@ export const DEMO_LOCATIONS: DemoLocation[] = [
         pieceCount: 8,
         priceCents: 579,
         freshness: 'unavailable',
-        mockChecked: 'sample check · 31 min ago',
+        mockChecked: 'sample perch check · 31 min ago',
       },
     ],
   },
@@ -170,7 +170,7 @@ export const DEMO_LOCATIONS: DemoLocation[] = [
     chain: 'KFC',
     displayName: 'North Beach · demo location',
     address: 'Fictional address · San Francisco, CA',
-    areaLabel: 'North Beach demo area',
+    areaLabel: 'North Beach demo location',
     distanceMiles: { market: 3.4, 'north-beach': 0.5 },
     offers: [
       {
@@ -182,7 +182,7 @@ export const DEMO_LOCATIONS: DemoLocation[] = [
         pieceCount: 8,
         priceCents: 579,
         freshness: 'sample-stale',
-        mockChecked: 'sample check · 3 days ago',
+        mockChecked: 'sample perch check · 3 days ago',
       },
       {
         id: 'kfc-12-nuggets',
@@ -193,7 +193,7 @@ export const DEMO_LOCATIONS: DemoLocation[] = [
         pieceCount: 12,
         priceCents: 799,
         freshness: 'sample-recent',
-        mockChecked: 'sample check · 27 min ago',
+        mockChecked: 'sample perch check · 27 min ago',
       },
       {
         id: 'kfc-3-tenders',
@@ -204,7 +204,7 @@ export const DEMO_LOCATIONS: DemoLocation[] = [
         pieceCount: 3,
         priceCents: 599,
         freshness: 'sample-stale',
-        mockChecked: 'sample check · 3 days ago',
+        mockChecked: 'sample perch check · 3 days ago',
       },
     ],
   },
@@ -213,7 +213,7 @@ export const DEMO_LOCATIONS: DemoLocation[] = [
     chain: 'Burger King',
     displayName: 'Sunset · demo location',
     address: 'Fictional address · San Francisco, CA',
-    areaLabel: 'Sunset demo area',
+    areaLabel: 'Sunset demo location',
     distanceMiles: { market: 5.4, 'north-beach': 8.2 },
     offers: [
       {
@@ -225,7 +225,7 @@ export const DEMO_LOCATIONS: DemoLocation[] = [
         pieceCount: 8,
         priceCents: null,
         freshness: 'unavailable',
-        mockChecked: 'sample check · 1 hour ago',
+        mockChecked: 'sample perch check · 1 hour ago',
       },
     ],
   },

@@ -34,10 +34,11 @@ Users share their location or enter an address, choose a search radius and chick
 - Exclude fees, taxes, coupons, loyalty pricing, combos, accounts, checkout, and nationwide coverage from the MVP.
 - Mark stale, incomplete, unavailable, or incomparable data clearly. Do not invent prices or imply that an unverified price is current.
 - The demo geography, menu-data source, ingestion provider, and backend are not yet confirmed. The technical options in `idea.md` are proposals until verified.
+- The Expo prototype uses local synthetic fixtures only. It has no database, account/auth flow, live location lookup, menu connection, or checkout.
 
 ## Evidence on Hand
 
-`idea.md` contains the product and implementation brief, but this repository has no application implementation or verified live menu prices yet. Its sample prices are explicitly fabricated examples. Do not present example prices, coverage, savings, or freshness as real without source evidence.
+The Expo app implements a reviewable local prototype for comparison, group quantity planning, location selection, source provenance, methodology, and recovery states. It has no live menu prices, connected database, or authentication. All sample prices, locations, distances, source records, and check times are fabricated; do not present example prices, coverage, savings, or freshness as real without source evidence.
 
 ## Product Principles
 

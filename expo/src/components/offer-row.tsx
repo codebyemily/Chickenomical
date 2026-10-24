@@ -3,7 +3,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { DemoLocation, DemoOffer } from '@/data/demo';
 import { freshnessText, money, unitMoney } from '@/lib/compare';
-import { colors, fonts, spacing, tabular } from '@/theme';
+import { colors, fonts, radii, spacing, tabular } from '@/theme';
 import { ActionButton } from '@/components/ui/action-button';
 
 type Props = {
@@ -23,22 +23,22 @@ export function OfferRow({ offer, location, distance, rank, featured = false }: 
         <View style={styles.nativeTopline}>
           <View style={styles.titleStack}>
             <Text style={[styles.rank, featured && styles.featuredInk]}>
-              {featured ? 'LOWEST SAMPLE PRICE PER PIECE' : `OFFER ${String(rank ?? 1).padStart(2, '0')}`}
+              {featured ? 'TOP OF THE PECKING ORDER' : `BIRD ${String(rank ?? 1).padStart(2, '0')}`}
             </Text>
             <Text style={[styles.nativeRestaurant, featured && styles.featuredInk]}>{location.chain}</Text>
             <Text style={[styles.location, featured && styles.featuredMuted]}>{location.displayName}</Text>
           </View>
           <View style={styles.nativeUnitBlock}>
             <Text style={[styles.nativeUnitPrice, featured && styles.featuredInk, tabular]}>{unitMoney(offer)}</Text>
-            <Text style={[styles.unitLabel, featured && styles.featuredInk]}>PER PIECE</Text>
+            <Text style={[styles.unitLabel, featured && styles.featuredInk]}>PER PECK</Text>
           </View>
         </View>
         <View style={[styles.separator, featured && styles.featuredSeparator]} />
         <Text style={[styles.nativeItem, featured && styles.featuredInk]}>
-          {offer.itemName} · {offer.pieceCount == null ? 'Count not stated' : `${offer.pieceCount} pieces`}
+          {offer.itemName} · {offer.pieceCount == null ? 'Count not hatched' : `${offer.pieceCount} pieces`}
         </Text>
         <Text style={[styles.nativeFacts, featured && styles.featuredInk, tabular]}>
-          {money(offer.priceCents)} order total · {distance.toFixed(1)} mi straight-line sample
+          {money(offer.priceCents)} scratch · {distance.toFixed(1)} mi as the crow flies
         </Text>
         <View style={styles.nativeProvenance}>
           <Text style={[styles.status, stale && styles.staleStatus, featured && styles.featuredInk]}>{freshnessText(offer)}</Text>
@@ -53,7 +53,7 @@ export function OfferRow({ offer, location, distance, rank, featured = false }: 
           accessibilityRole="link"
           onPress={() => router.push(`/offer/${offer.id}` as never)}
           style={({ pressed }) => [styles.nativeDetail, pressed && styles.pressed]}>
-          <Text style={styles.nativeDetailText}>Offer details</Text>
+          <Text style={styles.nativeDetailText}>Chick it out</Text>
           <Text style={styles.nativeDetailArrow}>›</Text>
         </Pressable>
       </View>
@@ -64,22 +64,22 @@ export function OfferRow({ offer, location, distance, rank, featured = false }: 
       <View style={styles.topline}>
         <View style={styles.titleStack}>
           <Text style={[styles.rank, featured && styles.featuredInk]}>
-            {featured ? 'LOWEST SAMPLE UNIT PRICE' : rank ? `OFFER ${String(rank).padStart(2, '0')}` : 'NEARBY OFFER'}
+            {featured ? 'TOP OF THE PECKING ORDER' : rank ? `BIRD ${String(rank).padStart(2, '0')}` : 'NEARBY BIRD'}
           </Text>
           <Text style={[styles.restaurant, featured && styles.featuredInk]}>{location.chain}</Text>
           <Text style={[styles.location, featured && styles.featuredMuted]}>{location.displayName}</Text>
         </View>
         <View style={styles.unitBlock}>
-          <Text style={[styles.unitLabel, featured && styles.featuredInk]}>PER PIECE</Text>
+          <Text style={[styles.unitLabel, featured && styles.featuredInk]}>PER PECK</Text>
           <Text style={[styles.unitPrice, featured && styles.featuredInk, tabular]}>{unitMoney(offer)}</Text>
         </View>
       </View>
       <View style={[styles.separator, featured && styles.featuredSeparator]} />
       <Text style={[styles.item, featured && styles.featuredInk]}>{offer.itemName}</Text>
       <View style={styles.facts}>
-        <Fact label="COUNT" value={offer.pieceCount == null ? 'Not stated' : `${offer.pieceCount} pieces`} featured={featured} />
-        <Fact label="ORDER TOTAL" value={money(offer.priceCents)} featured={featured} numeric />
-        <Fact label="DISTANCE" value={`${distance.toFixed(1)} mi · straight-line sample`} featured={featured} numeric />
+        <Fact label="PECKS" value={offer.pieceCount == null ? 'Not hatched' : `${offer.pieceCount} pieces`} featured={featured} />
+        <Fact label="SCRATCH" value={money(offer.priceCents)} featured={featured} numeric />
+        <Fact label="CROW-FLIES" value={`${distance.toFixed(1)} mi · as the crow flies`} featured={featured} numeric />
       </View>
       <View style={styles.provenance}>
         <View style={styles.provenanceText}>
@@ -95,7 +95,7 @@ export function OfferRow({ offer, location, distance, rank, featured = false }: 
           <ActionButton
             kind={featured ? 'secondary' : 'secondary'}
             onPress={() => router.push(`/offer/${offer.id}` as never)}>
-            Inspect offer
+            Chick it out
           </ActionButton>
         </View>
       </View>
@@ -113,8 +113,8 @@ function Fact({ label, value, featured, numeric = false }: { label: string; valu
 }
 
 const styles = StyleSheet.create({
-  row: { backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.black, padding: spacing.md, gap: spacing.md },
-  featured: { backgroundColor: colors.yellow, borderColor: colors.black, borderWidth: 1, padding: spacing.lg },
+  row: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.rule, borderRadius: radii.md, padding: spacing.md, gap: spacing.md },
+  featured: { backgroundColor: colors.yellow, borderColor: colors.black, borderWidth: 1, borderRadius: radii.lg, padding: spacing.lg },
   topline: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md, alignItems: 'flex-start' },
   titleStack: { flex: 1, gap: 3 },
   rank: { color: colors.muted, fontFamily: fonts.bold, fontSize: 10, letterSpacing: 1 },
@@ -134,8 +134,8 @@ const styles = StyleSheet.create({
   provenanceText: { flex: 1, minWidth: 220, gap: 3 },
   status: { color: colors.black, fontFamily: fonts.bold, fontSize: 10, letterSpacing: 0.45 },
   staleStatus: { color: colors.warning },
-  nativeRow: { backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.black, paddingHorizontal: spacing.md, paddingVertical: spacing.md, gap: spacing.sm },
-  nativeFeatured: { backgroundColor: colors.yellow, borderWidth: 1, borderColor: colors.black, padding: spacing.md },
+  nativeRow: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.rule, borderRadius: radii.md, paddingHorizontal: spacing.md, paddingVertical: spacing.md, gap: spacing.sm },
+  nativeFeatured: { backgroundColor: colors.yellow, borderWidth: 1, borderColor: colors.black, borderRadius: radii.lg, padding: spacing.md },
   nativeTopline: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing.md },
   nativeRestaurant: { color: colors.black, fontFamily: fonts.bold, fontSize: 18, lineHeight: 24 },
   nativeUnitBlock: { alignItems: 'flex-end', minWidth: 86 },

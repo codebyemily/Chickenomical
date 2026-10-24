@@ -1,13 +1,16 @@
+import { SegmentedControl } from '@expo/ui/community/segmented-control';
+import { Slider } from '@expo/ui/community/slider';
+import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 
 import { AppFrame, NoticeBand, PageHeading, SectionHeading } from '@/components/app-frame';
 import { FormField } from '@/components/form-field';
 import { ActionButton } from '@/components/ui/action-button';
 import { locationsInRadius, money, solveAllLocations } from '@/lib/compare';
 import { usePrototype } from '@/state/prototype-context';
-import { colors, fonts, spacing, tabular } from '@/theme';
+import { colors, fonts, radii, spacing, tabular } from '@/theme';
 
 export default function QuantityScreen() {
   const router = useRouter();
@@ -20,66 +23,137 @@ export default function QuantityScreen() {
     () => solveAllLocations(locations, category, submittedGoal, area),
     [locations, category, submittedGoal, area],
   );
+  const best = solutions[0];
+  const bestPlanKey = best
+    ? `${best.location.id}:${best.orders.map(({ offer, quantity }) => `${offer.id}x${quantity}`).join(',')}`
+    : 'no-solution';
+  const previousPlan = useRef(bestPlanKey);
+  const lastHapticAt = useRef(0);
 
-  function applyGoal(nextGoal = goal) {
+  useEffect(() => {
+    if (previousPlan.current === bestPlanKey) return;
+    previousPlan.current = bestPlanKey;
+    if (Platform.OS === 'web') return;
+
+    const timeout = setTimeout(() => {
+      const now = Date.now();
+      if (now - lastHapticAt.current < 220) return;
+      lastHapticAt.current = now;
+      if (Platform.OS === 'ios') void Haptics.selectionAsync();
+      if (Platform.OS === 'android') void Haptics.performAndroidHapticsAsync(Haptics.AndroidHaptics.Segment_Tick);
+    }, 100);
+
+    return () => clearTimeout(timeout);
+  }, [bestPlanKey]);
+
+  function commitGoal(nextGoal: string) {
     const normalized = nextGoal.trim();
     const count = Number.parseInt(normalized, 10);
     if (!/^[0-9]+$/.test(normalized) || !Number.isFinite(count) || count < 1 || count > 100) {
-      setGoalError('Enter a whole number from 1 to 100 pieces.');
-      return;
+      setGoalError('Enter a whole number from 1 to 100 pieces. Don\'t count your chickens past 100.');
+      return false;
     }
     setGoalError(null);
     setGoal(String(count));
     setSubmittedGoal(count);
+    return true;
+  }
+
+  function changeFromSlider(value: number) {
+    const next = Math.min(100, Math.max(1, Math.round(value)));
+    setGoal(String(next));
+    setSubmittedGoal(next);
+    setGoalError(null);
+  }
+
+  function changeFromText(value: string) {
+    setGoal(value);
+    setGoalError(null);
+    if (!/^[0-9]+$/.test(value)) return;
+    const next = Number(value);
+    if (next >= 1 && next <= 100) setSubmittedGoal(next);
   }
 
   return (
-    <AppFrame active="Compare">
+    <AppFrame active="Group">
       <PageHeading
-        title="Meet a piece target for less."
-        description="The solver combines available standalone sizes at each restaurant and compares the actual order total."
+        title="Hatch a flock order"
+        description="Find the lowest sample scratch that feeds your piece count at one nearby roost. Don't put all your eggs in one basket unless it's cheaper."
       />
 
-      <View style={styles.controls}>
+      <View style={styles.goalPanel}>
         <View style={styles.categoryBlock}>
-          <Text style={styles.controlLabel}>CHICKEN TYPE</Text>
-          <View style={styles.buttonRow}>
-            <ActionButton kind={category === 'nuggets' ? 'primary' : 'secondary'} onPress={() => setCategory('nuggets')}>Nuggets</ActionButton>
-            <ActionButton kind={category === 'tenders' ? 'primary' : 'secondary'} onPress={() => setCategory('tenders')}>Tenders</ActionButton>
-          </View>
-        </View>
-        <View style={styles.goalRow}>
-          <View style={styles.fieldWrap}>
-            <FormField
-              label="At least how many pieces?"
-              value={goal}
-              onChangeText={(value) => { setGoal(value); setGoalError(null); }}
-              keyboardType="numeric"
-              submitLabel="done"
-              onSubmitEditing={() => applyGoal()}
-              help="Choose a whole number from 1 to 100."
+          <Text style={styles.controlLabel}>FLOCK CUT</Text>
+          {Platform.OS === 'web' ? (
+            <View style={styles.categoryButtons}>
+              <ActionButton kind={category === 'nuggets' ? 'primary' : 'secondary'} onPress={() => setCategory('nuggets')}>
+                Nuggets
+              </ActionButton>
+              <ActionButton kind={category === 'tenders' ? 'primary' : 'secondary'} onPress={() => setCategory('tenders')}>
+                Tenders
+              </ActionButton>
+            </View>
+          ) : (
+            <SegmentedControl
+              accessibilityLabel="Chicken type"
+              values={['Nuggets', 'Tenders']}
+              selectedIndex={category === 'nuggets' ? 0 : 1}
+              tintColor={colors.white}
+              onValueChange={(value) => setCategory(value === 'Tenders' ? 'tenders' : 'nuggets')}
             />
+          )}
+        </View>
+
+        <View style={styles.goalReadout}>
+          <View>
+            <Text style={styles.controlLabel}>MINIMUM PECKS</Text>
+            <View style={styles.goalValueLine}>
+              <Text accessibilityLiveRegion="polite" style={[styles.goalValue, tabular]}>{submittedGoal}</Text>
+              <Text style={styles.goalUnit}>{submittedGoal === 1 ? 'piece' : 'pieces'}</Text>
+            </View>
           </View>
-          <View style={styles.calculateButton}>
-            <ActionButton kind="primary" onPress={() => applyGoal()}>
-              Recalculate
-            </ActionButton>
+          <Text style={styles.goalRange}>1–100</Text>
+        </View>
+
+        <View style={styles.sliderBlock}>
+          <Slider
+            accessibilityLabel="Minimum group size"
+            accessibilityHint="Set how many chicken pieces the order should include. The least-cost combination updates as you move the slider."
+            minimumValue={1}
+            maximumValue={100}
+            step={1}
+            value={submittedGoal}
+            minimumTrackTintColor={colors.black}
+            maximumTrackTintColor={colors.rule}
+            thumbTintColor={colors.black}
+            onValueChange={changeFromSlider}
+            style={Platform.OS === 'web' ? styles.sliderWeb : styles.slider}
+            testID="piece-goal-slider"
+          />
+          <View style={styles.sliderLabels}>
+            <Text style={styles.sliderLabel}>1 piece</Text>
+            <Text style={styles.sliderLabel}>100 pieces</Text>
           </View>
         </View>
-        {goalError ? <NoticeBand title="Check the piece goal" tone="warning">{goalError}</NoticeBand> : null}
-        <View style={styles.presets}>
-          {[8, 12, 20].map((count) => (
-            <ActionButton key={count} kind={submittedGoal === count ? 'primary' : 'secondary'} onPress={() => applyGoal(String(count))}>
-              {`${count} pieces`}
-            </ActionButton>
-          ))}
+
+        <View style={styles.exactEntry}>
+          <FormField
+            label="Set an exact piece goal"
+            value={goal}
+            onChangeText={changeFromText}
+            keyboardType="numeric"
+            submitLabel="done"
+            onSubmitEditing={() => commitGoal(goal)}
+            help="Type a whole number from 1 to 100, or use the slider."
+          />
+          {goalError ? <Text accessibilityRole="alert" style={styles.goalError}>{goalError}</Text> : null}
         </View>
       </View>
 
       <View style={styles.resultHeading}>
-        <SectionHeading title={`At least ${submittedGoal} pieces`} trailing="LOWEST SAMPLE TOTAL PER LOCATION" />
+        <SectionHeading title={`At least ${submittedGoal} ${submittedGoal === 1 ? 'piece' : 'pieces'}`} trailing="LOWEST TOTAL PER LOCATION" />
         <Text style={styles.resultIntro}>
-          {solutions.length} sample location{solutions.length === 1 ? '' : 's'} with enough comparable menu sizes within {radiusMiles} miles.
+          {solutions.length} sample location{solutions.length === 1 ? '' : 's'} with enough menu sizes within {radiusMiles} miles.
         </Text>
       </View>
 
@@ -89,7 +163,9 @@ export default function QuantityScreen() {
             <View key={solution.location.id} style={[styles.solution, index === 0 && styles.bestSolution]}>
               <View style={styles.solutionTop}>
                 <View style={styles.solutionNameBlock}>
-                  <Text style={[styles.rankLabel, index === 0 && styles.bestInk]}>{index === 0 ? 'LOWEST SAMPLE ORDER TOTAL' : `LOCATION ${String(index + 1).padStart(2, '0')}`}</Text>
+                  <Text style={[styles.rankLabel, index === 0 && styles.bestInk]}>
+                    {index === 0 ? 'LOWEST SAMPLE ORDER TOTAL' : `LOCATION ${String(index + 1).padStart(2, '0')}`}
+                  </Text>
                   <Text style={[styles.restaurant, index === 0 && styles.bestInk]}>{solution.location.chain}</Text>
                   <Text style={[styles.subtle, index === 0 && styles.bestMuted]}>{solution.location.displayName}</Text>
                 </View>
@@ -121,32 +197,40 @@ export default function QuantityScreen() {
           ))}
         </View>
       ) : (
-        <NoticeBand title="No sample combination meets that target" tone="warning">
-          Reduce the piece target, choose another chicken type, or expand the radius. Only rows with an explicit count and sample pickup price enter the solver.
+        <NoticeBand title="No sample order meets this goal" tone="warning">
+          Try a smaller piece goal, another chicken type, or a larger search radius. Only items with a stated count and sample pickup price can be included.
         </NoticeBand>
       )}
 
       <NoticeBand title="How the combination is chosen">
-        The demo checks repeatable quantities of each sample size, up to the smallest sufficient total, then chooses the least expensive combination. Ties go to fewer extra pieces, then closer location.
+        The demo checks repeatable quantities of each sample size and selects the lowest actual total at each location. It shows any extra pieces; it never combines orders from different restaurants.
       </NoticeBand>
     </AppFrame>
   );
 }
 
 const styles = StyleSheet.create({
-  controls: { backgroundColor: colors.white, padding: spacing.md, gap: spacing.md, borderWidth: 1, borderColor: colors.black },
-  categoryBlock: { gap: spacing.xs },
+  goalPanel: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.black, borderRadius: radii.lg, padding: spacing.lg, gap: spacing.lg },
+  categoryBlock: { gap: spacing.sm },
+  categoryButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   controlLabel: { color: colors.muted, fontFamily: fonts.bold, fontSize: 10, letterSpacing: 0.85 },
-  buttonRow: { flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' },
-  goalRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, alignItems: 'flex-end' },
-  fieldWrap: { flexGrow: 1, maxWidth: 360 },
-  calculateButton: { minWidth: 140, marginBottom: 1 },
-  presets: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+  goalReadout: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', gap: spacing.md },
+  goalValueLine: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
+  goalValue: { color: colors.black, fontFamily: fonts.bold, fontSize: 56, lineHeight: 60 },
+  goalUnit: { color: colors.black, fontFamily: fonts.medium, fontSize: 17 },
+  goalRange: { color: colors.muted, fontFamily: fonts.bold, fontSize: 11, letterSpacing: 0.4, paddingBottom: 8 },
+  sliderBlock: { alignSelf: 'stretch', gap: spacing.xs },
+  slider: { height: 42 },
+  sliderWeb: { width: '100%', height: 42 },
+  sliderLabels: { flexDirection: 'row', justifyContent: 'space-between' },
+  sliderLabel: { color: colors.muted, fontFamily: fonts.medium, fontSize: 11 },
+  exactEntry: { gap: spacing.sm },
+  goalError: { color: colors.danger, fontFamily: fonts.medium, fontSize: 13, lineHeight: 18 },
   resultHeading: { gap: spacing.sm },
   resultIntro: { color: colors.muted, fontFamily: fonts.regular, fontSize: 13, lineHeight: 20 },
   solutionList: { gap: spacing.sm },
-  solution: { backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.black, padding: spacing.md, gap: spacing.md },
-  bestSolution: { backgroundColor: colors.yellow, borderWidth: 1, borderColor: colors.black, padding: spacing.lg },
+  solution: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.rule, borderRadius: radii.md, padding: spacing.lg, gap: spacing.md },
+  bestSolution: { backgroundColor: colors.yellow, borderWidth: 1, borderColor: colors.black, borderRadius: radii.lg },
   solutionTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing.md },
   solutionNameBlock: { flex: 1, gap: 3 },
   rankLabel: { color: colors.muted, fontFamily: fonts.bold, fontSize: 10, letterSpacing: 0.75 },
@@ -157,7 +241,7 @@ const styles = StyleSheet.create({
   rule: { height: 1, backgroundColor: colors.rule },
   bestRule: { backgroundColor: colors.black, opacity: 0.45 },
   orderLine: { color: colors.black, fontFamily: fonts.medium, fontSize: 14, lineHeight: 21 },
-  solutionFooter: { gap: 4 },
+  solutionFooter: { gap: spacing.xs },
   solutionFacts: { color: colors.black, fontFamily: fonts.bold, fontSize: 12, lineHeight: 19 },
   solutionStatus: { color: colors.muted, fontFamily: fonts.medium, fontSize: 11, lineHeight: 17 },
   inspectButton: { alignSelf: 'flex-start', minWidth: 160 },

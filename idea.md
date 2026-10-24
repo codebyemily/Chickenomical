@@ -21,6 +21,8 @@ Keep entries factual and concise. Remove or correct obsolete plans when implemen
 | 2026-10-23 | Product and marketing stories | Drafted [`markting/user-stories.md`](markting/user-stories.md) with same-size nugget/tender comparisons (e.g. 4pc vs. 4pc), total and per-piece prices, distance sorting, AARRR growth stories, marketing idea hooks, and future delivery-channel comparison. Documentation only; no app feature was implemented or tested. | Confirm launch area/data coverage; substantiate the 89% savings claim before using it; validate platform prices, fees, and deal eligibility before promising checkout savings; define monetization. |
 | 2026-10-23 | Marketing plan | Reviewed `markting/` and added [`markting/plan.md`](markting/plan.md) (AARRR GTM: bets, current-state scores, 90-day roadmap, idea status, open decisions). Tightened hooks/notes in `user-stories.md` to point at the plan and hold unverified % savings. Docs only. | Team: approve/adjust plan; confirm launch geo, monetization hypothesis, budget tier, marketing owner. |
 | 2026-10-24 | Expo native navigation and compare flow | Replaced the phone's web-style top navigation with Expo Router native tabs (Compare, Group, Sources, Method), used native stack titles for detail/recovery pages, and compacted category/sort selection into segmented controls. Kept the desktop Expo Web rail and moved the group solver out of the first results scan. | Verify the rebuilt flow in Expo Go on iOS and Android; accessibility, Dynamic Type, and dark-mode coverage still need device review. |
+| 2026-10-24 | Chicken-pun copy | Packed user-facing prototype copy with chicken puns while keeping synthetic-data disclaimers, recovery actions, and ranking math inspectable. Tab labels stay Compare / Group / Sources / Method. | Re-read any later copy cleanup before demo; puns should not hide that prices are fixtures. |
+| 2026-10-24 | Native/web interface redesign | Added the live piece-goal slider with exact entry, iOS/Android haptics, integrated black safe-area notice, tab-bar scroll clearance, rounded panel/button tokens, route rationale updates, and explicit mock-only/no-auth scope. TypeScript, lint, web export, audits, and iOS simulator review are being finalized in this task. | Android visual review and production menu/database work remain future work; all present records are synthetic. |
 
 ## Product
 
@@ -197,6 +199,25 @@ Define a configurable threshold (for demo, e.g. 24 hours). Show `Checked X hours
 
 **Demo story:** Search for nuggets near the venue → compare 8-, 10-, and 12-piece offers → sort by price per piece → request at least 12 nuggets → show a different winning combination → open source details → trigger an ingestion refresh and watch an updated record appear through a SpacetimeDB subscription.
 
+## Copy voice (chicken puns)
+
+Prototype UI copy is intentionally fowl. Headings, notices, empty states, buttons, and status labels use chicken idioms; facts still have to stay true.
+
+| Pun | Where it shows up | Literal meaning that must stay true |
+|---|---|---|
+| Pecking order | Compare ranking, sort control, featured offer band | Lowest verified sample price per piece |
+| Per peck | Unit-price labels | Price per piece |
+| Scratch | Totals, money labels, source ledger | Sample pickup total / fictional provenance |
+| As the crow flies | Distance labels | Straight-line sample distance, not driving |
+| Coop / roost / flock | Tabs, location, group solver | Search area, restaurant location, group order |
+| Hatch | Refresh, quantity solver, loading | Simulated refresh or combination search |
+| Flew the coop / empty nest / leftovers / half-hatched | Unavailable, no coverage, stale, incomplete | Real recovery states; next action stays in the sentence |
+| That's no yolk / no fowl play / cheap as chicken feed | Disclaimers | Data is synthetic, not a live menu |
+| Chick it out | Inspect / detail actions | Open the offer or source record |
+| Don't count your chickens | Incomplete data, quantity caps | Missing count or invalid goal cannot be ranked |
+
+Tab labels stay **Compare / Group / Sources / Method** so wayfinding stays scannable. Page titles, notices, empty states, buttons, and status labels carry the puns. Restaurant menu item names are unchanged. Error and permission copy still names the failure and the next useful action after the pun.
+
 ## Sponsor strategy
 
 Prioritize genuine, demonstrable integrations. **Do not add tools just for a logo.** Verify final track rules, submission limits, and whether a single project may win multiple prizes.
@@ -324,3 +345,34 @@ Adjust layout to the selected framework and current SpacetimeDB SDK requirements
 Chickenomical is ready when a teammate can start the project from the README, select a location, search for nuggets or tenders, see **real source-attributed prices from multiple nearby fast-food chains**, compare **price per piece**, and calculate the **cheapest purchasable combination for a minimum quantity**. A fresh ingestion run updates the backend and can be demonstrated without hand-editing database records.
 
 **Product principle:** Make it easy to answer “Where is the closest cheapest chicken?” with math users can inspect and prices they can verify.
+
+## Expo prototype status and implementation summary — 2026-10-24
+
+The repository now contains an Expo Router prototype under `expo/`. It is a presentation and interaction demo backed by local fixtures: there is no functional database, live menu or price source, geocoding, GPS lookup, sign-in, account flow, or checkout. All restaurants, store names, addresses, distances, prices, source IDs, and check times are synthetic and the UI labels them that way.
+
+### Screen map and rationale
+
+- `/` is Compare, the primary decision screen. It starts with the search area, category and sort controls, then the strongest sample price and the remaining offers. Offer details are one tap away.
+- `/location` provides address entry, a simulated current-location path, sample areas, radius controls, and a permission-denied preview. It explains that no permission prompt, GPS request, or geocoder is connected.
+- `/quantity` solves the actual minimum-piece order total by location. Its 1–100 slider updates results while moving, supports keyboard operation on web, and has exact numeric entry as an alternative. It reports extra pieces and never combines different restaurants.
+- `/offer/[id]` groups an offer's item, count, total, unit price, distance, status, and channel so the comparison can be inspected.
+- `/source/[id]` exposes the fixture provenance fields and explains that no external provider payload is connected.
+- `/sources` lists local records and simulates refresh-status states without changing fixture data.
+- `/methodology` explains eligibility, per-piece math, distance, quantity solving, and uncertainty. It links to `/states` for review.
+- `/states` and `/states/[scenario]` make loading, empty, unavailable, stale, incomplete, denied-location, and refresh-failure recovery copy reviewable.
+
+### Navigation, layout, and interaction
+
+- iOS and Android use Expo Router native tabs for Compare, Group, Sources, and Method. Details and recovery pages use native stack navigation and Back behavior. Expo Web keeps its responsive navigation rail/compact nav.
+- On native tab roots, the top safe area and synthetic-data notice share a continuous sign-black field with light status text. Stack routes keep the native black header. Scroll content reserves space below the floating system tab bar so final actions can be reached.
+- The group slider uses Expo UI's platform control on iOS/Android and its web range input fallback. The solver updates as the goal changes. iOS uses selection feedback, Android uses a discrete segment tick, and browser builds do not trigger haptics.
+- The shape language now uses 12pt compact corners, 18pt standard panels, 24pt featured panels, and pill-shaped actions. Broad yellow fields still identify the leading sample result; black/gray rules retain numeric comparison clarity. Native navigation retains system-owned geometry.
+- Expo font loading no longer gates the first render, avoiding a blank content view while custom fonts initialize. Splash colors and Android icon background match the black/yellow palette.
+
+### Serve-sim recovery and evidence
+
+`serve-sim` was capturing the simulator correctly: its helper and accessibility endpoints were healthy, and a direct `simctl` screenshot showed the same blank Expo Go view. Restarting the Expo Metro process with a cleared cache and reloading Expo Go restored the app. Hot reload later showed a stale route/module graph after the new quantity route was written, so the final visual check must be made after a clean Metro restart. No `serve-sim` source code was changed; this was an app bundler/session issue.
+
+### Current verification boundary
+
+TypeScript, Expo lint, Expo Web export, accessibility and platform audits, plus iOS Expo Go screenshots are part of the completion pass. The iOS simulator is the only native visual target exercised in this task; Android styling and physical haptic behavior still need device review. This prototype does not satisfy the product's live-data definition of done until verified menu sources and a backend are connected.

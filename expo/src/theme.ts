@@ -17,12 +17,20 @@ export const fonts = {
 };
 
 export const spacing = {
-  xs: 6,
-  sm: 10,
-  md: 16,
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
+  xxl: 32,
+  xxxl: 40,
+};
+
+export const radii = {
+  sm: 12,
+  md: 18,
   lg: 24,
-  xl: 36,
-  xxl: 56,
+  pill: 999,
 };
 
 export const tabular = { fontVariant: ['tabular-nums'] as const };

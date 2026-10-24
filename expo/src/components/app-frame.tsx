@@ -1,16 +1,15 @@
 import { useRouter, useSegments } from 'expo-router';
 import type { PropsWithChildren } from 'react';
-import { useEffect, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, fonts, spacing } from '@/theme';
+import { colors, fonts, radii, spacing } from '@/theme';
 
 const NAV_ITEMS = [
   { label: 'Compare', href: '/' },
-  { label: 'Data sources', href: '/sources' },
+  { label: 'Group', href: '/quantity' },
+  { label: 'Sources', href: '/sources' },
   { label: 'Method', href: '/methodology' },
-  { label: 'Preview states', href: '/states' },
 ];
 
 type AppFrameProps = PropsWithChildren<{ active?: string }>;
@@ -19,11 +18,10 @@ export function AppFrame({ children, active = '' }: AppFrameProps) {
   const router = useRouter();
   const web = Platform.OS === 'web';
   const { width } = useWindowDimensions();
-  const [wide, setWide] = useState(false);
-
-  useEffect(() => {
-    setWide(width >= 980);
-  }, [width]);
+  const insets = useSafeAreaInsets();
+  const segments = useSegments() as string[];
+  const nativeStack = !web && !segments.includes('(tabs)');
+  const wide = width >= 980;
 
   const nav = (
     <View style={[styles.nav, wide ? styles.navVertical : styles.navHorizontal]}>
@@ -44,16 +42,19 @@ export function AppFrame({ children, active = '' }: AppFrameProps) {
   );
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
+    <SafeAreaView
+      edges={nativeStack ? ['left', 'right'] : ['top', 'left', 'right']}
+      style={[styles.safeArea, !web && styles.nativeSafeArea]}>
       <View style={styles.root}>
         {web ? (
           <View style={styles.disclaimer}>
-            <Text style={styles.disclaimerLabel}>PROTOTYPE DATA</Text>
-            <Text style={styles.disclaimerText}>All prices, locations, and source details here are synthetic.</Text>
+            <Text style={styles.disclaimerLabel}>FOWL PLAY · PROTOTYPE</Text>
+            <Text style={styles.disclaimerText}>These prices, roosts, and source details are synthetic chicken scratch. No live birds, no live menus.</Text>
           </View>
         ) : (
           <View style={styles.nativeDisclaimer}>
-            <Text style={styles.nativeDisclaimerText}>SYNTHETIC DEMO · Prices and sources are not live</Text>
+            {!nativeStack ? <Text style={styles.nativeBrand}>CHICKENOMICAL</Text> : null}
+            <Text style={styles.nativeDisclaimerText}>SYNTHETIC · NOT A LIVE BIRD</Text>
           </View>
         )}
         <View style={[styles.workspace, !wide && styles.workspaceNarrow]}>
@@ -61,13 +62,13 @@ export function AppFrame({ children, active = '' }: AppFrameProps) {
             <View style={styles.sidebar}>
               <View style={styles.brandBlock}>
                 <Text style={styles.brand}>CHICKENOMICAL</Text>
-                <Text style={styles.brandSub}>NEARBY VALUE · DEMO</Text>
+                <Text style={styles.brandSub}>CHEAP AS CHICKEN FEED · DEMO</Text>
               </View>
               {nav}
               <View style={styles.sidebarRule} />
-              <Text style={styles.sidebarNote}>Pickup only</Text>
-              <Text style={styles.sidebarNote}>No sign-in or checkout</Text>
-              <Text style={styles.sidebarNote}>Local mock data</Text>
+              <Text style={styles.sidebarNote}>Pickup only · no delivery wings</Text>
+              <Text style={styles.sidebarNote}>No sign-in, no checkout, no fowl play</Text>
+              <Text style={styles.sidebarNote}>Local mock flock</Text>
             </View>
           ) : null}
           <View style={styles.contentColumn}>
@@ -82,14 +83,17 @@ export function AppFrame({ children, active = '' }: AppFrameProps) {
             ) : null}
             <ScrollView
               style={styles.scroll}
-              contentContainerStyle={styles.scrollContent}
+              contentContainerStyle={[
+                styles.scrollContent,
+                { paddingBottom: web ? spacing.xl : Math.max(insets.bottom, 12) + 112 },
+              ]}
               keyboardShouldPersistTaps="handled">
               <View style={[styles.main, wide && styles.mainWide]}>
                 {children}
                 {web ? <View style={styles.footer}>
                   <View style={styles.rule} />
                   <Text style={styles.footerText}>
-                    Chickenomical prototype · no live menu connection · no sign-in · no checkout
+                    Chickenomical prototype · no live coop · no sign-in · no checkout · cheap as chicken feed
                   </Text>
                 </View> : null}
               </View>
@@ -137,6 +141,7 @@ export function NoticeBand({ title, children, tone = 'neutral' }: PropsWithChild
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.gray },
+  nativeSafeArea: { backgroundColor: colors.black },
   root: { flex: 1, backgroundColor: colors.gray },
   disclaimer: {
     minHeight: 48,
@@ -150,11 +155,14 @@ const styles = StyleSheet.create({
   disclaimerLabel: { color: colors.white, fontFamily: fonts.bold, fontSize: 11, letterSpacing: 1.2 },
   disclaimerText: { color: colors.white, fontFamily: fonts.regular, fontSize: 12, lineHeight: 18, flex: 1 },
   nativeDisclaimer: {
-    minHeight: 32,
-    justifyContent: 'center',
+    minHeight: 44,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexDirection: 'row',
     paddingHorizontal: spacing.md,
     backgroundColor: colors.black,
   },
+  nativeBrand: { color: colors.white, fontFamily: fonts.bold, fontSize: 12, letterSpacing: 1.05 },
   nativeDisclaimerText: { color: colors.white, fontFamily: fonts.bold, fontSize: 10, letterSpacing: 0.55 },
   workspace: { flex: 1, flexDirection: 'row' },
   workspaceNarrow: { flexDirection: 'column' },
@@ -178,11 +186,10 @@ const styles = StyleSheet.create({
   navButton: {
     minHeight: 44,
     justifyContent: 'center',
-    paddingHorizontal: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: 'transparent',
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.pill,
   },
-  navSelected: { borderBottomColor: colors.black },
+  navSelected: { backgroundColor: colors.gray },
   navText: { color: colors.muted, fontFamily: fonts.medium, fontSize: 12 },
   navTextSelected: { color: colors.black, fontFamily: fonts.bold },
   pressed: { opacity: 0.68 },
@@ -198,19 +205,19 @@ const styles = StyleSheet.create({
   },
   mobileBrandLine: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
   scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: spacing.md, paddingTop: Platform.OS === 'web' ? spacing.lg : spacing.md, paddingBottom: spacing.xl, alignItems: 'center' },
+  scrollContent: { paddingHorizontal: spacing.md, paddingTop: Platform.OS === 'web' ? spacing.lg : spacing.md, alignItems: 'center' },
   main: { width: '100%', maxWidth: 760, gap: spacing.lg },
   mainWide: { maxWidth: 1020, paddingTop: spacing.lg },
   pageHeading: { gap: spacing.xs },
-  pageTitle: { color: colors.black, fontFamily: fonts.bold, fontSize: Platform.OS === 'web' ? 32 : 26, lineHeight: Platform.OS === 'web' ? 38 : 32, letterSpacing: -0.5 },
+  pageTitle: { color: colors.black, fontFamily: fonts.bold, fontSize: Platform.OS === 'web' ? 34 : 30, lineHeight: Platform.OS === 'web' ? 40 : 36, letterSpacing: -0.55 },
   pageDescription: { color: colors.muted, fontFamily: fonts.regular, fontSize: Platform.OS === 'web' ? 15 : 14, lineHeight: Platform.OS === 'web' ? 23 : 21, maxWidth: 680 },
   sectionHeading: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: spacing.md, paddingBottom: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.black },
-  sectionTitle: { color: colors.black, fontFamily: fonts.bold, fontSize: 16, lineHeight: 22 },
+  sectionTitle: { color: colors.black, fontFamily: fonts.bold, fontSize: 17, lineHeight: 23 },
   sectionTrailing: { color: colors.muted, fontFamily: fonts.medium, fontSize: 11, letterSpacing: 0.5, textTransform: 'uppercase' },
   rule: { height: 1, backgroundColor: colors.rule, width: '100%' },
   footer: { gap: spacing.md, marginTop: spacing.xl, paddingBottom: spacing.lg },
   footerText: { color: colors.muted, fontFamily: fonts.regular, fontSize: 11, lineHeight: 17 },
-  noticeBand: { padding: spacing.md, gap: 5, borderWidth: 1, borderColor: colors.rule },
+  noticeBand: { padding: spacing.md, gap: 5, borderWidth: 1, borderColor: colors.rule, borderRadius: radii.md },
   neutralBand: { backgroundColor: colors.white },
   warningBand: { backgroundColor: colors.paleWarning, borderColor: '#B48B4C' },
   errorBand: { backgroundColor: '#F3E4E4', borderColor: '#A64A4A' },

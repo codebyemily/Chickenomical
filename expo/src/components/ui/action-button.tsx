@@ -2,7 +2,7 @@ import { Button, Host } from '@expo/ui';
 import type { UniversalStyle } from '@expo/ui';
 import type { PropsWithChildren } from 'react';
 
-import { colors } from '@/theme';
+import { colors, radii } from '@/theme';
 
 type Props = PropsWithChildren<{
   onPress: () => void;
@@ -28,7 +28,7 @@ export function ActionButton({ children, onPress, kind = 'secondary', disabled, 
           width: buttonWidth,
           height: 46,
           paddingHorizontal: 14,
-          borderRadius: 0,
+          borderRadius: radii.pill,
           borderWidth: kind === 'secondary' ? 1 : 0,
           borderColor: primary ? colors.yellow : colors.black,
           backgroundColor: kind === 'text' ? 'transparent' : primary ? colors.yellow : colors.white,

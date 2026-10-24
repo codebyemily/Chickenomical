@@ -21,13 +21,13 @@ export function unitMoney(offer: DemoOffer) {
 export function freshnessText(offer: DemoOffer) {
   switch (offer.freshness) {
     case 'sample-recent':
-      return 'SAMPLE RECENT · NOT LIVE';
+      return 'FRESH FROM THE NEST · NOT LIVE';
     case 'sample-stale':
-      return 'SAMPLE STALE · RECHECK BEFORE USE';
+      return 'LEFTOVERS · RECHECK BEFORE YOU PECK';
     case 'incomplete':
-      return 'INCOMPLETE · EXCLUDED FROM RANKING';
+      return 'HALF-HATCHED · SCRATCHED FROM RANKING';
     case 'unavailable':
-      return 'UNAVAILABLE · NO COMPARABLE PRICE';
+      return 'FLEW THE COOP · NO COMPARABLE PRICE';
   }
 }
 
@@ -83,7 +83,7 @@ export function rankedOffers(
 
 export type QuantitySolution = {
   location: DemoLocation;
-  orders: Array<{ offer: DemoOffer; quantity: number }>;
+  orders: { offer: DemoOffer; quantity: number }[];
   pieces: number;
   extraPieces: number;
   totalCents: number;

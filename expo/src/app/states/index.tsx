@@ -3,41 +3,41 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppFrame, PageHeading, SectionHeading } from '@/components/app-frame';
 import { ActionButton } from '@/components/ui/action-button';
-import { colors, fonts, spacing } from '@/theme';
+import { colors, fonts, radii, spacing } from '@/theme';
 
 const SCENARIOS = [
-  { id: 'loading', title: 'Loading comparison', description: 'A first visit while results are being prepared.' },
-  { id: 'no-locations', title: 'No nearby locations', description: 'No demo coverage is available for the selected search area.' },
-  { id: 'no-comparable', title: 'No comparable prices', description: 'Locations exist, but eligible counted prices do not.' },
-  { id: 'stale-only', title: 'Stale sample prices', description: 'Results are old and need a source recheck.' },
-  { id: 'incomplete', title: 'Incomplete menu data', description: 'Piece count or price is missing from a candidate.' },
-  { id: 'unavailable', title: 'Item unavailable', description: 'A location reports a menu item as unavailable.' },
-  { id: 'location-denied', title: 'Location permission denied', description: 'A user declines location access and can search manually.' },
-  { id: 'refresh-failed', title: 'Refresh failure', description: 'A source update fails while last-known results remain.' },
+  { id: 'loading', title: 'Incubating comparison', description: 'A first visit while the clutch is still hatching.' },
+  { id: 'no-locations', title: 'Empty nest', description: 'No demo roosts in this search area. The flock flew the coop.' },
+  { id: 'no-comparable', title: 'Nothing to crow about', description: 'Roosts exist, but nothing has a countable price per peck.' },
+  { id: 'stale-only', title: 'Leftover sample prices', description: 'These leftovers need a recheck before anyone pecks.' },
+  { id: 'incomplete', title: 'Half-hatched menu data', description: "Piece count or scratch is missing. Don't count this chicken." },
+  { id: 'unavailable', title: 'This bird flew the coop', description: 'A roost reports this menu item as unavailable.' },
+  { id: 'location-denied', title: 'Chicken-out on location', description: 'A user chickens out of GPS and can search by roost name.' },
+  { id: 'refresh-failed', title: 'Hatch failure', description: 'A source hatch fails while last-known birds remain in the nest.' },
 ];
 
 export default function StateGalleryScreen() {
   const router = useRouter();
   return (
-    <AppFrame active="Preview states">
-      <PageHeading title="Preview every edge state." description="These screens make the recovery path and data limits reviewable before any live source is connected." />
-      <SectionHeading title="User-facing states" trailing="LOCAL PREVIEWS" />
+    <AppFrame active="Roost">
+      <PageHeading title="Preview every fowl-up." description="These screens make the recovery path and data limits reviewable before any live coop is connected. When the sky is falling, you'll know what to do." />
+      <SectionHeading title="User-facing fowl-ups" trailing="LOCAL PREVIEWS" />
       <View style={styles.list}>
         {SCENARIOS.map((item) => (
           <Pressable key={item.id} accessibilityRole="link" onPress={() => router.push('/states/' + item.id as never)} style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
             <View style={styles.copy}><Text style={styles.name}>{item.title}</Text><Text style={styles.description}>{item.description}</Text></View>
-            <Text style={styles.arrow}>Preview →</Text>
+            <Text style={styles.arrow}>Chick it out →</Text>
           </Pressable>
         ))}
       </View>
-      <ActionButton onPress={() => router.push('/' as never)}>Return to comparison</ActionButton>
+      <ActionButton onPress={() => router.push('/' as never)}>Return to the pecking order</ActionButton>
     </AppFrame>
   );
 }
 
 const styles = StyleSheet.create({
-  list: { borderTopWidth: 1, borderTopColor: colors.black },
-  row: { minHeight: 72, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.rule },
+  list: { gap: spacing.xs },
+  row: { minHeight: 72, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, padding: spacing.md, borderWidth: 1, borderColor: colors.rule, borderRadius: radii.sm, backgroundColor: colors.white },
   pressed: { opacity: 0.62 },
   copy: { flex: 1, gap: 3 },
   name: { color: colors.black, fontFamily: fonts.bold, fontSize: 14 },

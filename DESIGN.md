@@ -8,16 +8,16 @@ description: Nearby chicken value comparison with source-verified prices per pie
 
 ## Overview
 
-**Creative North Star: "Decision Bands"**
+**Creative North Star: "Friendly Decision Bands"**
 
-Chickenomical takes its visual language from international airport sign systems: saturated signal yellow, sign black, clean white and cool-gray fields, aligned rectangles, concise labels, and strong numeric hierarchy. When a choice matters, commit to a broad sign field instead of reducing the signal to a tiny badge. Keep the surrounding information calm so that one strong field leads the eye. This is wayfinding clarity applied to food value, not airport-themed decoration.
+Chickenomical pairs clear wayfinding with a warmer, more playful shape language: saturated signal yellow, sign black, clean white and cool-gray fields, aligned information, concise labels, strong numeric hierarchy, and generous rounded corners. When a choice matters, commit to a broad yellow field instead of reducing the signal to a tiny badge. Keep surrounding information calm so that one strong field leads the eye. This is wayfinding clarity applied to food value, not airport-themed decoration.
 
 The identity is distinctive through high contrast and wayfinding grammar, not literal flight imagery. Use this system consistently across iOS, Android, and web while keeping navigation and platform-owned controls familiar to each OS. A single, restrained split-flap-inspired change cue marks a changed ranking; keep the old value readable until the new ranking is ready, then settle immediately. Respect reduced-motion settings and never animate a price as if its value were changing.
 
 **Key Characteristics:**
 - Signal yellow points to direction and the lowest verified unit price.
 - Sign black, white, and cool gray create crisp contrast and calm information fields.
-- Rectangular bands, aligned rules, concise labels, and tabular numerals organize facts.
+- Soft rounded panels, aligned rules, concise labels, and tabular numerals organize facts.
 - Platform-native controls sit within a distinct Chickenomical visual frame.
 
 ## Colors
@@ -57,7 +57,7 @@ The palette is a high-contrast sign system: one vivid signal color over black an
 
 Organize information with a clear wayfinding hierarchy: the strongest current decision signal first, its supporting facts together, and secondary actions after the evidence. Let important sign fields span the content width; align edges and numeric columns to a disciplined grid. Use hard separators and contiguous bands instead of a mosaic of small rounded cards or scattered badges. Keep provenance and status close to the facts they qualify.
 
-On narrow screens, preserve reading order and let supporting details stack. On wider web layouts, use aligned columns and stronger sign panels to improve comparison without scattering one offer's price, count, source, and checked time across distant regions. Carry this same rectangular panel grammar across screens; exact grids, breakpoints, and spacing values will be established against the first implementation.
+On narrow screens, preserve reading order and let supporting details stack. On wider web layouts, use aligned columns and stronger sign panels to improve comparison without scattering one offer's price, count, source, and checked time across distant regions. Use the same soft-panel grammar across screens: continuous black/yellow bars can stay square where they meet the device edge, while content-owned panels and controls have rounded corners.
 
 ## Elevation & Depth
 
@@ -67,7 +67,7 @@ Use flat, opaque fields. Distinguish information through color, scale, alignment
 
 ## Shapes
 
-Use a rectilinear form language throughout the app: aligned rectangular panels, horizontal bands, and direct separator rules. Keep corners crisp where the design owns the surface; let iOS and Android controls retain their platform-defined shapes. Exact radii, borders, and hit-area geometry remain implementation decisions.
+Use a friendly, rounded form language for content-owned surfaces. The implementation scale is 12pt for compact rows, 18pt for standard panels, 24pt for featured panels, and pill-shaped actions/selectors. Keep rules and numeric alignment crisp so the softer shapes do not weaken comparison. System-owned controls, including native tabs, retain their platform shapes.
 
 ## Do's and Don'ts
 
@@ -79,8 +79,8 @@ Use a rectilinear form language throughout the app: aligned rectangular panels, 
 - **Do** make ranking changes brief and optional for reduced-motion users; show final data immediately when motion is disabled.
 
 ### Don't:
-- **Don't** soften the sign system with warm paper grounds, teal identity ink, route-color accents, or compact mosaic-card layouts.
+- **Don't** soften the sign system with warm paper grounds, teal identity ink, or route-color accents.
 - **Don't** use yellow to signal errors, stale data, or unverified savings.
 - **Don't** add flight terminology, gate numbers, airline marks, or airport symbols that do not help compare chicken offers.
-- **Don't** soften the system into a rounded card mosaic, or scatter unrelated yellow badges across the screen.
+- **Don't** turn every element into a separate rounded card or scatter unrelated yellow badges across the screen.
 - **Don't** use faux metal, paper grain, shadows, or other textures to make the interface look like physical airport hardware.

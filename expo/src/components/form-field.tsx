@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { StyleSheet, Text, TextInput, View, type ReturnKeyTypeOptions } from 'react-native';
 
-import { colors, fonts } from '@/theme';
+import { colors, fonts, radii } from '@/theme';
 
 type FormFieldProps = {
   label: string;
@@ -54,7 +54,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 13,
     borderColor: colors.black,
     borderWidth: 1,
-    borderRadius: 0,
+    borderRadius: radii.md,
     backgroundColor: colors.white,
     color: colors.black,
     fontFamily: fonts.regular,
