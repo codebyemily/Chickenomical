@@ -6,20 +6,21 @@ import { ActionButton } from '@/components/ui/action-button';
 import { colors, fonts, radii, spacing } from '@/theme';
 
 const RULES = [
-  { title: 'Compare like with like', body: 'Nuggets and tenders are compared separately. Only standalone pickup items with an explicit piece count and usable price are eligible. Combo meals and mixed bundles are excluded.' },
-  { title: 'Rank by the exact unit price', body: 'Divide the total pickup price by the stated piece count. Rankings use the exact ratio before rounding the displayed amount. Ties use total price, then distance. Original counts, prices, locations, and source records remain inspectable.' },
-  { title: 'Keep distance in context', body: 'Distances are illustrative straight-line estimates from the selected sample area. They do not represent a driving route or travel time.' },
-  { title: 'Choose a purchasable combination', body: 'For a piece target, repeat the listed order sizes at one restaurant and choose the least expensive combination that reaches or exceeds the target. Extra pieces are shown. Orders from separate locations are never combined.' },
-  { title: 'Show data limits', body: 'Stale samples remain inspectable with a recheck label. Incomplete and unavailable records are excluded from price rankings and group orders. Taxes, fees, coupons, and loyalty prices are outside this comparison.' },
+  { title: 'Compare one category and variant at a time', body: 'The shared menu schema uses stable category IDs for nuggets, tenders, buckets, wings, sandwiches, sliders, wraps, and chicken fries. Prep, heat, breading, build, flavor, cut mix, meat, and protein makeup stay attached to the offer; differing values and unstated values appear in separate comparisons.' },
+  { title: 'Keep channels and prices explicit', body: 'The default comparison uses verified à la carte first-party pickup offers. List price remains separate from delivery and service fees, tax, tips, and deals. Offers only rank together when channel, currency, and menu variant match.' },
+  { title: 'Divide list price by quantity', body: 'Unit price is list_price_cents divided by the known quantity. The app rounds only the displayed result; the original price, quantity, location, provider, source item, and observed time remain available for inspection.' },
+  { title: 'Keep bundles and deals intact', body: 'Combos and family meals keep their component lists and parent price, but do not enter à la carte unit rankings. Deals stay separate from menu offers, with their own schedule, conditions, source, and location confirmation.' },
+  { title: 'Hatch a purchasable total', body: 'The quantity solver repeats comparable offer sizes at one location and within one currency and variant. It finds the lowest total that reaches or exceeds the requested number of category units, shows extra units, and never combines orders from different locations.' },
+  { title: 'Leave uncertain records visible', body: 'Rows without an exact quantity, list price, or verified status stay inspectable but out of comparison. Older rows carry a recheck label. The mock uses synthetic records and keeps that status visible.' },
 ];
 
 export default function MethodologyScreen() {
   const router = useRouter();
   return (
     <AppFrame active="Method">
-      <PageHeading title="Clear prices. Clear method." description="The rules behind eligibility, price per piece, and minimum-count orders." />
-      <NoticeBand title="Illustrative comparison" tone="neutral">
-        All current records are synthetic. These rules describe the comparison behavior; the sample data does not establish current restaurant prices or coverage.
+      <PageHeading title="The menu schema sets the rules." description="These rules explain which schema-shaped offers can rank, how deals stay separate, and how uncertainty is shown." />
+      <NoticeBand title="That's no yolk" tone="warning">
+        All current records are synthetic fixtures. They follow the documented chain, location, menu offer, and deal model; they do not claim real restaurant coverage or current prices.
       </NoticeBand>
       {RULES.map((rule, index) => (
         <View key={rule.title} style={styles.ruleBlock}>
@@ -29,13 +30,13 @@ export default function MethodologyScreen() {
       ))}
       <HardRule />
       <View style={styles.mathBlock}>
-        <Text style={styles.mathLabel}>PRICE PER PIECE</Text>
-        <Text style={styles.mathFormula}>pickup price ÷ stated piece count</Text>
-        <Text style={styles.mathLabel}>GROUP ORDER</Text>
-        <Text style={styles.mathFormula}>lowest valid order total at one restaurant</Text>
+        <Text style={styles.mathLabel}>PRICE PER CATEGORY UNIT</Text>
+        <Text style={styles.mathFormula}>list_price_cents ÷ quantity</Text>
+        <Text style={styles.mathLabel}>QUANTITY GOAL</Text>
+        <Text style={styles.mathFormula}>lowest comparable total at one location</Text>
       </View>
       <ActionButton kind="secondary" onPress={() => router.push('/states' as never)}>
-        Preview recovery states
+        Preview every fowl-up
       </ActionButton>
     </AppFrame>
   );
@@ -45,6 +46,6 @@ const styles = StyleSheet.create({
   ruleBlock: { gap: spacing.sm },
   body: { color: colors.black, fontFamily: fonts.regular, fontSize: 14, lineHeight: 22 },
   mathBlock: { backgroundColor: colors.black, borderRadius: radii.lg, padding: spacing.lg, gap: spacing.xs },
-  mathLabel: { color: colors.yellow, fontFamily: fonts.monoBold, fontSize: 11, lineHeight: 16, letterSpacing: 0.8, marginTop: spacing.sm },
+  mathLabel: { color: colors.yellow, fontFamily: fonts.bold, fontSize: 10, letterSpacing: 0.8, marginTop: spacing.sm },
   mathFormula: { color: colors.white, fontFamily: fonts.bold, fontSize: 18, lineHeight: 26 },
 });

@@ -10,13 +10,13 @@ import { colors, fonts, radii, spacing } from '@/theme';
 const NAV_ITEMS = [
   { label: 'Compare', href: '/' },
   { label: 'Group', href: '/quantity' },
-  { label: 'Sources', href: '/sources' },
+  { label: 'Explore', href: '/sources' },
   { label: 'Method', href: '/methodology' },
 ];
 
-type AppFrameProps = PropsWithChildren<{ active?: string }>;
+type AppFrameProps = PropsWithChildren<{ active?: string; compact?: boolean }>;
 
-export function AppFrame({ children }: AppFrameProps) {
+export function AppFrame({ children, compact = false }: AppFrameProps) {
   const web = Platform.OS === 'web';
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -37,10 +37,10 @@ export function AppFrame({ children }: AppFrameProps) {
             paddingBottom: web ? spacing.xl : Math.max(insets.bottom, spacing.md) + 104 },
         ]}
         keyboardShouldPersistTaps="handled">
-        <View role={web ? 'main' : undefined} style={styles.main}>
+        <View role={web ? 'main' : undefined} style={[styles.main, compact && styles.mainCompact]}>
           <View style={styles.dataNotice}>
             <Text style={styles.dataNoticeLabel}>SAMPLE DATA</Text>
-            <Text style={styles.dataNoticeText}>Synthetic prices and locations · no live menu connection</Text>
+            <Text style={styles.dataNoticeText}>Synthetic prices · no live menu connection</Text>
           </View>
           {children}
           <View style={styles.footer}>
@@ -76,7 +76,7 @@ function WebNavigation() {
   );
 }
 
-export function PageHeading({ title, description }: { title: string; description?: string }) {
+export function PageHeading({ title, description, compact = false }: { title: string; description?: string; compact?: boolean }) {
   const segments = useSegments() as string[];
   const { width } = useWindowDimensions();
   const nativeStackTitle = Platform.OS !== 'web' && !segments.includes('(tabs)');
@@ -86,13 +86,13 @@ export function PageHeading({ title, description }: { title: string; description
   }
 
   return (
-    <View style={[styles.masthead, width < 720 && styles.mastheadNarrow]}>
-      <View style={styles.brandMark} accessibilityLabel="Chickenomical">
+    <View style={[styles.masthead, width < 720 && styles.mastheadNarrow, compact && styles.mastheadCompact]}>
+      <View style={[styles.brandMark, compact && styles.brandMarkCompact]} accessibilityLabel="Chickenomical">
         <Text style={styles.brandMarkText}>C<Text style={styles.brandSlash}>/</Text></Text>
       </View>
       <View style={styles.headingCopy}>
         <Text style={styles.eyebrow}>CHICKENOMICAL / FIELD REPORT</Text>
-        <HeadingText level={1} style={[styles.pageTitle, width < 600 && styles.pageTitleNarrow]}>{title}</HeadingText>
+        <HeadingText level={1} style={[styles.pageTitle, width < 600 && styles.pageTitleNarrow, compact && styles.pageTitleCompact]}>{title}</HeadingText>
         {description ? <Text style={styles.pageDescription}>{description}</Text> : null}
       </View>
       <View style={[styles.reportMeta, width < 720 && styles.reportMetaNarrow]}>
@@ -134,18 +134,22 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { paddingTop: spacing.xl, alignItems: 'center' },
   main: { width: '100%', maxWidth: 1360, gap: spacing.xl },
+  mainCompact: { gap: spacing.md },
   dataNotice: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm },
   dataNoticeLabel: { color: colors.black, fontFamily: fonts.monoBold, fontSize: 11, lineHeight: 16, letterSpacing: 0.5 },
   dataNoticeText: { color: colors.muted, fontFamily: fonts.regular, fontSize: 12, lineHeight: 18 },
   masthead: { flexDirection: 'row', gap: 18, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: colors.black, paddingBottom: 28 },
   mastheadNarrow: { flexWrap: 'wrap', columnGap: spacing.md, rowGap: spacing.lg },
+  mastheadCompact: { gap: spacing.sm, paddingBottom: spacing.sm, rowGap: spacing.sm },
   brandMark: { width: 52, height: 52, backgroundColor: colors.black, justifyContent: 'center', alignItems: 'center' },
+  brandMarkCompact: { width: 36, height: 36 },
   brandMarkText: { color: colors.yellow, fontFamily: fonts.monoBold, fontSize: 28, letterSpacing: -4 },
   brandSlash: { color: colors.white },
   headingCopy: { flex: 1, gap: spacing.xs, minWidth: 0 },
   eyebrow: { color: colors.black, fontFamily: fonts.monoBold, fontSize: 11, lineHeight: 16, letterSpacing: 0.8 },
   pageTitle: { color: colors.black, fontFamily: fonts.bold, fontSize: 40, lineHeight: 43, letterSpacing: -1.5 },
   pageTitleNarrow: { fontSize: 27, lineHeight: 30, letterSpacing: -0.9 },
+  pageTitleCompact: { fontSize: 21, lineHeight: 25, letterSpacing: -0.55 },
   pageDescription: { color: colors.muted, fontFamily: fonts.regular, fontSize: 14, lineHeight: 21, maxWidth: 760 },
   reportMeta: { alignItems: 'flex-end', gap: spacing.sm },
   reportMetaNarrow: { width: '100%', alignItems: 'flex-start', gap: spacing.md },

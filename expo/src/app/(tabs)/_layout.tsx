@@ -15,7 +15,7 @@ export default function TabLayout() {
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="sources">
         <NativeTabs.Trigger.Icon sf="doc.text.magnifyingglass" md="receipt_long" />
-        <NativeTabs.Trigger.Label>Sources</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>Explore</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="methodology">
         <NativeTabs.Trigger.Icon sf="text.book.closed" md="menu_book" />

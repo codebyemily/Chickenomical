@@ -1,10 +1,7 @@
 import '../global.css';
 
-import { DMSans_400Regular } from '@expo-google-fonts/dm-sans/400Regular';
-import { DMSans_500Medium } from '@expo-google-fonts/dm-sans/500Medium';
-import { DMSans_700Bold } from '@expo-google-fonts/dm-sans/700Bold';
-import { SpaceMono_400Regular } from '@expo-google-fonts/space-mono/400Regular';
-import { SpaceMono_700Bold } from '@expo-google-fonts/space-mono/700Bold';
+import { DMSans_400Regular, DMSans_500Medium, DMSans_700Bold } from '@expo-google-fonts/dm-sans';
+import { SpaceMono_400Regular, SpaceMono_700Bold } from '@expo-google-fonts/space-mono';
 import { Stack } from 'expo-router';
 import type { ErrorBoundaryProps } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
