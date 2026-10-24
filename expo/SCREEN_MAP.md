@@ -15,6 +15,8 @@ This Expo Router prototype uses local fixture data only. Every restaurant, locat
 | /methodology | Comparison rules | Unit-price and quantity rankings need an understandable method. This page explains category separation, eligibility, exact unit-price math, distance, order combinations, and exclusions. |
 | /states | State gallery | Product and design reviewers need a direct index to the screens users encounter when data or permissions fail. |
 | /states/[scenario] | Recovery-state preview | A named preview covers loading, no locations, no comparable prices, stale data, incomplete data, unavailable items, denied location access, and source refresh failure. Each state offers its next useful action. |
+| +not-found | Unknown-route recovery | A mistyped, stale, or unmatched URL needs an explicit way back to Compare instead of a blank screen or framework default. |
+| Root error boundary | Unexpected render failure | A screen-level rendering failure needs a retry action and a clear route back to Compare without exposing developer error details. |
 
 ## Navigation and screen decisions
 
@@ -31,7 +33,7 @@ This Expo Router prototype uses local fixture data only. Every restaurant, locat
 - **No fake certainty:** one persistent black prototype-data notice labels synthetic content. No current-menu, savings, or coverage claim is presented as verified.
 - **Responsive shell:** web uses a left navigation rail on wide screens and compact pill navigation below it. Native screens use the OS tab bar, a continuous black safe-area/demo header, and a single scrolling content column.
 - **Shape language:** compact rows use 12pt corners, standard panels 18pt, featured panels 24pt, and actions use pill shapes. Native system navigation keeps its platform-owned shape.
-- **Shared controls:** buttons use Expo UI universal Host and Button components; form fields use React Native TextInput to keep normal keyboard and input behavior across web and native targets.
+- **Shared controls:** native buttons use Expo UI Host and Button components, and native fields use React Native TextInput. Web-only platform files use HeroUI React buttons and text fields. This keeps Expo Go on native-compatible controls while giving Expo Web HeroUI components. HeroUI Native is not used because its current guidance does not recommend it for web.
 - **No account surface:** authentication is out of product scope, so there is no sign-in, registration, profile, or account recovery flow.
 
 ## Intended review paths
@@ -40,4 +42,5 @@ This Expo Router prototype uses local fixture data only. Every restaurant, locat
 2. / → set a piece goal → compare per-location combinations → inspect an included menu size
 3. /location → preview accepted demo location or permission denied → enter an address manually
 4. /states → open each recovery state → follow its suggested action
+5. Open an unknown URL → return to Compare; recover from an unexpected render error → retry or return to Compare.
 
