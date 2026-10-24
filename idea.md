@@ -17,6 +17,7 @@ Keep entries factual and concise. Remove or correct obsolete plans when implemen
 | Date | Area | Update / verification | Follow-up |
 |---|---|---|---|
 | 2026-10-23 | Repository onboarding | Established the required agent handoff log in `idea.md`. | Add an entry here with every meaningful codebase change. |
+| 2026-10-23 | Scraping design docs | Added Apify and Bright Data end-to-end guides and documented the `ChainProvider` registry with Apify/Bright Data as execution backends. Vendor API flows checked against current official docs; no application code was changed. | Select the first chain and known location URL, then implement and verify its provider module/collector. |
 
 ## Product
 
@@ -58,14 +59,19 @@ A location-aware comparison tool for **fast-food chains only**, starting with ch
 ```text
 Restaurant websites / publicly accessible menus
              |
+     ChainProvider registry
+     (one provider module per chain,
+      keyed by master chain_id)
+             |
      +-------+--------+
-     |       |        |
- Bright Data Apify  context.dev*
-     |       |        |
+     |                |
+   Apify         Bright Data
+   Actor          collectors
+     |                |
      +-------+--------+
              |
    Ingestion worker (TypeScript)
-   - adapters / retries / logging
+   - provider routing / retries / logging
    - parsing and normalization
    - validation / deduplication
    - source and freshness metadata
@@ -82,13 +88,15 @@ Restaurant websites / publicly accessible menus
    - source / freshness disclosure
 ```
 
-*Confirm context.dev's exact extraction API, supported targets, and availability before assigning it a production role. Do not assume all three providers expose equivalent scraping capabilities.*
+*context.dev remains an unverified candidate. Confirm its exact extraction API, supported targets, and availability before assigning it a production role. Do not assume all backends expose equivalent scraping capabilities.*
 
 ### Responsibilities
 
-**Scraping providers:** Bright Data and Apify are candidate data-collection adapters. Build a custom **Apify Actor** with documented input/output if feasible. Evaluate context.dev as an additional adapter once its capabilities are confirmed. Start with one provider that returns usable, location-specific menu data. Use fallback providers only where they demonstrably improve coverage or reliability.
+**Chain providers:** Represent each restaurant chain as a separately registered `ChainProvider`, keyed by its existing master `chain_id`. A chain provider owns the official domains, location verification, menu navigation, selectors, and extraction rules. Adding a chain requires implementing its extractor and registering its route; disabling a chain stops new jobs while preserving the master record and history. This is modular code/configuration, not automatic scraper generation.
 
-**Ingestion worker:** A separate TypeScript service schedules or manually triggers collection, normalizes records, validates fields, and calls authorized SpacetimeDB reducers to persist data. Keep scraping credentials server-side. SpacetimeDB is the source of truth for the application, not a scraping execution engine.
+**Scraping backends:** Apify and Bright Data execute chain-specific extraction. The Apify path uses one custom Actor that dispatches to registered chain provider modules. The Bright Data path uses a published Scraper Studio collector per target domain/extraction flow, with its Collector ID registered to the chain. Keep backend selection behind the ingestion service so a chain can use the stronger backend and the other can serve as a validated fallback. context.dev remains unverified until its capabilities are confirmed.
+
+**Ingestion worker:** A separate TypeScript service schedules or manually triggers collection, resolves the active chain provider and backend, normalizes records into the existing master schema, validates fields, and calls authorized SpacetimeDB reducers to persist data. Keep scraping credentials server-side. Record Apify/Bright Data as the scraping backend in master provenance/job fields; the chain provider is the source-specific extractor, not a new application data model. SpacetimeDB is the source of truth for the application, not a scraping execution engine.
 
 **SpacetimeDB:** Stores locations, offers, observations, and job status. Use subscriptions for updates to currently viewed results and ingestion status. Use reducers for controlled writes. Verify SDK/runtime capabilities early with a minimal proof of concept.
 
@@ -116,6 +124,8 @@ Restaurant websites / publicly accessible menus
 
 ### `scrape_jobs`
 - `id`, `location_id`, `provider`, `status`, `started_at`, `finished_at`, `item_count`, `error`
+
+In this master model, `menu_offers.source_provider`, `raw_observations.provider`, and `scrape_jobs.provider` identify the execution backend (`apify` or `bright_data`). A code-level `ChainProvider` is the chain-specific extractor registered by master `chain_id`; it does not require a second application data model.
 
 ### `price_history` (stretch)
 - `offer_key`, `price_cents`, `observed_at`, `source_provider`
@@ -205,12 +215,12 @@ Assign owners based on team size; workstreams can run in parallel after interfac
 
 | Workstream | Deliverables |
 |---|---|
-| Data ingestion | First working chain/location extractor, adapter interface, Apify Actor, provenance and retry logic |
+| Data ingestion | ChainProvider contract/registry, first working chain/location extractor, Apify Actor, optional Bright Data collector, provenance and retry logic |
 | Backend | SpacetimeDB module, schema, reducers, subscriptions, seed data, ingestion write path |
 | Normalization + algorithms | Deterministic parser, classification, validation, unit-price math, quantity solver, tests |
 | Frontend + demo | Location input, search/filter/sort, result cards, source/freshness states, final demo flow |
 
-**Integration contract first:** Agree on a shared `NormalizedOffer` TypeScript shape and one example payload. Keep a checked-in fixture dataset so UI and algorithms can progress before scraping is ready. Fixture data must be labeled as test/demo data.
+**Integration contract first:** Reuse the existing master-schema types and validation path as the shared ingestion contract; do not create a parallel `NormalizedOffer` model. Keep a checked-in fixture dataset so UI and algorithms can progress before scraping is ready. Fixture data must be labeled as test/demo data.
 
 ## Suggested repository structure
 
@@ -222,13 +232,17 @@ chickenomical/
 │   └── web/                 # frontend
 ├── packages/
 │   ├── shared/              # types, schemas, comparison logic
-│   └── ingestion/           # adapters, normalization, jobs
+│   └── ingestion/           # chain providers, backend clients, normalization, jobs
+│       ├── providers/       # one restaurant-chain module per master chain_id
+│       └── backends/        # Apify API and Bright Data API clients
 ├── spacetime/               # SpacetimeDB module/schema/reducers
 ├── actors/
-│   └── menu-scraper/        # custom Apify Actor
+│   └── menu-scraper/        # custom Apify Actor dispatching chain providers
 ├── fixtures/                # explicitly synthetic sample menus
 ├── tests/
 └── docs/
+    ├── apify.md
+    ├── bright-data.md
     ├── demo.md
     └── sponsor-evidence.md
 ```
@@ -241,7 +255,7 @@ Adjust layout to the selected framework and current SpacetimeDB SDK requirements
 - [ ] Confirm one source can return **real location-specific pickup prices** for at least one chain.
 - [ ] Confirm legal/technical access conditions, rate limits, and permitted use of each source.
 - [ ] Confirm SpacetimeDB TypeScript module, reducer writes, and live client subscription work.
-- [ ] Agree on `NormalizedOffer` contract and select demo geography.
+- [ ] Connect ingestion to the existing master-schema contract and select demo geography.
 
 **Gate:** One verified offer can travel from scraper → normalization → SpacetimeDB → frontend.
 
@@ -293,7 +307,7 @@ Adjust layout to the selected framework and current SpacetimeDB SDK requirements
 | Risk | Mitigation |
 |---|---|
 | Location-specific prices are inaccessible | Start with one proven chain; narrow geographic coverage; use verified records only |
-| Scrapers get blocked or change | Provider adapters, retries, fallback, failure logging; respect site terms and rate limits |
+| Scrapers get blocked or change | ChainProvider modules, backend routing, retries, fallback, and failure logging; respect site terms and rate limits |
 | Menu items are incomparable | Strict categories, standalone-only MVP, explicit piece-count requirements |
 | AI invents details | Preserve raw sources; deterministic price extraction; validation and review |
 | Data goes stale | Visible timestamps, freshness states, manual refresh, no false accuracy claims |
