@@ -30,7 +30,8 @@ export default defineSchema({
   menuOffers: defineTable(offerValidator)
     .index('by_offer_key', ['offer_key'])
     .index('by_location_and_channel', ['location_id', 'ordering_channel'])
-    .index('by_chain_and_location', ['chain_id', 'location_id']),
+    .index('by_chain_and_location', ['chain_id', 'location_id'])
+    .index('by_category', ['category']),
 });
 
 export { offerValidator };
