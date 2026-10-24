@@ -18,6 +18,8 @@ Keep entries factual and concise. Remove or correct obsolete plans when implemen
 |---|---|---|---|
 | 2026-10-23 | Repository onboarding | Established the required agent handoff log in `idea.md`. | Add an entry here with every meaningful codebase change. |
 | 2026-10-23 | Scraping design docs | Added Apify and Bright Data end-to-end guides and documented the `ChainProvider` registry with Apify/Bright Data as execution backends. Vendor API flows checked against current official docs; no application code was changed. | Select the first chain and known location URL, then implement and verify its provider module/collector. |
+| 2026-10-23 | Product and marketing stories | Drafted [`markting/user-stories.md`](markting/user-stories.md) with same-size nugget/tender comparisons (e.g. 4pc vs. 4pc), total and per-piece prices, distance sorting, AARRR growth stories, marketing idea hooks, and future delivery-channel comparison. Documentation only; no app feature was implemented or tested. | Confirm launch area/data coverage; substantiate the 89% savings claim before using it; validate platform prices, fees, and deal eligibility before promising checkout savings; define monetization. |
+| 2026-10-23 | Marketing plan | Reviewed `markting/` and added [`markting/plan.md`](markting/plan.md) (AARRR GTM: bets, current-state scores, 90-day roadmap, idea status, open decisions). Tightened hooks/notes in `user-stories.md` to point at the plan and hold unverified % savings. Docs only. | Team: approve/adjust plan; confirm launch geo, monetization hypothesis, budget tier, marketing owner. |
 
 ## Product
 
@@ -30,11 +32,13 @@ A location-aware comparison tool for **fast-food chains only**, starting with ch
 ## Core user stories
 
 - As a user, I can share a location or enter an address and set a search radius.
-- I can select nuggets or tenders, then see nearby fast-food offerings sorted by **lowest price per piece**, **lowest order total**, or **distance**.
+- I can compare same-size offers within a category (for example, a restaurant's 4-piece nuggets with other 4-piece nuggets), see the **total price** and **price per piece**, and sort by **lowest price per piece**, **lowest order total**, or **distance**.
 - I can specify a minimum piece count and see the **least expensive purchasable combination** of available sizes at each location.
 - I can see the restaurant, address, original menu item, piece count, price, unit price, distance, ordering channel, source, and when the price was checked.
 - I can open the restaurant's menu or ordering page to verify a result.
 - If data is stale, incomplete, or incomparable, the app says so rather than inventing a price.
+
+Marketing and future product stories are tracked in [`markting/user-stories.md`](markting/user-stories.md). The “up to 89%” savings line needs a reproducible, attributable baseline before publication. Comparing direct restaurant ordering with DoorDash, Uber Eats, and other platforms is a future idea, not MVP behavior; any such comparison must use the same basket and clearly label eligible deals, known checkout costs, and incomplete totals.
 
 ## MVP scope
 
