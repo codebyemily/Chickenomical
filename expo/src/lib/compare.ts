@@ -1,7 +1,7 @@
 import type { Category, DemoLocation, DemoOffer, DemoArea } from '@/data/demo';
 import { DEMO_LOCATIONS, getOffer } from '@/data/demo';
 
-export type SortMode = 'unit' | 'total' | 'distance';
+export type SortMode = 'unit' | 'total' | 'distance' | 'chain';
 
 export function money(cents: number | null | undefined) {
   if (cents == null) return '—';
@@ -21,13 +21,13 @@ export function unitMoney(offer: DemoOffer) {
 export function freshnessText(offer: DemoOffer) {
   switch (offer.freshness) {
     case 'sample-recent':
-      return 'FRESH FROM THE NEST · NOT LIVE';
+      return 'RECENT SAMPLE · NOT LIVE';
     case 'sample-stale':
-      return 'LEFTOVERS · RECHECK BEFORE YOU PECK';
+      return 'STALE SAMPLE · RECHECK PRICE';
     case 'incomplete':
-      return 'HALF-HATCHED · SCRATCHED FROM RANKING';
+      return 'INCOMPLETE · NOT COMPARABLE';
     case 'unavailable':
-      return 'FLEW THE COOP · NO COMPARABLE PRICE';
+      return 'UNAVAILABLE · NOT COMPARABLE';
   }
 }
 
@@ -39,9 +39,10 @@ export function locationsInRadius(
   area: DemoArea,
   radiusMiles: number,
   category: Category,
+  locations: DemoLocation[] = DEMO_LOCATIONS,
 ) {
   if (area === 'nowhere') return [];
-  return DEMO_LOCATIONS.filter(
+  return locations.filter(
     (location) =>
       distanceFor(location, area) <= radiusMiles &&
       location.offers.some((offer) => offer.category === category),
@@ -74,6 +75,7 @@ export function rankedOffers(
   });
 
   return rows.sort((a, b) => {
+    if (sort === 'chain') return a.location.chain.localeCompare(b.location.chain) || a.offer.priceCents! - b.offer.priceCents!;
     if (sort === 'distance') return a.distance - b.distance || a.offer.priceCents! - b.offer.priceCents!;
     if (sort === 'total') return a.offer.priceCents! - b.offer.priceCents! || a.distance - b.distance;
     const unitCompare = a.offer.priceCents! * b.offer.pieceCount! - b.offer.priceCents! * a.offer.pieceCount!;

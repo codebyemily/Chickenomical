@@ -2,20 +2,20 @@
   color-scheme: light;
   --signal-yellow: #ffd400;
   --sign-black: #101010;
-  --panel-gray: #f3f3f3;
+  --panel-gray: #f1f2f2;
   --clear-white: #ffffff;
-  --muted-ink: #5f6266;
-  --rule: #c9cacc;
+  --muted-ink: #687073;
+  --rule: #d7d9d9;
   --warning: #7a4b00;
-  --font-display: 'OpenSans_700Bold', 'Open Sans', Arial, sans-serif;
-  --font-body: 'OpenSans_400Regular', 'Open Sans', Arial, sans-serif;
-  --font-medium: 'OpenSans_600SemiBold', 'Open Sans', Arial, sans-serif;
+  --font-display: 'DMSans_700Bold', 'DM Sans', Arial, sans-serif;
+  --font-body: 'DMSans_400Regular', 'DM Sans', Arial, sans-serif;
+  --font-medium: 'DMSans_500Medium', 'DM Sans', Arial, sans-serif;
+  --font-mono: 'SpaceMono_400Regular', 'Space Mono', monospace;
 }
 
 html,
 body,
 #root {
-  min-height: 100%;
   margin: 0;
   background: var(--panel-gray);
   color: var(--sign-black);
@@ -24,28 +24,51 @@ body,
   -webkit-tap-highlight-color: transparent;
 }
 
+html {
+  /* Follow the visible viewport while Expo's ScrollViews own page scrolling. */
+  height: 100%;
+  height: 100dvh;
+  overscroll-behavior: none;
+}
+
+body,
+#root {
+  height: 100%;
+  min-height: 0;
+}
+
 body {
   overscroll-behavior: none;
+}
+
+[data-testid='app-scroll'] {
+  overscroll-behavior-y: contain;
 }
 
 button,
 a,
 [role='button'] {
   touch-action: manipulation;
+}
+
+button,
+[role='button']:not(a[href]) {
+  /* Suppress selection only on controls; real links keep their URL callout. */
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 }
 
-input,
-textarea,
-select {
+:root input:not([type='range']):not([type='checkbox']):not([type='radio']),
+:root textarea,
+:root select {
+  /* Outrank native-web picker classes so Safari won't zoom a focused field. */
   min-height: 44px;
-  font-size: 16px;
+  font-size: max(16px, 1rem);
 }
 
 input::placeholder {
-  color: #62656a;
+  color: #687073;
   opacity: 1;
 }
 
@@ -65,4 +88,10 @@ input::placeholder {
   [role='button']:hover {
     filter: brightness(0.96);
   }
+}
+
+button:not(:disabled):not([aria-disabled='true']):active,
+[role='button']:not([aria-disabled='true']):active {
+  /* Immediate press feedback remains available when hover is unavailable. */
+  filter: brightness(0.92);
 }

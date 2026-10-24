@@ -15,6 +15,7 @@ type FormFieldProps = {
   submitLabel?: 'done' | 'search' | 'go' | 'next' | 'send';
   onSubmitEditing?: () => void;
   help?: string;
+  appearance?: 'default' | 'search';
 };
 
 export function FormField({
@@ -25,6 +26,7 @@ export function FormField({
   keyboardType = 'default',
   onSubmitEditing,
   help,
+  appearance = 'default',
 }: FormFieldProps) {
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === 'Enter') onSubmitEditing?.();
@@ -32,13 +34,14 @@ export function FormField({
 
   return (
     <TextField
+      aria-label={appearance === 'search' ? label : undefined}
       fullWidth
       value={value}
       onChange={onChangeText}
-      style={{ display: 'flex', flex: 1, flexDirection: 'column', gap: 7, minWidth: 220 }}>
-      <Label style={{ color: colors.black, fontFamily: fonts.bold, fontSize: 12, letterSpacing: 0.3 }}>
+      style={{ display: 'flex', flex: 1, flexDirection: 'column', gap: 7, minWidth: 0 }}>
+      {appearance !== 'search' ? <Label style={{ color: colors.black, fontFamily: fonts.monoBold, fontSize: 11, lineHeight: '16px', letterSpacing: 0.3 }}>
         {label}
-      </Label>
+      </Label> : null}
       <Input
         placeholder={placeholder}
         inputMode={keyboardType === 'numeric' ? 'numeric' : keyboardType === 'decimal-pad' ? 'decimal' : 'text'}
@@ -47,10 +50,11 @@ export function FormField({
           boxSizing: 'border-box',
           width: '100%',
           minHeight: 48,
-          paddingInline: 13,
-          border: `1px solid ${colors.black}`,
+          paddingInline: appearance === 'search' ? 0 : 13,
+          border: appearance === 'search' ? 0 : `1px solid ${colors.black}`,
+          borderBottom: appearance === 'search' ? `2px solid ${colors.black}` : undefined,
           borderRadius: radii.md,
-          backgroundColor: colors.white,
+          backgroundColor: appearance === 'search' ? 'transparent' : colors.white,
           color: colors.black,
           fontFamily: fonts.regular,
           fontSize: 16,

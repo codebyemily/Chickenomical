@@ -9,9 +9,9 @@ import { usePrototype } from '@/state/prototype-context';
 import { colors, fonts, radii, spacing } from '@/theme';
 
 const AREAS = [
-  { id: 'market', label: 'Market Street · demo roost', detail: 'Four nearby sample coops' },
-  { id: 'north-beach', label: 'North Beach · demo roost', detail: 'Distances recentered as the crow flies' },
-  { id: 'nowhere', label: 'Empty nest', detail: 'Opens the flock-flew-the-coop state' },
+  { id: 'market', label: 'Market Street · demo area', detail: 'Compare nearby sample locations' },
+  { id: 'north-beach', label: 'North Beach · demo area', detail: 'Recenter the illustrative distances' },
+  { id: 'nowhere', label: 'No-coverage sample area', detail: 'Preview a search without nearby offers' },
 ] as const;
 
 const RADII = [1, 3, 5, 10];
@@ -25,44 +25,44 @@ export default function LocationScreen() {
     const trimmed = address.trim();
     if (!trimmed) return;
     setDemoArea('custom', `${trimmed} · demo search`);
-    router.replace('/' as never);
+    router.dismissTo('/');
   }
 
   return (
     <AppFrame active="Compare">
       <PageHeading
-        title="Where should this chicken cross the road?"
-        description="Enter a place or pick a sample roost. Location access is simulated; we never actually GPS the flock."
+        title="Choose your search origin."
+        description="Enter a place or choose a sample area to compare nearby pickup offers."
       />
 
       <View style={styles.formPanel}>
         <FormField
-          label="Address or nesting ground"
+          label="Address or area"
           value={address}
           onChangeText={setAddress}
           placeholder="Example: North Beach"
           submitLabel="search"
           onSubmitEditing={applyAddress}
-          help="Submitting an address reuses the local Market Street fixture distances. No geocoding request is made. We don't actually make the chicken cross the road."
+          help="This prototype uses Market Street sample distances for typed addresses. Address lookup is not connected."
         />
         <View style={styles.formAction}>
           <ActionButton kind="primary" disabled={!address.trim()} onPress={applyAddress}>
-            Roost here
+            Use this area
           </ActionButton>
         </View>
       </View>
 
       <View style={styles.locationAction}>
         <ActionButton kind="primary" onPress={() => {
-          setDemoArea('market', 'Near you · demo roost');
-          router.replace('/' as never);
+          setDemoArea('market', 'Near you · demo area');
+          router.dismissTo('/');
         }}>
-          Use current roost (demo)
+          Use current location (demo)
         </ActionButton>
-        <Text style={styles.locationActionNote}>Simulates a successful roost with the Market Street fixture. No device permission prompt or GPS lookup runs. No fowl play.</Text>
+        <Text style={styles.locationActionNote}>Uses the Market Street sample area. Device location access is simulated.</Text>
       </View>
 
-      <SectionHeading title="Sample roosts" trailing={`CURRENT · ${locationLabel}`} />
+      <SectionHeading title="Sample areas" trailing={`CURRENT · ${locationLabel}`} />
       <View style={styles.areaList}>
         {AREAS.map((item) => {
           const selected = area === item.id;
@@ -71,9 +71,10 @@ export default function LocationScreen() {
               key={item.id}
               accessibilityRole="radio"
               accessibilityState={{ checked: selected }}
+              aria-checked={selected}
               onPress={() => {
                 setDemoArea(item.id, item.label);
-                router.replace('/' as never);
+                router.dismissTo('/');
               }}
               style={({ pressed }) => [styles.areaRow, selected && styles.areaSelected, pressed && styles.areaPressed]}>
               <View style={styles.areaText}>
@@ -89,12 +90,13 @@ export default function LocationScreen() {
       </View>
 
       <View style={styles.radiusSection}>
-        <SectionHeading title="Coop radius" trailing="AS THE CROW FLIES" />
-        <Text style={styles.radiusCopy}>Show sample roosts within {radiusMiles} miles, as the crow flies.</Text>
+        <SectionHeading title="Search radius" trailing="STRAIGHT-LINE DISTANCE" />
+        <Text style={styles.radiusCopy}>Show sample locations within {radiusMiles} miles of the search origin.</Text>
         <View style={styles.radiusButtons}>
           {RADII.map((radius) => (
             <ActionButton
               key={radius}
+              selected={radiusMiles === radius}
               kind={radiusMiles === radius ? 'primary' : 'secondary'}
               onPress={() => setRadiusMiles(radius)}>
               {`${radius} mi`}
@@ -103,12 +105,12 @@ export default function LocationScreen() {
         </View>
       </View>
 
-      <NoticeBand title="Location permission · don't chicken out" tone="neutral">
-        No browser or device permission request will run here. Choose “Preview a chicken-out” to see the recovery screen a user would get if location access were declined.
+      <NoticeBand title="Location access" tone="neutral">
+        A typed address remains available if device location access is declined. Preview that recovery path below.
       </NoticeBand>
       <View style={styles.permissionAction}>
         <ActionButton kind="secondary" onPress={() => router.push('/states/location-denied' as never)}>
-          Preview a chicken-out
+          Preview denied access
         </ActionButton>
       </View>
     </AppFrame>

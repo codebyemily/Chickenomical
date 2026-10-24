@@ -1,8 +1,10 @@
-import { useRouter, useSegments } from 'expo-router';
+import { usePathname, useSegments } from 'expo-router';
 import type { PropsWithChildren } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { HeadingText } from '@/components/heading-text';
+import { LinkPressable } from '@/components/link-pressable';
 import { colors, fonts, radii, spacing } from '@/theme';
 
 const NAV_ITEMS = [
@@ -14,104 +16,92 @@ const NAV_ITEMS = [
 
 type AppFrameProps = PropsWithChildren<{ active?: string }>;
 
-export function AppFrame({ children, active = '' }: AppFrameProps) {
-  const router = useRouter();
+export function AppFrame({ children }: AppFrameProps) {
   const web = Platform.OS === 'web';
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const segments = useSegments() as string[];
   const nativeStack = !web && !segments.includes('(tabs)');
-  const wide = width >= 980;
-
-  const nav = (
-    <View style={[styles.nav, wide ? styles.navVertical : styles.navHorizontal]}>
-      {NAV_ITEMS.map((item) => {
-        const selected = active === item.label;
-        return (
-          <Pressable
-            key={item.href}
-            accessibilityRole="link"
-            accessibilityState={{ selected }}
-            onPress={() => router.push(item.href as never)}
-            style={({ pressed }) => [styles.navButton, selected && styles.navSelected, pressed && styles.pressed]}>
-            <Text style={[styles.navText, selected && styles.navTextSelected]}>{item.label}</Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
 
   return (
-    <SafeAreaView
-      edges={nativeStack ? ['left', 'right'] : ['top', 'left', 'right']}
-      style={[styles.safeArea, !web && styles.nativeSafeArea]}>
-      <View style={styles.root}>
-        {web ? (
-          <View style={styles.disclaimer}>
-            <Text style={styles.disclaimerLabel}>FOWL PLAY · PROTOTYPE</Text>
-            <Text style={styles.disclaimerText}>These prices, roosts, and source details are synthetic chicken scratch. No live birds, no live menus.</Text>
+    <SafeAreaView edges={nativeStack ? ['left', 'right'] : ['top', 'left', 'right']} style={styles.safeArea}>
+      <ScrollView
+        testID="app-scroll"
+        style={styles.scroll}
+        contentInsetAdjustmentBehavior="automatic"
+        automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : Platform.OS === 'android' ? 'on-drag' : 'none'}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingHorizontal: width >= 900 ? spacing.xxxl : spacing.lg,
+            paddingBottom: web ? spacing.xl : Math.max(insets.bottom, spacing.md) + 104 },
+        ]}
+        keyboardShouldPersistTaps="handled">
+        <View role={web ? 'main' : undefined} style={styles.main}>
+          <View style={styles.dataNotice}>
+            <Text style={styles.dataNoticeLabel}>SAMPLE DATA</Text>
+            <Text style={styles.dataNoticeText}>Synthetic prices and locations · no live menu connection</Text>
           </View>
-        ) : (
-          <View style={styles.nativeDisclaimer}>
-            {!nativeStack ? <Text style={styles.nativeBrand}>CHICKENOMICAL</Text> : null}
-            <Text style={styles.nativeDisclaimerText}>SYNTHETIC · NOT A LIVE BIRD</Text>
-          </View>
-        )}
-        <View style={[styles.workspace, !wide && styles.workspaceNarrow]}>
-          {web && wide ? (
-            <View style={styles.sidebar}>
-              <View style={styles.brandBlock}>
-                <Text style={styles.brand}>CHICKENOMICAL</Text>
-                <Text style={styles.brandSub}>CHEAP AS CHICKEN FEED · DEMO</Text>
-              </View>
-              {nav}
-              <View style={styles.sidebarRule} />
-              <Text style={styles.sidebarNote}>Pickup only · no delivery wings</Text>
-              <Text style={styles.sidebarNote}>No sign-in, no checkout, no fowl play</Text>
-              <Text style={styles.sidebarNote}>Local mock flock</Text>
-            </View>
-          ) : null}
-          <View style={styles.contentColumn}>
-            {web && !wide ? (
-              <View style={styles.mobileHeader}>
-                <View style={styles.mobileBrandLine}>
-                  <Text style={styles.brand}>CHICKENOMICAL</Text>
-                  <Text style={styles.brandSub}>DEMO</Text>
-                </View>
-                {nav}
-              </View>
-            ) : null}
-            <ScrollView
-              style={styles.scroll}
-              contentContainerStyle={[
-                styles.scrollContent,
-                { paddingBottom: web ? spacing.xl : Math.max(insets.bottom, 12) + 112 },
-              ]}
-              keyboardShouldPersistTaps="handled">
-              <View style={[styles.main, wide && styles.mainWide]}>
-                {children}
-                {web ? <View style={styles.footer}>
-                  <View style={styles.rule} />
-                  <Text style={styles.footerText}>
-                    Chickenomical prototype · no live coop · no sign-in · no checkout · cheap as chicken feed
-                  </Text>
-                </View> : null}
-              </View>
-            </ScrollView>
+          {children}
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>CHICKENOMICAL / ILLUSTRATIVE MENU DATA</Text>
+            <Text style={styles.footerText}>PICKUP ONLY · BEFORE TAX & FEES</Text>
           </View>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
-export function PageHeading({ title, description }: { title: string; description?: string }) {
-  const segments: string[] = useSegments() as string[];
-  const nativeStackTitle = Platform.OS !== 'web' && !segments.includes('(tabs)');
+function WebNavigation() {
+  const pathname = usePathname();
+  const { width } = useWindowDimensions();
+  if (Platform.OS !== 'web') return null;
+
   return (
-    <View style={styles.pageHeading}>
-      {!nativeStackTitle ? <Text accessibilityRole="header" style={styles.pageTitle}>{title}</Text> : null}
-      {description ? <Text style={styles.pageDescription}>{description}</Text> : null}
+    <View role="navigation" accessibilityLabel="Main navigation" style={styles.nav}>
+      {NAV_ITEMS.map((item) => {
+        const selected = pathname === item.href || (item.href === '/sources' && pathname.startsWith('/source/'));
+        return (
+          <LinkPressable
+            key={item.href}
+            href={item.href as never}
+            {...{ 'aria-current': selected ? 'page' as const : undefined }}
+            style={({ pressed }) => [styles.navButton, width < 600 && styles.navButtonNarrow, selected && styles.navSelected, pressed && styles.pressed]}>
+            <Text style={[styles.navText, selected && styles.navTextSelected]}>{item.label}</Text>
+          </LinkPressable>
+        );
+      })}
+    </View>
+  );
+}
+
+export function PageHeading({ title, description }: { title: string; description?: string }) {
+  const segments = useSegments() as string[];
+  const { width } = useWindowDimensions();
+  const nativeStackTitle = Platform.OS !== 'web' && !segments.includes('(tabs)');
+
+  if (nativeStackTitle) {
+    return description ? <Text style={styles.pageDescription}>{description}</Text> : null;
+  }
+
+  return (
+    <View style={[styles.masthead, width < 720 && styles.mastheadNarrow]}>
+      <View style={styles.brandMark} accessibilityLabel="Chickenomical">
+        <Text style={styles.brandMarkText}>C<Text style={styles.brandSlash}>/</Text></Text>
+      </View>
+      <View style={styles.headingCopy}>
+        <Text style={styles.eyebrow}>CHICKENOMICAL / FIELD REPORT</Text>
+        <HeadingText level={1} style={[styles.pageTitle, width < 600 && styles.pageTitleNarrow]}>{title}</HeadingText>
+        {description ? <Text style={styles.pageDescription}>{description}</Text> : null}
+      </View>
+      <View style={[styles.reportMeta, width < 720 && styles.reportMetaNarrow]}>
+        <View style={styles.freshness}>
+          <View style={styles.sampleDot} />
+          <Text style={styles.freshnessText}>ILLUSTRATIVE SNAPSHOT</Text>
+        </View>
+        <WebNavigation />
+      </View>
     </View>
   );
 }
@@ -119,7 +109,7 @@ export function PageHeading({ title, description }: { title: string; description
 export function SectionHeading({ title, trailing }: { title: string; trailing?: string }) {
   return (
     <View style={styles.sectionHeading}>
-      <Text accessibilityRole="header" style={styles.sectionTitle}>{title}</Text>
+      <HeadingText level={2} style={styles.sectionTitle}>{title}</HeadingText>
       {trailing ? <Text style={styles.sectionTrailing}>{trailing}</Text> : null}
     </View>
   );
@@ -141,86 +131,44 @@ export function NoticeBand({ title, children, tone = 'neutral' }: PropsWithChild
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.gray },
-  nativeSafeArea: { backgroundColor: colors.black },
-  root: { flex: 1, backgroundColor: colors.gray },
-  disclaimer: {
-    minHeight: 48,
-    backgroundColor: colors.black,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  disclaimerLabel: { color: colors.white, fontFamily: fonts.bold, fontSize: 11, letterSpacing: 1.2 },
-  disclaimerText: { color: colors.white, fontFamily: fonts.regular, fontSize: 12, lineHeight: 18, flex: 1 },
-  nativeDisclaimer: {
-    minHeight: 44,
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    flexDirection: 'row',
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.black,
-  },
-  nativeBrand: { color: colors.white, fontFamily: fonts.bold, fontSize: 12, letterSpacing: 1.05 },
-  nativeDisclaimerText: { color: colors.white, fontFamily: fonts.bold, fontSize: 10, letterSpacing: 0.55 },
-  workspace: { flex: 1, flexDirection: 'row' },
-  workspaceNarrow: { flexDirection: 'column' },
-  contentColumn: { flex: 1, minHeight: 0 },
-  sidebar: {
-    width: 246,
-    flexShrink: 0,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.lg,
-    backgroundColor: colors.white,
-    borderRightWidth: 1,
-    borderRightColor: colors.rule,
-  },
-  brandBlock: { marginBottom: spacing.xl },
-  brand: { color: colors.black, fontFamily: fonts.bold, fontSize: 18, letterSpacing: 0.5 },
-  brandSub: { color: colors.muted, fontFamily: fonts.medium, fontSize: 10, letterSpacing: 1.1, marginTop: 4 },
-  nav: { gap: 4 },
-  navVertical: { flexDirection: 'column' },
-  navHorizontal: { flexDirection: 'row', flexWrap: 'nowrap', justifyContent: 'space-between', gap: 8, marginTop: spacing.md },
-  navButton: {
-    minHeight: 44,
-    justifyContent: 'center',
-    paddingHorizontal: spacing.md,
-    borderRadius: radii.pill,
-  },
-  navSelected: { backgroundColor: colors.gray },
+  scroll: { flex: 1 },
+  scrollContent: { paddingTop: spacing.xl, alignItems: 'center' },
+  main: { width: '100%', maxWidth: 1360, gap: spacing.xl },
+  dataNotice: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm },
+  dataNoticeLabel: { color: colors.black, fontFamily: fonts.monoBold, fontSize: 11, lineHeight: 16, letterSpacing: 0.5 },
+  dataNoticeText: { color: colors.muted, fontFamily: fonts.regular, fontSize: 12, lineHeight: 18 },
+  masthead: { flexDirection: 'row', gap: 18, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: colors.black, paddingBottom: 28 },
+  mastheadNarrow: { flexWrap: 'wrap', columnGap: spacing.md, rowGap: spacing.lg },
+  brandMark: { width: 52, height: 52, backgroundColor: colors.black, justifyContent: 'center', alignItems: 'center' },
+  brandMarkText: { color: colors.yellow, fontFamily: fonts.monoBold, fontSize: 28, letterSpacing: -4 },
+  brandSlash: { color: colors.white },
+  headingCopy: { flex: 1, gap: spacing.xs, minWidth: 0 },
+  eyebrow: { color: colors.black, fontFamily: fonts.monoBold, fontSize: 11, lineHeight: 16, letterSpacing: 0.8 },
+  pageTitle: { color: colors.black, fontFamily: fonts.bold, fontSize: 40, lineHeight: 43, letterSpacing: -1.5 },
+  pageTitleNarrow: { fontSize: 27, lineHeight: 30, letterSpacing: -0.9 },
+  pageDescription: { color: colors.muted, fontFamily: fonts.regular, fontSize: 14, lineHeight: 21, maxWidth: 760 },
+  reportMeta: { alignItems: 'flex-end', gap: spacing.sm },
+  reportMetaNarrow: { width: '100%', alignItems: 'flex-start', gap: spacing.md },
+  freshness: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
+  sampleDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.muted },
+  freshnessText: { color: colors.muted, fontFamily: fonts.mono, fontSize: 11, lineHeight: 16, letterSpacing: 0.2 },
+  nav: { flexDirection: 'row', gap: spacing.md, flexWrap: 'wrap' },
+  navButton: { minHeight: 32, justifyContent: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  navButtonNarrow: { minHeight: 44 },
+  navSelected: { borderBottomColor: colors.black },
   navText: { color: colors.muted, fontFamily: fonts.medium, fontSize: 12 },
   navTextSelected: { color: colors.black, fontFamily: fonts.bold },
-  pressed: { opacity: 0.68 },
-  sidebarRule: { height: 1, backgroundColor: colors.rule, marginVertical: spacing.lg },
-  sidebarNote: { color: colors.muted, fontFamily: fonts.regular, fontSize: 12, lineHeight: 20 },
-  mobileHeader: {
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.rule,
-  },
-  mobileBrandLine: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
-  scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: spacing.md, paddingTop: Platform.OS === 'web' ? spacing.lg : spacing.md, alignItems: 'center' },
-  main: { width: '100%', maxWidth: 760, gap: spacing.lg },
-  mainWide: { maxWidth: 1020, paddingTop: spacing.lg },
-  pageHeading: { gap: spacing.xs },
-  pageTitle: { color: colors.black, fontFamily: fonts.bold, fontSize: Platform.OS === 'web' ? 34 : 30, lineHeight: Platform.OS === 'web' ? 40 : 36, letterSpacing: -0.55 },
-  pageDescription: { color: colors.muted, fontFamily: fonts.regular, fontSize: Platform.OS === 'web' ? 15 : 14, lineHeight: Platform.OS === 'web' ? 23 : 21, maxWidth: 680 },
-  sectionHeading: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: spacing.md, paddingBottom: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.black },
-  sectionTitle: { color: colors.black, fontFamily: fonts.bold, fontSize: 17, lineHeight: 23 },
-  sectionTrailing: { color: colors.muted, fontFamily: fonts.medium, fontSize: 11, letterSpacing: 0.5, textTransform: 'uppercase' },
+  pressed: { opacity: 0.65 },
+  sectionHeading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: spacing.sm, paddingBottom: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.black },
+  sectionTitle: { color: colors.black, fontFamily: fonts.bold, fontSize: 20, lineHeight: 26, flexShrink: 1, letterSpacing: -0.5 },
+  sectionTrailing: { color: colors.muted, fontFamily: fonts.mono, fontSize: 11, lineHeight: 16, letterSpacing: 0.35, textTransform: 'uppercase' },
   rule: { height: 1, backgroundColor: colors.rule, width: '100%' },
-  footer: { gap: spacing.md, marginTop: spacing.xl, paddingBottom: spacing.lg },
-  footerText: { color: colors.muted, fontFamily: fonts.regular, fontSize: 11, lineHeight: 17 },
-  noticeBand: { padding: spacing.md, gap: 5, borderWidth: 1, borderColor: colors.rule, borderRadius: radii.md },
+  footer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: spacing.md, paddingTop: spacing.sm },
+  footerText: { color: colors.muted, fontFamily: fonts.mono, fontSize: 11, lineHeight: 17 },
+  noticeBand: { padding: spacing.lg, gap: spacing.sm, borderWidth: 1, borderColor: colors.rule, borderRadius: radii.md },
   neutralBand: { backgroundColor: colors.white },
-  warningBand: { backgroundColor: colors.paleWarning, borderColor: '#B48B4C' },
-  errorBand: { backgroundColor: '#F3E4E4', borderColor: '#A64A4A' },
-  noticeTitle: { color: colors.black, fontFamily: fonts.bold, fontSize: 12, letterSpacing: 0.6, textTransform: 'uppercase' },
+  warningBand: { backgroundColor: colors.paleWarning, borderColor: colors.warning },
+  errorBand: { backgroundColor: colors.paleDanger, borderColor: colors.danger },
+  noticeTitle: { color: colors.black, fontFamily: fonts.monoBold, fontSize: 11, lineHeight: 16, letterSpacing: 0.4, textTransform: 'uppercase' },
   noticeText: { color: colors.black, fontFamily: fonts.regular, fontSize: 14, lineHeight: 21 },
 });

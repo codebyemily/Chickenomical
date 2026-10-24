@@ -50,7 +50,7 @@ export default function QuantityScreen() {
     const normalized = nextGoal.trim();
     const count = Number.parseInt(normalized, 10);
     if (!/^[0-9]+$/.test(normalized) || !Number.isFinite(count) || count < 1 || count > 100) {
-      setGoalError('Enter a whole number from 1 to 100 pieces. Don\'t count your chickens past 100.');
+      setGoalError('Enter a whole number from 1 to 100 pieces.');
       return false;
     }
     setGoalError(null);
@@ -77,19 +77,19 @@ export default function QuantityScreen() {
   return (
     <AppFrame active="Group">
       <PageHeading
-        title="Hatch a flock order"
-        description="Find the lowest sample scratch that feeds your piece count at one nearby roost. Don't put all your eggs in one basket unless it's cheaper."
+        title="Plan a group order."
+        description="Find the lowest sample order total that meets your piece target at one nearby restaurant."
       />
 
       <View style={styles.goalPanel}>
         <View style={styles.categoryBlock}>
-          <Text style={styles.controlLabel}>FLOCK CUT</Text>
+          <Text style={styles.controlLabel}>CHICKEN TYPE</Text>
           {Platform.OS === 'web' ? (
             <View style={styles.categoryButtons}>
-              <ActionButton kind={category === 'nuggets' ? 'primary' : 'secondary'} onPress={() => setCategory('nuggets')}>
+              <ActionButton selected={category === 'nuggets'} kind={category === 'nuggets' ? 'primary' : 'secondary'} onPress={() => setCategory('nuggets')}>
                 Nuggets
               </ActionButton>
-              <ActionButton kind={category === 'tenders' ? 'primary' : 'secondary'} onPress={() => setCategory('tenders')}>
+              <ActionButton selected={category === 'tenders'} kind={category === 'tenders' ? 'primary' : 'secondary'} onPress={() => setCategory('tenders')}>
                 Tenders
               </ActionButton>
             </View>
@@ -106,7 +106,7 @@ export default function QuantityScreen() {
 
         <View style={styles.goalReadout}>
           <View>
-            <Text style={styles.controlLabel}>MINIMUM PECKS</Text>
+            <Text style={styles.controlLabel}>MINIMUM PIECES</Text>
             <View style={styles.goalValueLine}>
               <Text accessibilityLiveRegion="polite" style={[styles.goalValue, tabular]}>{submittedGoal}</Text>
               <Text style={styles.goalUnit}>{submittedGoal === 1 ? 'piece' : 'pieces'}</Text>
@@ -210,34 +210,34 @@ export default function QuantityScreen() {
 }
 
 const styles = StyleSheet.create({
-  goalPanel: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.black, borderRadius: radii.lg, padding: spacing.lg, gap: spacing.lg },
+  goalPanel: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.black, borderRadius: radii.lg, padding: spacing.xl, gap: spacing.lg },
   categoryBlock: { gap: spacing.sm },
   categoryButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  controlLabel: { color: colors.muted, fontFamily: fonts.bold, fontSize: 10, letterSpacing: 0.85 },
+  controlLabel: { color: colors.muted, fontFamily: fonts.monoBold, fontSize: 11, lineHeight: 16, letterSpacing: 0.85 },
   goalReadout: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', gap: spacing.md },
   goalValueLine: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
-  goalValue: { color: colors.black, fontFamily: fonts.bold, fontSize: 56, lineHeight: 60 },
+  goalValue: { color: colors.black, fontFamily: fonts.monoBold, fontSize: 56, lineHeight: 68, letterSpacing: -3 },
   goalUnit: { color: colors.black, fontFamily: fonts.medium, fontSize: 17 },
-  goalRange: { color: colors.muted, fontFamily: fonts.bold, fontSize: 11, letterSpacing: 0.4, paddingBottom: 8 },
+  goalRange: { color: colors.muted, fontFamily: fonts.mono, fontSize: 11, lineHeight: 16, letterSpacing: 0.4, paddingBottom: 8 },
   sliderBlock: { alignSelf: 'stretch', gap: spacing.xs },
-  slider: { height: 42 },
-  sliderWeb: { width: '100%', height: 42 },
+  slider: { height: 48 },
+  sliderWeb: { width: '100%', height: 48 },
   sliderLabels: { flexDirection: 'row', justifyContent: 'space-between' },
-  sliderLabel: { color: colors.muted, fontFamily: fonts.medium, fontSize: 11 },
+  sliderLabel: { color: colors.muted, fontFamily: fonts.medium, fontSize: 11, lineHeight: 16 },
   exactEntry: { gap: spacing.sm },
   goalError: { color: colors.danger, fontFamily: fonts.medium, fontSize: 13, lineHeight: 18 },
   resultHeading: { gap: spacing.sm },
   resultIntro: { color: colors.muted, fontFamily: fonts.regular, fontSize: 13, lineHeight: 20 },
   solutionList: { gap: spacing.sm },
-  solution: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.rule, borderRadius: radii.md, padding: spacing.lg, gap: spacing.md },
-  bestSolution: { backgroundColor: colors.yellow, borderWidth: 1, borderColor: colors.black, borderRadius: radii.lg },
+  solution: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.rule, borderRadius: radii.md, padding: spacing.xl, gap: spacing.md },
+  bestSolution: { backgroundColor: colors.yellow, borderWidth: 2, borderColor: colors.black, borderRadius: radii.lg },
   solutionTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing.md },
   solutionNameBlock: { flex: 1, gap: 3 },
-  rankLabel: { color: colors.muted, fontFamily: fonts.bold, fontSize: 10, letterSpacing: 0.75 },
+  rankLabel: { color: colors.muted, fontFamily: fonts.monoBold, fontSize: 11, lineHeight: 16, letterSpacing: 0.75 },
   restaurant: { color: colors.black, fontFamily: fonts.bold, fontSize: 19, lineHeight: 26 },
   subtle: { color: colors.muted, fontFamily: fonts.regular, fontSize: 12, lineHeight: 18 },
   totalBlock: { alignItems: 'flex-end', minWidth: 90, gap: 3 },
-  total: { color: colors.black, fontFamily: fonts.bold, fontSize: 31, lineHeight: 36, ...tabular },
+  total: { color: colors.black, fontFamily: fonts.monoBold, fontSize: 31, lineHeight: 40, letterSpacing: -1.5, ...tabular },
   rule: { height: 1, backgroundColor: colors.rule },
   bestRule: { backgroundColor: colors.black, opacity: 0.45 },
   orderLine: { color: colors.black, fontFamily: fonts.medium, fontSize: 14, lineHeight: 21 },

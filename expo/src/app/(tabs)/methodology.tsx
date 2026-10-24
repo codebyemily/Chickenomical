@@ -6,20 +6,20 @@ import { ActionButton } from '@/components/ui/action-button';
 import { colors, fonts, radii, spacing } from '@/theme';
 
 const RULES = [
-  { title: 'Keep the flock sorts separate', body: 'Nuggets and tenders stay in separate pecking orders. Combo meals, mixed bundles, and items without a stated piece count cannot enter the per-peck comparison. Birds of a feather rank together.' },
-  { title: 'Divide scratch by pecks', body: 'Each eligible offer is ranked by total pickup price divided by its stated piece count. The original total, count, roost, source label, channel, and check time stay beside that result. Hard-boiled math, no fowl play.' },
-  { title: 'As the crow flies', body: 'Distance is an as-the-crow-flies sample estimate. It does not represent a driving route or travel time. Why did the chicken cross the road? Only after a unit-price tie, then total scratch, then crow-flies distance.' },
-  { title: 'Hatch a purchasable total', body: 'For a piece goal, the prototype repeats listed order sizes at one roost and finds the least expensive combination that reaches or exceeds the goal. Extra pieces are shown; offers from different coops are never combined. A bird in this hand is worth two from another restaurant.' },
-  { title: "Don't count unhatched chickens", body: 'Stale leftovers remain inspectable but carry a recheck label. Incomplete and unavailable records are scratched from price ranking and the flock hatch. If it is not a spring chicken, we say so.' },
+  { title: 'Compare like with like', body: 'Nuggets and tenders are compared separately. Only standalone pickup items with an explicit piece count and usable price are eligible. Combo meals and mixed bundles are excluded.' },
+  { title: 'Rank by the exact unit price', body: 'Divide the total pickup price by the stated piece count. Rankings use the exact ratio before rounding the displayed amount. Ties use total price, then distance. Original counts, prices, locations, and source records remain inspectable.' },
+  { title: 'Keep distance in context', body: 'Distances are illustrative straight-line estimates from the selected sample area. They do not represent a driving route or travel time.' },
+  { title: 'Choose a purchasable combination', body: 'For a piece target, repeat the listed order sizes at one restaurant and choose the least expensive combination that reaches or exceeds the target. Extra pieces are shown. Orders from separate locations are never combined.' },
+  { title: 'Show data limits', body: 'Stale samples remain inspectable with a recheck label. Incomplete and unavailable records are excluded from price rankings and group orders. Taxes, fees, coupons, and loyalty prices are outside this comparison.' },
 ];
 
 export default function MethodologyScreen() {
   const router = useRouter();
   return (
     <AppFrame active="Method">
-      <PageHeading title="The rules of the roost." description="These rules explain what can rank, what flew the coop, and how sample data is treated. No fowl play: the math stays inspectable." />
-      <NoticeBand title="That's no yolk" tone="warning">
-        All current records are synthetic. These rules describe intended comparison behavior and do not claim real restaurant coverage or current prices. Don&apos;t count these chickens.
+      <PageHeading title="Clear prices. Clear method." description="The rules behind eligibility, price per piece, and minimum-count orders." />
+      <NoticeBand title="Illustrative comparison" tone="neutral">
+        All current records are synthetic. These rules describe the comparison behavior; the sample data does not establish current restaurant prices or coverage.
       </NoticeBand>
       {RULES.map((rule, index) => (
         <View key={rule.title} style={styles.ruleBlock}>
@@ -29,13 +29,13 @@ export default function MethodologyScreen() {
       ))}
       <HardRule />
       <View style={styles.mathBlock}>
-        <Text style={styles.mathLabel}>PRICE PER PECK</Text>
-        <Text style={styles.mathFormula}>pickup scratch ÷ stated pecks</Text>
-        <Text style={styles.mathLabel}>FLOCK GOAL</Text>
-        <Text style={styles.mathFormula}>lowest valid order total at one roost</Text>
+        <Text style={styles.mathLabel}>PRICE PER PIECE</Text>
+        <Text style={styles.mathFormula}>pickup price ÷ stated piece count</Text>
+        <Text style={styles.mathLabel}>GROUP ORDER</Text>
+        <Text style={styles.mathFormula}>lowest valid order total at one restaurant</Text>
       </View>
       <ActionButton kind="secondary" onPress={() => router.push('/states' as never)}>
-        Preview every fowl-up
+        Preview recovery states
       </ActionButton>
     </AppFrame>
   );
@@ -45,6 +45,6 @@ const styles = StyleSheet.create({
   ruleBlock: { gap: spacing.sm },
   body: { color: colors.black, fontFamily: fonts.regular, fontSize: 14, lineHeight: 22 },
   mathBlock: { backgroundColor: colors.black, borderRadius: radii.lg, padding: spacing.lg, gap: spacing.xs },
-  mathLabel: { color: colors.yellow, fontFamily: fonts.bold, fontSize: 10, letterSpacing: 0.8, marginTop: spacing.sm },
+  mathLabel: { color: colors.yellow, fontFamily: fonts.monoBold, fontSize: 11, lineHeight: 16, letterSpacing: 0.8, marginTop: spacing.sm },
   mathFormula: { color: colors.white, fontFamily: fonts.bold, fontSize: 18, lineHeight: 26 },
 });

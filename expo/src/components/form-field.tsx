@@ -12,6 +12,7 @@ type FormFieldProps = {
   submitLabel?: ReturnKeyTypeOptions;
   onSubmitEditing?: () => void;
   help?: string;
+  appearance?: 'default' | 'search';
 };
 
 export function FormField({
@@ -23,11 +24,12 @@ export function FormField({
   submitLabel = 'done',
   onSubmitEditing,
   help,
+  appearance = 'default',
 }: FormFieldProps) {
   const [focused, setFocused] = useState(false);
   return (
     <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
+      {appearance !== 'search' ? <Text style={styles.label}>{label}</Text> : null}
       <TextInput
         accessibilityLabel={label}
         value={value}
@@ -36,10 +38,12 @@ export function FormField({
         placeholderTextColor={colors.muted}
         keyboardType={keyboardType}
         returnKeyType={submitLabel}
+        autoCapitalize={appearance === 'search' ? 'none' : 'sentences'}
+        autoCorrect={appearance !== 'search'}
         onSubmitEditing={onSubmitEditing}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
-        style={[styles.input, focused && styles.inputFocused]}
+        style={[styles.input, appearance === 'search' && styles.searchInput, focused && styles.inputFocused]}
       />
       {help ? <Text style={styles.help}>{help}</Text> : null}
     </View>
@@ -47,8 +51,8 @@ export function FormField({
 }
 
 const styles = StyleSheet.create({
-  field: { gap: 7, flex: 1, minWidth: 220 },
-  label: { color: colors.black, fontFamily: fonts.bold, fontSize: 12, letterSpacing: 0.3 },
+  field: { gap: 7, flex: 1, minWidth: 0 },
+  label: { color: colors.black, fontFamily: fonts.monoBold, fontSize: 11, lineHeight: 16, letterSpacing: 0.3 },
   input: {
     minHeight: 48,
     paddingHorizontal: 13,
@@ -61,5 +65,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   inputFocused: { borderWidth: 2 },
+  searchInput: { borderWidth: 0, borderBottomWidth: 2, borderRadius: 0, backgroundColor: 'transparent', paddingHorizontal: 0, fontSize: 16 },
   help: { color: colors.muted, fontFamily: fonts.regular, fontSize: 12, lineHeight: 18 },
 });

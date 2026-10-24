@@ -5,7 +5,10 @@ settings:
   excludeLinksFromLockfile: false
 
 dependencies:
-  '@expo-google-fonts/open-sans':
+  '@expo-google-fonts/dm-sans':
+    specifier: ^0.4.2
+    version: 0.4.2
+  '@expo-google-fonts/space-mono':
     specifier: ^0.4.2
     version: 0.4.2
   '@expo/ui':
@@ -1038,12 +1041,16 @@ packages:
       levn: 0.4.1
     dev: true
 
+  /@expo-google-fonts/dm-sans@0.4.2:
+    resolution: {integrity: sha512-e/fLH5aCJzkEenz7axvEn8N7IJAKhUwNjIxS75h9j+Ip1M9S7d22M19gJN3A7QW4egVkBJRyQh1hQFhngQn9yA==}
+    dev: false
+
   /@expo-google-fonts/material-symbols@0.4.51:
     resolution: {integrity: sha512-QkNQK848WG/vHFqfBqYcX/vM8dweAR/ORRK1r6qii5V/hdaqn4eYKxmKGj6mg61ty70SPgG1R5uP9XX9jJ3ehQ==}
     dev: false
 
-  /@expo-google-fonts/open-sans@0.4.2:
-    resolution: {integrity: sha512-gvhPqLXYnltWgll3iBwRGUwf5yN2HCh4mgQmFoQ8oU66LTs23oX4N7T3t0BDsKfP/1Z8F8+4c7wSkA11Nnk4kA==}
+  /@expo-google-fonts/space-mono@0.4.2:
+    resolution: {integrity: sha512-soYY/qcKcnY7xjIhuMAVzJYxSdJ3Z8TjrtFHOB5SK7/4MEMGpoaw+CAVyvXnA3fsO7J7waIW+/5Z0Y0i/CfSeg==}
     dev: false
 
   /@expo/cli@58.1.15(@expo/dom-webview@58.0.2)(@expo/metro-runtime@58.0.15)(expo-constants@58.0.13)(expo-font@58.0.10)(expo-router@58.0.26)(expo@58.0.19)(react-dom@19.3.0)(react-native@0.88.0)(react@19.3.0)(typescript@6.0.3):
