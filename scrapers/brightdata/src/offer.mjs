@@ -1,6 +1,6 @@
 import { classifyName, inferBuild, inferHeat, inferKind, inferPrep, parseCutMix, parsePriceCents, parseQuantity } from "./extract.mjs";
 
-export function toOffer(chain, card, sourceUrl, observedAt) {
+export function toOffer(chain, card, sourceUrl, observedAt, options = {}) {
   const blob = `${card.original_name} ${card.href ?? ""} ${card.body ?? ""}`;
   const category = Object.prototype.hasOwnProperty.call(card, "category") && card.category !== undefined
     ? card.category
@@ -18,6 +18,12 @@ export function toOffer(chain, card, sourceUrl, observedAt) {
   const build = card.build === undefined ? inferBuild(card.original_name, category) : card.build;
   const cutMix = card.cut_mix === undefined ? parseCutMix(blob) : card.cut_mix;
   const locationId = card.location_id ?? "national";
+  // Bright Data first-party cards carry no channel/provider, so they default to
+  // first-party pickup. Marketplace adapters (Apify) set these explicitly so a
+  // DoorDash/Uber Eats offer keeps its channel and gets a distinct offer_key
+  // instead of colliding with the direct first-party record for the same item.
+  const orderingChannel = card.ordering_channel ?? "first_party_pickup";
+  const sourceProvider = options.sourceProvider ?? card.source_provider ?? "bright_data";
   const variant = [prep, heat, build].filter(Boolean).join("|") || "plain";
   const comparable = offerKind === "ala_carte"
     && Number.isInteger(resolvedQuantity)
@@ -47,15 +53,15 @@ export function toOffer(chain, card, sourceUrl, observedAt) {
     protein_pieces: card.protein_pieces ?? null,
     protein_category: card.protein_category ?? null,
     includes: card.includes ?? [],
-    ordering_channel: "first_party_pickup",
+    ordering_channel: orderingChannel,
     comparable,
     validation_status: comparable ? "verified" : "needs_review",
-    source_provider: "bright_data",
+    source_provider: sourceProvider,
     source_url: sourceUrl,
     source_item_id: card.href || null,
     observed_at: observedAt,
     product_key: [locationId, category ?? "unclassified", resolvedQuantity ?? "na", variant, offerKind].join("|"),
-    offer_key: [locationId, category ?? "unclassified", resolvedQuantity ?? "na", variant, offerKind, "first_party_pickup"].join("|"),
+    offer_key: [locationId, category ?? "unclassified", resolvedQuantity ?? "na", variant, offerKind, orderingChannel].join("|"),
   };
 }
 

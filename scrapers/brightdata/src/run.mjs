@@ -1,18 +1,21 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { geocode, parseAt } from "./geo.mjs";
 import { fetchJson } from "./http.mjs";
+import { pushOffers } from "./convex-push.mjs";
 import { takeoutAdapter, takeoutChains } from "./takeout/index.mjs";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const outDir = join(root, "out", "offers");
 const args = process.argv.slice(2);
+loadDotEnv(join(dirname(dirname(root)), ".env"));
 
 const origin = await resolveOrigin(args);
 const radiusMiles = numberFlag(args, "--radius", 5);
 const limit = numberFlag(args, "--limit", 2);
 const selected = selectedChains(args);
+const pushConvex = args.includes("--push-convex");
 
 mkdirSync(outDir, { recursive: true });
 const observedAt = new Date().toISOString();
@@ -69,6 +72,10 @@ const output = {
 const outputPath = join(outDir, "location.json");
 writeFileSync(outputPath, JSON.stringify(output, null, 2) + "\n");
 process.stdout.write(`wrote ${outputPath}\n`);
+if (pushConvex) {
+  const result = await pushToConvex(output);
+  process.stdout.write(`Convex ingestion: ${result.inserted} inserted, ${result.updated} updated (job ${result.jobId})\n`);
+}
 
 async function resolveOrigin(argv) {
   const at = flag(argv, "--at");
@@ -107,6 +114,20 @@ function selectedChains(argv) {
     }
     return chain;
   });
+}
+
+async function pushToConvex(output) {
+  const offers = output.chains.flatMap((chain) => chain.stores.flatMap((store) => store.offers));
+  return pushOffers({ provider: "brightdata", query: output.query, observedAt: output.observed_at, offers });
+}
+
+function loadDotEnv(path) {
+  if (!existsSync(path)) return;
+  for (const line of readFileSync(path, "utf8").split(/\r?\n/)) {
+    const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/);
+    if (!match || process.env[match[1]]) continue;
+    process.env[match[1]] = match[2].replace(/^(['"])(.*)\1$/, "$2");
+  }
 }
 
 function flag(argv, name) {

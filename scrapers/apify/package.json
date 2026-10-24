@@ -1,0 +1,11 @@
+{
+  "name": "@chickenomical/apify-marketplace-scrapers",
+  "private": true,
+  "type": "module",
+  "description": "Apify-backed DoorDash and Uber Eats menu collection for Chickenomical.",
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "scrape": "node src/run.mjs",
+    "compare": "node src/compare.mjs"
+  }
+}
