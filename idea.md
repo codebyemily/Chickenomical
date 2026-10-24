@@ -21,8 +21,8 @@ Keep entries factual and concise. Remove or correct obsolete plans when implemen
 | 2026-10-23 | Product and marketing stories | Drafted [`markting/user-stories.md`](markting/user-stories.md) with same-size nugget/tender comparisons (e.g. 4pc vs. 4pc), total and per-piece prices, distance sorting, AARRR growth stories, marketing idea hooks, and future delivery-channel comparison. Documentation only; no app feature was implemented or tested. | Confirm launch area/data coverage; substantiate the 89% savings claim before using it; validate platform prices, fees, and deal eligibility before promising checkout savings; define monetization. |
 | 2026-10-23 | Marketing plan | Reviewed `markting/` and added [`markting/plan.md`](markting/plan.md) (AARRR GTM: bets, current-state scores, 90-day roadmap, idea status, open decisions). Tightened hooks/notes in `user-stories.md` to point at the plan and hold unverified % savings. Docs only. | Team: approve/adjust plan; confirm launch geo, monetization hypothesis, budget tier, marketing owner. |
 | 2026-10-24 | Expo native navigation and compare flow | Replaced the phone's web-style top navigation with Expo Router native tabs (Compare, Group, Sources, Method), used native stack titles for detail/recovery pages, and compacted category/sort selection into segmented controls. Kept the desktop Expo Web rail and moved the group solver out of the first results scan. | Verify the rebuilt flow in Expo Go on iOS and Android; accessibility, Dynamic Type, and dark-mode coverage still need device review. |
-| 2026-10-24 | Chicken-pun copy | Packed user-facing prototype copy with chicken puns while keeping synthetic-data disclaimers, recovery actions, and ranking math inspectable. Tab labels stay Compare / Group / Sources / Method. | Re-read any later copy cleanup before demo; puns should not hide that prices are fixtures. |
-| 2026-10-24 | Native/web interface redesign | Added the live piece-goal slider with exact entry, iOS/Android haptics, integrated black safe-area notice, tab-bar scroll clearance, rounded panel/button tokens, route rationale updates, and explicit mock-only/no-auth scope. TypeScript, lint, web export, audits, and iOS simulator review are being finalized in this task. | Android visual review and production menu/database work remain future work; all present records are synthetic. |
+| 2026-10-24 | Chicken-pun copy | Packed user-facing prototype copy with chicken puns while keeping synthetic-data disclaimers, recovery actions, and ranking math inspectable. Tab labels stay Compare / Group / Sources / Method. | Keep the heavy chicken-pun voice; preserve clear synthetic-data caveats. |
+| 2026-10-24 | Native/web interface redesign | Added the live piece-goal slider with exact entry, iOS/Android haptics, integrated black safe-area notice, tab-bar scroll clearance, rounded panel/button tokens, route rationale updates, and explicit mock-only/no-auth scope. TypeScript, Expo lint, Expo Web export, accessibility and platform-parity audits passed; iPhone 17 Pro screenshots reviewed. | Android visual/haptic review and production menu/database work remain future work; all present records are synthetic. |
 
 ## Product
 
@@ -367,12 +367,20 @@ The repository now contains an Expo Router prototype under `expo/`. It is a pres
 - On native tab roots, the top safe area and synthetic-data notice share a continuous sign-black field with light status text. Stack routes keep the native black header. Scroll content reserves space below the floating system tab bar so final actions can be reached.
 - The group slider uses Expo UI's platform control on iOS/Android and its web range input fallback. The solver updates as the goal changes. iOS uses selection feedback, Android uses a discrete segment tick, and browser builds do not trigger haptics.
 - The shape language now uses 12pt compact corners, 18pt standard panels, 24pt featured panels, and pill-shaped actions. Broad yellow fields still identify the leading sample result; black/gray rules retain numeric comparison clarity. Native navigation retains system-owned geometry.
+- Chicken puns are deliberate across headings, actions, labels, and recovery screens. Keep that voice while keeping the synthetic-data notice and decision details explicit.
 - Expo font loading no longer gates the first render, avoiding a blank content view while custom fonts initialize. Splash colors and Android icon background match the black/yellow palette.
 
 ### Serve-sim recovery and evidence
 
-`serve-sim` was capturing the simulator correctly: its helper and accessibility endpoints were healthy, and a direct `simctl` screenshot showed the same blank Expo Go view. Restarting the Expo Metro process with a cleared cache and reloading Expo Go restored the app. Hot reload later showed a stale route/module graph after the new quantity route was written, so the final visual check must be made after a clean Metro restart. No `serve-sim` source code was changed; this was an app bundler/session issue.
+`serve-sim` was capturing the simulator correctly: its helper list and accessibility endpoint were available, and screenshots matched the simulator framebuffer. An Expo Go home/blank state cleared after starting Metro with a cleared cache and reopening the app. Compare and Group were reviewed on the iPhone 17 Pro simulator; the black safe-area header and the Group screen's slider and result panel were visible. No `serve-sim` source code was changed; the blank view came from the Expo bundler/session state.
 
-### Current verification boundary
+### Verification results and boundary
 
-TypeScript, Expo lint, Expo Web export, accessibility and platform audits, plus iOS Expo Go screenshots are part of the completion pass. The iOS simulator is the only native visual target exercised in this task; Android styling and physical haptic behavior still need device review. This prototype does not satisfy the product's live-data definition of done until verified menu sources and a backend are connected.
+- `pnpm exec tsc --noEmit` — passed.
+- `pnpm exec expo lint` — passed.
+- `pnpm exec expo export --platform web --output-dir /tmp/chickenomical-web-final` — passed; generated 19 web bundles and route output.
+- `a11y-audit.mjs --dir=src` — passed, 21 files, zero errors or warnings.
+- `platform-parity.mjs --dir=src` — passed, 21 files, zero errors or warnings.
+- `git diff --check` — passed.
+- iOS Expo Go screenshots on iPhone 17 Pro / iOS 26.5 confirmed the native header, rounded Compare panels, and Group slider/results layout. The accessibility tree exposes the slider label and current value. Android visuals and physical haptic behavior still need device review.
+- The fixture prototype does not satisfy the live-data definition of done until verified menu sources and a backend are connected. All current prices and locations remain synthetic, and there is no auth flow.
