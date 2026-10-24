@@ -1,5 +1,23 @@
 # Chickenomical — Implementation Plan
 
+## Agent handoff and project log
+
+`idea.md` is the living onboarding document for this repository. **Whenever an agent changes the codebase, it must update this file in the same task/commit** so the next agent can quickly understand the current implementation.
+
+For each meaningful code change, add or revise the relevant section below and include a short entry in **Recent implementation updates** with:
+
+- date, area/files changed, and what now works;
+- interfaces, commands, configuration, or data assumptions that changed;
+- verification performed and any known limitations or next steps.
+
+Keep entries factual and concise. Remove or correct obsolete plans when implementation supersedes them; do not leave planned work presented as complete. Documentation-only edits that do not affect implementation may be omitted from the log.
+
+### Recent implementation updates
+
+| Date | Area | Update / verification | Follow-up |
+|---|---|---|---|
+| 2026-10-23 | Repository onboarding | Established the required agent handoff log in `idea.md`. | Add an entry here with every meaningful codebase change. |
+
 ## Product
 
 **Chickenomical** answers: **“Where is the closest, cheapest chicken?”**
