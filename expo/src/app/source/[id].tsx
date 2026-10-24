@@ -2,40 +2,70 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { AppFrame, NoticeBand, PageHeading, SectionHeading } from '@/components/app-frame';
+import { QueryStatePanel } from '@/components/query-state-panel';
 import { ActionButton } from '@/components/ui/action-button';
-import { DEMO_DATA_NOTICE, getOfferBySourceRecord } from '@/data/demo';
-import { freshnessText, money, unitMoney } from '@/lib/compare';
+import { api, useMockConvexQuery } from '@/data/mock-convex';
+import { categoryLabel, categoryUnit, quantityText } from '@/data/menu-schema';
+import { isRankable, money, unitMoney } from '@/lib/compare';
+import { usePrototype } from '@/state/prototype-context';
 import { colors, fonts, radii, spacing, tabular } from '@/theme';
 
 export default function SourceDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const context = getOfferBySourceRecord(id);
+  const { area } = usePrototype();
+  const query = useMockConvexQuery(api.offers.bySourceItemId, { sourceItemId: id, area });
+  const record = query.data;
+  const offer = record?.offer;
 
-  if (!context) {
-    return <AppFrame active="Sources"><PageHeading title="Source record not found." /><ActionButton kind="primary" onPress={() => router.replace('/sources' as never)}>Back to Sources</ActionButton></AppFrame>;
-  }
-
-  const { offer, location } = context;
   return (
-    <AppFrame active="Sources">
-      <PageHeading title="Trace the source record." description="The sample provenance attached to a comparison row." />
-      <View style={styles.recordBanner}><Text style={styles.recordLabel}>SAMPLE RECORD ID</Text><Text selectable style={[styles.recordId, tabular]}>{offer.sourceRecordId}</Text></View>
-      <SectionHeading title="Record fields" trailing="ILLUSTRATIVE SOURCE DATA" />
-      <View style={styles.rows}>
-        <Row label="Source" value={offer.sourceName} />
-        <Row label="Menu item" value={offer.itemName} />
-        <Row label="Restaurant / store" value={location.chain + ' · ' + location.displayName} />
-        <Row label="Ordering channel" value={offer.channel} />
-        <Row label="Sample check time" value={offer.mockChecked} />
-        <Row label="Status" value={freshnessText(offer)} />
-        <Row label="Sample price" value={money(offer.priceCents)} />
-        <Row label="Sample price / piece" value={unitMoney(offer)} />
-      </View>
-      <NoticeBand title="Illustrative source" tone="neutral">{DEMO_DATA_NOTICE} This identifier has no connected restaurant URL or provider payload.</NoticeBand>
-      <ActionButton onPress={() => router.push('/offer/' + offer.id as never)}>View this offer</ActionButton>
+    <AppFrame active="Explore">
+      <PageHeading title="Source record." description="Inspect the provenance fields that let an offer trace back to its provider, source item, and observed time." />
+      <QueryStatePanel status={query.status} error={query.error} onRetry={query.refetch} />
+      {query.status === 'success' && record == null ? (
+        <>
+          <NoticeBand title="This source record was not found" tone="warning">The local mock query returned no offer for this source item ID.</NoticeBand>
+          <ActionButton kind="primary" onPress={() => router.replace('/sources' as never)}>Back to all records</ActionButton>
+        </>
+      ) : null}
+      {record && offer ? (
+        <>
+          <View style={styles.recordBanner}>
+            <Text style={styles.recordLabel}>SOURCE ITEM ID</Text>
+            <Text style={[styles.recordId, tabular]}>{offer.source_item_id ?? offer.id}</Text>
+          </View>
+          <SectionHeading title="Offer provenance" trailing="DOCUMENTED MENU SCHEMA" />
+          <View style={styles.rows}>
+            <Row label="Source provider" value={offer.source_provider} />
+            <Row label="Menu item" value={offer.original_name} />
+            <Row label="Chain" value={record.chain.name} />
+            <Row label="Location" value={`${record.location.store_name} · ${record.location.address}`} />
+            <Row label="Category" value={categoryLabel(offer.category)} />
+            <Row label="Ordering channel" value={offer.ordering_channel} />
+            <Row label="Observed at" value={formatDate(offer.observed_at)} />
+            <Row label="Validation status" value={offer.validation_status} />
+            <Row label="Comparable" value={offer.comparable ? 'true' : 'false'} />
+            <Row label="Offer kind" value={offer.offer_kind} />
+            <Row label="Quantity" value={quantityText(offer.category, offer.quantity)} />
+            <Row label="List price" value={money(offer.list_price_cents, offer.currency)} />
+            <Row label="Price per unit" value={isRankable(offer) ? `${unitMoney(offer)} / ${categoryUnit(offer.category, 1)}` : 'Not calculated'} />
+            <Row label="Source URL" value={offer.source_url} />
+            <Row label="Product key" value={offer.product_key} />
+            <Row label="Offer key" value={offer.offer_key} />
+          </View>
+          <NoticeBand title="Synthetic source trail" tone="warning">
+            The URL and provider value are illustrative. This local mock has not fetched the source and does not connect to Convex.
+          </NoticeBand>
+          <ActionButton onPress={() => router.push('/offer/' + offer.id as never)}>Back to menu offer</ActionButton>
+        </>
+      ) : null}
     </AppFrame>
   );
+}
+
+function formatDate(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 'Not stated' : new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 }
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -44,10 +74,10 @@ function Row({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   recordBanner: { backgroundColor: colors.black, borderRadius: radii.lg, padding: spacing.lg, gap: 4 },
-  recordLabel: { color: colors.white, fontFamily: fonts.monoBold, fontSize: 11, lineHeight: 16, letterSpacing: 0.8 },
-  recordId: { color: colors.yellow, fontFamily: fonts.monoBold, fontSize: 28 },
+  recordLabel: { color: colors.white, fontFamily: fonts.bold, fontSize: 10, letterSpacing: 0.8 },
+  recordId: { color: colors.yellow, fontFamily: fonts.bold, fontSize: 28 },
   rows: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.rule, borderRadius: radii.md, paddingHorizontal: spacing.md },
   row: { flexDirection: 'row', gap: spacing.md, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.rule },
-  label: { flex: 1, color: colors.muted, fontFamily: fonts.monoBold, fontSize: 11, lineHeight: 16 },
+  label: { flex: 1, color: colors.muted, fontFamily: fonts.bold, fontSize: 12 },
   value: { flex: 2, color: colors.black, fontFamily: fonts.medium, fontSize: 13, lineHeight: 19, textAlign: 'right' },
 });

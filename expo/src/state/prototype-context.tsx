@@ -1,15 +1,12 @@
 import { createContext, useCallback, useContext, useMemo, useState, type PropsWithChildren } from 'react';
 
-import type { Category, DemoArea } from '@/data/demo';
-import type { SortMode } from '@/lib/compare';
+import type { Category, DemoArea } from '@/data/menu-schema';
 
 export type RefreshStatus = 'idle' | 'running' | 'complete' | 'failed';
 
 type PrototypeState = {
   category: Category;
   setCategory: (value: Category) => void;
-  sort: SortMode;
-  setSort: (value: SortMode) => void;
   radiusMiles: number;
   setRadiusMiles: (value: number) => void;
   area: DemoArea;
@@ -23,8 +20,7 @@ type PrototypeState = {
 const PrototypeContext = createContext<PrototypeState | null>(null);
 
 export function PrototypeProvider({ children }: PropsWithChildren) {
-  const [category, setCategory] = useState<Category>('nuggets');
-  const [sort, setSort] = useState<SortMode>('unit');
+  const [category, setCategory] = useState<Category>('chicken-nugget');
   const [radiusMiles, setRadiusMiles] = useState(5);
   const [area, setArea] = useState<DemoArea>('market');
   const [locationLabel, setLocationLabel] = useState('Market Street · demo area');
@@ -53,8 +49,6 @@ export function PrototypeProvider({ children }: PropsWithChildren) {
     () => ({
       category,
       setCategory,
-      sort,
-      setSort,
       radiusMiles,
       setRadiusMiles,
       area,
@@ -64,7 +58,7 @@ export function PrototypeProvider({ children }: PropsWithChildren) {
       refreshMessage,
       runMockRefresh,
     }),
-    [category, sort, radiusMiles, area, locationLabel, setDemoArea, refreshStatus, refreshMessage, runMockRefresh],
+    [category, radiusMiles, area, locationLabel, setDemoArea, refreshStatus, refreshMessage, runMockRefresh],
   );
 
   return <PrototypeContext.Provider value={value}>{children}</PrototypeContext.Provider>;
