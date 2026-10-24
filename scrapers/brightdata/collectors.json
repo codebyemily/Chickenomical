@@ -1,0 +1,106 @@
+{
+  "mcdonalds": {
+    "name": "McDonald's",
+    "url": "https://www.mcdonalds.com/us/en-us/full-menu.html",
+    "collector_id": "c_mvm0sqrn2qupgnmt15",
+    "status": "ai_trigger_failed",
+    "view_url": "https://brightdata.com/cp/scrapers/c_mvm0sqrn2qupgnmt15",
+    "error": "Automation not allowed"
+  },
+  "chick-fil-a": {
+    "name": "Chick-fil-A",
+    "url": "https://www.chick-fil-a.com/menu",
+    "collector_id": "c_mvm0xjwn3s0zeza5g",
+    "status": "ai_trigger_failed",
+    "view_url": "https://brightdata.com/cp/scrapers/c_mvm0xjwn3s0zeza5g",
+    "error": "Automation not allowed"
+  },
+  "wendys": {
+    "name": "Wendy's",
+    "url": "https://www.wendys.com/menu",
+    "collector_id": "c_mvm0xmlsskl38q1bn",
+    "status": "ai_trigger_failed",
+    "view_url": "https://brightdata.com/cp/scrapers/c_mvm0xmlsskl38q1bn",
+    "error": "Automation not allowed"
+  },
+  "burger-king": {
+    "name": "Burger King",
+    "url": "https://www.bk.com/menu",
+    "collector_id": "c_mvm0xp69yg7vxv7dk",
+    "status": "ai_trigger_failed",
+    "view_url": "https://brightdata.com/cp/scrapers/c_mvm0xp69yg7vxv7dk",
+    "error": "Automation not allowed"
+  },
+  "kfc": {
+    "name": "KFC",
+    "url": "https://www.kfc.com/menu",
+    "collector_id": "c_mvm0xt92ff2tt4xpd",
+    "status": "ai_trigger_failed",
+    "view_url": "https://brightdata.com/cp/scrapers/c_mvm0xt92ff2tt4xpd",
+    "error": "Automation not allowed"
+  },
+  "popeyes": {
+    "name": "Popeyes",
+    "url": "https://www.popeyes.com/menu",
+    "collector_id": "c_mvm0xvr41xk4cfsdby",
+    "status": "ai_trigger_failed",
+    "view_url": "https://brightdata.com/cp/scrapers/c_mvm0xvr41xk4cfsdby",
+    "error": "Automation not allowed"
+  },
+  "raising-canes": {
+    "name": "Raising Cane's",
+    "url": "https://www.raisingcanes.com/menu/",
+    "collector_id": "c_mvm0xy5p2imvpo4f2u",
+    "status": "ai_trigger_failed",
+    "view_url": "https://brightdata.com/cp/scrapers/c_mvm0xy5p2imvpo4f2u",
+    "error": "Automation not allowed"
+  },
+  "jollibee": {
+    "name": "Jollibee",
+    "url": "https://www.jollibeefoods.com/menu",
+    "collector_id": "c_mvm0y0pz9ijthr7mb",
+    "status": "ai_trigger_failed",
+    "view_url": "https://brightdata.com/cp/scrapers/c_mvm0y0pz9ijthr7mb",
+    "error": "Automation not allowed"
+  },
+  "wingstop": {
+    "name": "Wingstop",
+    "url": "https://www.wingstop.com/menu",
+    "collector_id": "c_mvm0y35612v01skg5c",
+    "status": "ai_trigger_failed",
+    "view_url": "https://brightdata.com/cp/scrapers/c_mvm0y35612v01skg5c",
+    "error": "Automation not allowed"
+  },
+  "zaxbys": {
+    "name": "Zaxby's",
+    "url": "https://www.zaxbys.com/menu",
+    "collector_id": null,
+    "status": "not_created",
+    "view_url": null,
+    "error": "Stopped after Bright Data returned Automation not allowed."
+  },
+  "churchs": {
+    "name": "Church's",
+    "url": "https://www.churchs.com/menu.html",
+    "collector_id": null,
+    "status": "not_created",
+    "view_url": null,
+    "error": "Stopped after Bright Data returned Automation not allowed."
+  },
+  "bojangles": {
+    "name": "Bojangles",
+    "url": "https://www.bojangles.com/menu/",
+    "collector_id": null,
+    "status": "not_created",
+    "view_url": null,
+    "error": "Stopped after Bright Data returned Automation not allowed."
+  },
+  "daves-hot-chicken": {
+    "name": "Dave's Hot Chicken",
+    "url": "https://daveshotchicken.com/menu/",
+    "collector_id": null,
+    "status": "not_created",
+    "view_url": null,
+    "error": "Stopped after Bright Data returned Automation not allowed."
+  }
+}

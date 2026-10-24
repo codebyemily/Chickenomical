@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#ffd400" />
+    <title>Chickenomical / offer board</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="masthead">
+        <div class="brand-mark" aria-label="Chickenomical">C<span>/</span></div>
+        <div>
+          <p class="eyebrow">CHICKENOMICAL / FIELD REPORT</p>
+          <h1>Nearby chicken, priced clearly.</h1>
+        </div>
+        <div class="freshness"><span class="live-dot"></span><span id="observedAt">Loading observation…</span></div>
+      </header>
+
+      <section class="location-strip">
+        <div>
+          <span class="label">SEARCH ORIGIN</span>
+          <strong id="searchAddress">Loading location…</strong>
+        </div>
+        <div class="location-stat"><span class="label">RADIUS</span><strong id="radius">—</strong></div>
+        <div class="location-stat"><span class="label">CHANNEL</span><strong id="channel">—</strong></div>
+      </section>
+
+      <section class="signal-grid">
+        <article class="hero-signal">
+          <div class="hero-copy">
+            <p class="eyebrow">LOWEST VERIFIED PRICE</p>
+            <div class="hero-price" id="lowestPrice">—</div>
+            <p class="hero-item" id="lowestName">Finding the best priced offer…</p>
+            <p class="hero-meta" id="lowestMeta">—</p>
+          </div>
+          <div class="hero-index">01<br /><span>OF <span id="offerTotal">—</span></span></div>
+        </article>
+        <div class="metric-stack">
+          <div class="metric"><span class="label">RESTAURANTS</span><strong id="chainCount">—</strong><small>within the search brief</small></div>
+          <div class="metric"><span class="label">PRICED OFFERS</span><strong id="pricedCount">—</strong><small>source-verified menu items</small></div>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <div class="board">
+          <div class="board-heading">
+            <div><p class="eyebrow">OFFER BOARD</p><h2>Compare what’s available</h2></div>
+            <label class="search-box"><span>⌕</span><input id="search" type="search" placeholder="Search offer or chain" /></label>
+          </div>
+          <div class="filters" aria-label="Offer filters">
+            <label>CHAIN <select id="chainFilter"><option value="all">All chains</option></select></label>
+            <label>TYPE <select id="categoryFilter"><option value="all">All chicken</option></select></label>
+            <label>SORT <select id="sortFilter"><option value="price">Lowest price</option><option value="unit">Lowest / piece</option><option value="distance">Closest store</option><option value="chain">Chain A–Z</option></select></label>
+            <span class="result-count" id="resultCount">—</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>OFFER</th><th>CHAIN / STORE</th><th>TYPE</th><th>PRICE</th><th>$/PIECE</th></tr></thead>
+              <tbody id="offerRows"><tr><td colspan="5" class="empty">Loading the offer board…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <aside class="rail">
+          <div class="rail-heading"><p class="eyebrow">FIELD NOTES</p><h2>Store coverage</h2></div>
+          <div id="storeList" class="store-list"></div>
+          <div class="method-note"><span class="label">METHOD</span><p>Prices are first-party pickup observations. Yellow marks the lowest verified comparable offer in this snapshot.</p></div>
+        </aside>
+      </section>
+      <footer><span>CHICKENOMICAL / SOURCE-VERIFIED MENU DATA</span><span id="footerStatus">—</span></footer>
+    </main>
+    <script src="./app.js" type="module"></script>
+  </body>
+</html>

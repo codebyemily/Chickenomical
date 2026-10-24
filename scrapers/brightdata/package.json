@@ -1,0 +1,15 @@
+{
+  "name": "@chickenomical/brightdata-scrapers",
+  "private": true,
+  "type": "module",
+  "description": "Bright Data menu scrapers for chicken chains. Fetch with the Web Unlocker, then parse into the shared offer shape.",
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "scrape": "node src/run.mjs",
+    "create": "node create-scrapers.mjs",
+    "brightdata": "brightdata"
+  },
+  "dependencies": {
+    "@brightdata/cli": "^0.4.0"
+  }
+}

@@ -16,7 +16,10 @@ Keep entries factual and concise. Remove or correct obsolete plans when implemen
 
 | Date | Area | Update / verification | Follow-up |
 |---|---|---|---|
+| 2026-10-24 | Location takeout | `npm run scrape` now requires `--at lat,lng` or `--address`. It finds nearby pickup stores and reads that store's takeout menu. Wendy's uses its ordering locator and `getSiteMenu`. Wingstop uses `api.wingstop.com` nearby restaurants plus per-item modifier prices. A Dallas check (`32.7767,-96.7970`, 5 miles, 1 store) priced Wendy's store 30 (29 chicken offers, 2.69 mi) and Wingstop 124308 (56 offers, 0.7 mi). Other chains are not wired to a public per-store menu, so they are not scraped from national pages. | Add takeout adapters for the remaining chains when a store-priced endpoint is confirmed. |
 | 2026-10-24 | Expo Web controls and recovery | Added HeroUI React web-only action buttons and form fields while retaining Expo UI and React Native controls in native/Expo Go files. Added an unmatched-route page and root render-error retry/recovery boundary; documented their purpose and the web/native library split in `expo/SCREEN_MAP.md`. TypeScript and lint pass; Expo iOS, Android, and Web bundles export successfully. Browser inspection confirmed the HeroUI controls use project tokens, unknown URLs show the recovery screen, and the Group slider updates the goal and results with keyboard input (12 → 52). | Review the new recovery surfaces in Expo Go on iOS/Android; the render-error fallback was compiled but not deliberately triggered. |
+| 2026-10-23 | Menu schema | Added `docs/menu-data-structure.md`: one offer shape, closed categories (`chicken-nugget`, `chicken-tender`, `chicken-bucket`, wings, sandwiches, sliders, wraps), quantity, channel, and deals kept off the list price. Grounded in chain menus checked the same day. No code or live prices yet. | Implement the shared offer type from that doc when ingestion starts. |
+| 2026-10-23 | Bright Data scrapers | Installed `@brightdata/cli` 0.4.0 in `scrapers/brightdata` and signed in with `brightdata login --device`. `npm run create` builds one Scraper Studio collector per chain. Bright Data returned 403 `Automation not allowed` while starting AI generation, so the collectors have no scraper code. IDs for the nine shells that were created are in `scrapers/brightdata/collectors.json`. Zaxby's, Church's, Bojangles, and Dave's Hot Chicken were not created. | Enable Scraper Studio AI on the account, then run `npm run create -- --force` from `scrapers/brightdata`. |
 | 2026-10-23 | Repository onboarding | Established the required agent handoff log in `idea.md`. | Add an entry here with every meaningful codebase change. |
 | 2026-10-23 | Scraping design docs | Added Apify and Bright Data end-to-end guides and documented the `ChainProvider` registry with Apify/Bright Data as execution backends. Vendor API flows checked against current official docs; no application code was changed. | Select the first chain and known location URL, then implement and verify its provider module/collector. |
 | 2026-10-23 | Product and marketing stories | Drafted [`markting/user-stories.md`](markting/user-stories.md) with same-size nugget/tender comparisons (e.g. 4pc vs. 4pc), total and per-piece prices, distance sorting, AARRR growth stories, marketing idea hooks, and future delivery-channel comparison. Documentation only; no app feature was implemented or tested. | Confirm launch area/data coverage; substantiate the 89% savings claim before using it; validate platform prices, fees, and deal eligibility before promising checkout savings; define monetization. |
@@ -121,6 +124,7 @@ Restaurant websites / publicly accessible menus
 
 ### `menu_offers`
 - `id`, `location_id`, `original_name`, `canonical_category`, `piece_count`, `price_cents`, `currency`
+- Category ids, quantity, channels, bundles, and deals are specified in `docs/menu-data-structure.md`. `piece_count` there is called `quantity`. Deals and delivery fees sit beside the list price and do not replace it.
 - `is_combo`, `ordering_channel` (`first_party_pickup`, `third_party_pickup`, etc.)
 - `source_provider`, `source_url`, `observed_at`, `validation_status`, `normalization_method`
 - Optional: `source_item_id`, `confidence`, `raw_observation_id`, `availability`
@@ -385,3 +389,22 @@ The repository now contains an Expo Router prototype under `expo/`. It is a pres
 - `git diff --check` — passed.
 - iOS Expo Go screenshots on iPhone 17 Pro / iOS 26.5 confirmed the native header, rounded Compare panels, and Group slider/results layout. The accessibility tree exposes the slider label and current value. Android visuals and physical haptic behavior still need device review.
 - The fixture prototype does not satisfy the live-data definition of done until verified menu sources and a backend are connected. All current prices and locations remain synthetic, and there is no auth flow.
+
+## Takeout API handoff (Palace of Fine Arts SF test)
+
+Store-level pickup adapters live in `scrapers/brightdata/src/takeout/`. Run:
+
+```bash
+node src/run.mjs --address "Palace of Fine Arts, San Francisco, CA" --at 37.8029186,-122.4484029 --radius 10 --limit 1
+```
+
+| Chain | Locate API | Menu/pricing API | Notes |
+|---|---|---|---|
+| Wendy's | `api.app.prd.wendys.digital/.../nearbyLocations` | `.../menu/getSiteMenu` | Bright Data |
+| Wingstop | `api.wingstop.com/restaurants/near` | `.../restaurants/{id}/menu` (+ options) | Bright Data / NomNom |
+| Raising Cane's | `nomnom-prod-api.raisingcanes.com/restaurants/near` | `.../restaurants/{id}/menu` | Bright Data; headers `clientid` + `nomnom-platform` |
+| Popeyes | `www.popeyes.com/graphql` `GetNearbyRestaurants` | `AppMenuMenuFlat` + `AppMenuPicker`/`Item`/`Combo` with `storeId` + `serviceMode=pickup` | Prefer direct fetch; Unlocker 403s GraphQL. Prices are integer cents in `price.default` |
+| Chick-fil-A | Yext `liveapi.yext.com/.../geosearch` (public key on order site) | `commerce.api.my.chick-fil-a.com/.../GetDecoupledOldDataMenu` | Locate works. Menu needs `order.chick-fil-a.com` guest auth; Unlocker returns 401. Browser session returns `itemPrice.minorUnits` |
+| McDonald's | `mcdonalds.com/googleappsv2/geolocation` | — | Web pickup redirects to app; no public priced menu |
+
+`apiJson()` in `bright-data.mjs` tries Bright Data Web Unlocker first, then falls back to direct fetch for unlocker-blocked endpoints.

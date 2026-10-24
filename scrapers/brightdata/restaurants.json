@@ -1,0 +1,80 @@
+[
+  {
+    "id": "mcdonalds",
+    "name": "McDonald's",
+    "url": "https://www.mcdonalds.com/us/en-us/full-menu.html",
+    "focus": "McNuggets are nuggets. Strips are tenders. McChicken is a value sandwich."
+  },
+  {
+    "id": "chick-fil-a",
+    "name": "Chick-fil-A",
+    "url": "https://www.chick-fil-a.com/menu",
+    "focus": "Nuggets, grilled nuggets, Chick-n-Strips, sandwiches, and the Cool Wrap."
+  },
+  {
+    "id": "wendys",
+    "name": "Wendy's",
+    "url": "https://www.wendys.com/menu",
+    "focus": "Nuggets in 4, 6, 10, and 20. Tendys are tenders. Spicy is heat."
+  },
+  {
+    "id": "burger-king",
+    "name": "Burger King",
+    "url": "https://www.bk.com/menu",
+    "focus": "Nuggets stay nuggets. Chicken Fries are chicken-fry. Royal Crispy is a sandwich."
+  },
+  {
+    "id": "kfc",
+    "name": "KFC",
+    "url": "https://www.kfc.com/menu",
+    "focus": "Nuggets, tenders, bone-in buckets with cut mix, wings, and weekday deals."
+  },
+  {
+    "id": "popeyes",
+    "name": "Popeyes",
+    "url": "https://www.popeyes.com/menu",
+    "focus": "Tenders, signature bone-in chicken, bone-in wings, and chicken sandwiches."
+  },
+  {
+    "id": "raising-canes",
+    "name": "Raising Cane's",
+    "url": "https://www.raisingcanes.com/menu/",
+    "focus": "Fingers are tenders. Box and Caniac are combos. The sandwich is 3 fingers."
+  },
+  {
+    "id": "jollibee",
+    "name": "Jollibee",
+    "url": "https://www.jollibeefoods.com/menu",
+    "focus": "Chickenjoy buckets are bone-in. Nuggets and tenders are separate. Skip pasta."
+  },
+  {
+    "id": "wingstop",
+    "name": "Wingstop",
+    "url": "https://www.wingstop.com/menu",
+    "focus": "Classic wings are bone-in. Boneless wings stay separate. Include tenders."
+  },
+  {
+    "id": "zaxbys",
+    "name": "Zaxby's",
+    "url": "https://www.zaxbys.com/menu",
+    "focus": "Fingerz are tenders. Traditional wings and boneless wings are separate."
+  },
+  {
+    "id": "churchs",
+    "name": "Church's",
+    "url": "https://www.churchs.com/menu.html",
+    "focus": "Bone-in pieces are buckets. Also tenders, bone-in wings, and sandwiches."
+  },
+  {
+    "id": "bojangles",
+    "name": "Bojangles",
+    "url": "https://www.bojangles.com/menu/",
+    "focus": "Bone-in boxes are buckets. Supremes and homestyle tenders are tenders."
+  },
+  {
+    "id": "daves-hot-chicken",
+    "name": "Dave's Hot Chicken",
+    "url": "https://daveshotchicken.com/menu/",
+    "focus": "Tenders and sliders. Heat level is heat. Skip cauliflower. Bites stay null."
+  }
+]
