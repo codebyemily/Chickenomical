@@ -8,7 +8,11 @@
     "scheme": "chickenomical",
     "userInterfaceStyle": "light",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "infoPlist": {
+        "UIViewControllerBasedStatusBarAppearance": true
+      },
+      "bundleIdentifier": "com.duckdoquack.chickenomical"
     },
     "android": {
       "adaptiveIcon": {

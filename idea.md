@@ -412,3 +412,7 @@ node src/run.mjs --address "Palace of Fine Arts, San Francisco, CA" --at 37.8029
 | Jollibee | `jollibeefoods.com/api/location/search?query=` | POST `api/basket` `{Id:"<yextId>"}` → cookie, then SSR `/menu/{slug}` `__NEXT_DATA__` `category.Products[].Cost` | Direct fetch; missing category slugs 404 and are skipped. Nuggets/tenders may be empty at some stores. |
 
 `apiJson()` in `bright-data.mjs` tries Bright Data Web Unlocker first, then falls back to direct fetch for unlocker-blocked endpoints.
+
+## Expo Convex connection — 2026-10-24
+
+The Expo app now reads live menu offers from the Convex deployment at `focused-chameleon-321.convex.cloud`. Convex is the source of truth for chains, available products, locations, and current offers. The Compare category grid is derived from database records; choosing a category opens a “Cheapest [category] near you” results screen. Current board offers power nearby rankings, while the bounded recent-record sample is shown separately and does not affect those rankings. The work keeps the existing native tab bar and updates the Expo screens to the current visual style. A successful iOS simulator run showed live Convex results and category navigation.

@@ -10,16 +10,20 @@ export const MENU_CATEGORIES = [
   'chicken-fry',
 ] as const;
 
-export type MenuCategory = (typeof MENU_CATEGORIES)[number];
+export type KnownMenuCategory = (typeof MENU_CATEGORIES)[number];
+/** Categories are owned by Convex; this list only supplies labels for known values. */
+export type MenuCategory = string & {};
 export type OrderingChannel =
   | 'first_party_pickup'
   | 'first_party_delivery'
   | 'doordash_pickup'
   | 'doordash_delivery'
   | 'ubereats_pickup'
-  | 'ubereats_delivery';
-export type OfferKind = 'ala_carte' | 'combo' | 'family_meal' | 'kids_meal';
-export type ValidationStatus = 'verified' | 'needs_review' | 'excluded';
+  | 'ubereats_delivery'
+  | (string & {});
+export type OfferKind = 'ala_carte' | 'combo' | 'family_meal' | 'kids_meal' | (string & {});
+export type ValidationStatus = 'verified' | 'needs_review' | 'excluded' | (string & {});
+export type Prep = 'fried' | 'grilled' | 'blackened' | (string & {});
 
 export type Chain = {
   id: string;
@@ -29,8 +33,8 @@ export type Chain = {
 export type StoreLocation = {
   id: string;
   chain_id: string;
-  store_name: string;
-  address: string;
+  store_name: string | null;
+  address: string | null;
   latitude: number | null;
   longitude: number | null;
   pickup: boolean;
@@ -40,7 +44,7 @@ export type CutMix = Partial<Record<'breast' | 'thigh' | 'drum' | 'wing', number
 
 export type OfferComponent = {
   role: 'chicken' | 'side' | 'sauce' | 'drink';
-  category?: MenuCategory;
+  category?: string;
   name?: string;
   quantity?: number | null;
   size?: string;
@@ -52,13 +56,13 @@ export type MenuOffer = {
   chain_id: string;
   location_id: string;
   offer_kind: OfferKind;
-  category: MenuCategory | null;
+  category: string | null;
   original_name: string;
   quantity: number | null;
   quantity_label: string | null;
   list_price_cents: number | null;
   currency: string;
-  prep: 'fried' | 'grilled' | 'blackened' | null;
+  prep: Prep | null;
   heat: string | null;
   build: string | null;
   breading: string | null;
@@ -66,7 +70,7 @@ export type MenuOffer = {
   cut_mix: CutMix | null;
   meat: 'white' | 'dark' | 'mixed' | 'unknown' | null;
   protein_pieces: number | null;
-  protein_category: MenuCategory | null;
+  protein_category: string | null;
   includes: string[];
   ordering_channel: OrderingChannel;
   comparable: boolean;
@@ -95,7 +99,7 @@ export type MenuDeal = {
   amount_off_cents: number | null;
   percent_off: number | null;
   applies_to: {
-    category?: MenuCategory;
+    category?: string;
     quantity?: number | null;
     build?: string;
     offer_keys?: string[];
@@ -119,7 +123,7 @@ export type MenuDeal = {
 export type DemoArea = 'market' | 'north-beach' | 'nowhere' | 'custom';
 export type Category = MenuCategory;
 
-export const CATEGORY_INFO: Record<MenuCategory, { label: string; unit: string; plural: string }> = {
+export const CATEGORY_INFO: Record<KnownMenuCategory, { label: string; unit: string; plural: string }> = {
   'chicken-nugget': { label: 'Nuggets', unit: 'piece', plural: 'pieces' },
   'chicken-tender': { label: 'Tenders', unit: 'piece', plural: 'pieces' },
   'chicken-bucket': { label: 'Bone-in chicken', unit: 'piece', plural: 'pieces' },
@@ -133,16 +137,27 @@ export const CATEGORY_INFO: Record<MenuCategory, { label: string; unit: string; 
 
 export const CATEGORY_OPTIONS = MENU_CATEGORIES.map((id) => ({ id, ...CATEGORY_INFO[id] }));
 
-export function categoryUnit(category: MenuCategory | null, count = 2) {
-  if (!category) return count === 1 ? 'item' : 'items';
-  return count === 1 ? CATEGORY_INFO[category].unit : CATEGORY_INFO[category].plural;
+export function categoryInfo(category: string | null) {
+  if (!category) return { label: 'Unclassified chicken', unit: 'item', plural: 'items' };
+  const known = CATEGORY_INFO[category as KnownMenuCategory];
+  if (known) return known;
+  const label = category
+    .replace(/^chicken[-_]/i, '')
+    .replace(/[-_]+/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  return { label: label || category, unit: 'item', plural: 'items' };
 }
 
-export function categoryLabel(category: MenuCategory | null) {
-  return category ? CATEGORY_INFO[category].label : 'Unclassified chicken';
+export function categoryUnit(category: string | null, count = 2) {
+  const info = categoryInfo(category);
+  return count === 1 ? info.unit : info.plural;
 }
 
-export function quantityText(category: MenuCategory | null, quantity: number | null) {
+export function categoryLabel(category: string | null) {
+  return categoryInfo(category).label;
+}
+
+export function quantityText(category: string | null, quantity: number | null) {
   if (quantity == null) return 'Quantity not stated';
   return `${quantity} ${categoryUnit(category, quantity)}`;
 }

@@ -23,7 +23,7 @@ export function PrototypeProvider({ children }: PropsWithChildren) {
   const [category, setCategory] = useState<Category>('chicken-nugget');
   const [radiusMiles, setRadiusMiles] = useState(5);
   const [area, setArea] = useState<DemoArea>('market');
-  const [locationLabel, setLocationLabel] = useState('Market Street · demo area');
+  const [locationLabel, setLocationLabel] = useState('Saved crawl distances');
   const [refreshStatus, setRefreshStatus] = useState<RefreshStatus>('idle');
   const [refreshMessage, setRefreshMessage] = useState('No sample refresh has run yet.');
 

@@ -1,10 +1,11 @@
 import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
-import type { OfferRecord } from '@/data/mock-convex';
+import type { OfferRecord } from '@/data/live-offers';
 import { categoryUnit, quantityText } from '@/data/menu-schema';
 import type { MenuCategory } from '@/data/menu-schema';
 import type { ComparisonMatrixGroup } from '@/lib/compare';
+import { offerDetailRoute } from '@/lib/live-offer-routes';
 import { money, unitMoney, unitPrice } from '@/lib/compare';
 import { colors, fonts, spacing, tabular } from '@/theme';
 
@@ -21,7 +22,7 @@ type MatrixRow = {
   cells: Map<string, MatrixCell>;
 };
 
-export function ChainComparisonMatrix({ group, category }: { group: ComparisonMatrixGroup; category: MenuCategory }) {
+export function ChainComparisonMatrix({ group, category, jobId }: { group: ComparisonMatrixGroup; category: MenuCategory; jobId?: string }) {
   const router = useRouter();
   const { width: windowWidth } = useWindowDimensions();
   const chains = getChains(group.records);
@@ -44,7 +45,7 @@ export function ChainComparisonMatrix({ group, category }: { group: ComparisonMa
       const sortedOffers = [...offers].sort((a, b) =>
         unitPrice(a.offer)! - unitPrice(b.offer)! ||
         a.offer.list_price_cents! - b.offer.list_price_cents! ||
-        a.distance_miles - b.distance_miles,
+        (a.distance_miles ?? Number.POSITIVE_INFINITY) - (b.distance_miles ?? Number.POSITIVE_INFINITY),
       );
       cells.set(chainId, { record: sortedOffers[0], otherCount: sortedOffers.length - 1 });
     }
@@ -99,7 +100,7 @@ export function ChainComparisonMatrix({ group, category }: { group: ComparisonMa
                 }
 
                 const nearbyCount = cell.otherCount + 1;
-                const accessibilityLabel = `${chain.name}, ${record.offer.original_name}, ${quantityText(category, record.offer.quantity)}, ${unitMoney(record.offer)} per ${categoryUnit(category, 1)}, ${money(record.offer.list_price_cents, record.offer.currency)} total, best nearby unit price of ${nearbyCount} matching ${nearbyCount === 1 ? 'offer' : 'offers'}, ${record.location.store_name}${isCheapest ? ', lowest price per unit among chains for this size' : ''}`;
+                const accessibilityLabel = `${chain.name}, ${record.offer.original_name}, ${quantityText(category, record.offer.quantity)}, ${unitMoney(record.offer)} per ${categoryUnit(category, 1)}, ${money(record.offer.list_price_cents, record.offer.currency)} total, best nearby unit price of ${nearbyCount} matching ${nearbyCount === 1 ? 'offer' : 'offers'}, ${record.location.store_name ?? 'store name unavailable'}${isCheapest ? ', lowest price per unit among chains for this size' : ''}`;
 
                 return (
                   <Pressable
@@ -107,7 +108,7 @@ export function ChainComparisonMatrix({ group, category }: { group: ComparisonMa
                     accessibilityRole="link"
                     accessibilityLabel={accessibilityLabel}
                     accessibilityHint="Opens the menu offer details."
-                    onPress={() => router.push(`/offer/${record.offer.id}` as never)}
+                    onPress={() => router.push(offerDetailRoute(record.offer.id, jobId) as never)}
                     style={({ pressed }) => [
                       styles.chainCell,
                       isCheapest && styles.bestOffer,

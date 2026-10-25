@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ActionButton } from '@/components/ui/action-button';
-import type { OfferRecord } from '@/data/mock-convex';
+import type { OfferRecord } from '@/data/live-offers';
 import { categoryUnit } from '@/data/menu-schema';
 import { freshnessText, money, unitMoney } from '@/lib/compare';
 import { colors, fonts, radii, spacing, tabular } from '@/theme';
@@ -21,6 +21,9 @@ export function OfferRow({ record, rank, featured = false }: Props) {
   const quantity = offer.quantity_label ?? (offer.quantity == null ? 'Quantity not stated' : `${offer.quantity} ${categoryUnit(offer.category, offer.quantity)}`);
   const sourceId = offer.source_item_id ?? offer.id;
   const channel = offer.ordering_channel.replaceAll('_', ' ');
+  const distanceText = distance == null ? 'Distance not recorded' : `${distance.toFixed(1)} mi saved distance`;
+  const storeName = location.store_name ?? 'Store name unavailable';
+  const locationText = [storeName, location.address].filter(Boolean).join(' · ');
 
   if (Platform.OS !== 'web') {
     return (
@@ -31,7 +34,7 @@ export function OfferRow({ record, rank, featured = false }: Props) {
               {featured ? 'LOWEST SAMPLE UNIT PRICE' : `OFFER ${String(rank ?? 1).padStart(2, '0')}`}
             </Text>
             <Text style={[styles.nativeRestaurant, featured && styles.featuredInk]}>{chain.name}</Text>
-            <Text style={[styles.location, featured && styles.featuredMuted]}>{location.store_name}</Text>
+            <Text style={[styles.location, featured && styles.featuredMuted]}>{storeName}</Text>
           </View>
           <View style={styles.nativeUnitBlock}>
             <Text style={[styles.nativeUnitPrice, featured && styles.featuredInk, tabular]}>{unitMoney(offer)}</Text>
@@ -41,7 +44,7 @@ export function OfferRow({ record, rank, featured = false }: Props) {
         <View style={[styles.separator, featured && styles.featuredSeparator]} />
         <Text style={[styles.nativeItem, featured && styles.featuredInk]}>{offer.original_name} · {quantity}</Text>
         <Text style={[styles.nativeFacts, featured && styles.featuredInk, tabular]}>
-          {money(offer.list_price_cents, offer.currency)} total · {distance.toFixed(1)} mi straight-line
+          {money(offer.list_price_cents, offer.currency)} total · {distanceText}
         </Text>
         <View style={styles.nativeProvenance}>
           <Text style={[styles.status, stale && styles.staleStatus, featured && styles.featuredInk]}>{status}</Text>
@@ -71,7 +74,7 @@ export function OfferRow({ record, rank, featured = false }: Props) {
             {featured ? 'LOWEST SAMPLE UNIT PRICE' : rank ? `OFFER ${String(rank).padStart(2, '0')}` : 'NEARBY OFFER'}
           </Text>
           <Text style={[styles.restaurant, featured && styles.featuredInk]}>{chain.name}</Text>
-          <Text style={[styles.location, featured && styles.featuredMuted]}>{location.store_name} · {location.address}</Text>
+          <Text style={[styles.location, featured && styles.featuredMuted]}>{locationText}</Text>
         </View>
         <View style={styles.unitBlock}>
           <Text style={[styles.unitLabel, featured && styles.featuredInk]}>PER {categoryUnit(offer.category, 1).toUpperCase()}</Text>
@@ -83,7 +86,7 @@ export function OfferRow({ record, rank, featured = false }: Props) {
       <View style={styles.facts}>
         <Fact label="QUANTITY" value={quantity} featured={featured} />
         <Fact label="LIST PRICE" value={money(offer.list_price_cents, offer.currency)} featured={featured} numeric />
-        <Fact label="DISTANCE" value={`${distance.toFixed(1)} mi straight-line`} featured={featured} numeric />
+        <Fact label="DISTANCE" value={distanceText} featured={featured} numeric />
       </View>
       <View style={styles.provenance}>
         <View style={styles.provenanceText}>

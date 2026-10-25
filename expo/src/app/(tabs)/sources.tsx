@@ -1,151 +1,437 @@
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState, type PropsWithChildren } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { AppFrame, NoticeBand, PageHeading, SectionHeading } from '@/components/app-frame';
-import { CategoryPicker } from '@/components/category-picker';
-import { ChainPicker } from '@/components/chain-picker';
+import { AppFrame, NoticeBand, SectionHeading } from '@/components/app-frame';
 import { QueryStatePanel } from '@/components/query-state-panel';
-import { ActionButton } from '@/components/ui/action-button';
-import { api, useMockConvexQuery, type DealRecord, type OfferRecord } from '@/data/mock-convex';
-import { CATEGORY_INFO, categoryLabel, categoryUnit, type MenuCategory } from '@/data/menu-schema';
-import { isRankable, money, unitMoney } from '@/lib/compare';
-import { usePrototype } from '@/state/prototype-context';
-import { colors, fonts, radii, spacing } from '@/theme';
+import { useLiveOffersQuery, useRecentOffersQuery, type OfferRecord } from '@/data/live-offers';
+import { categoryInfo, categoryLabel, categoryUnit, type MenuCategory } from '@/data/menu-schema';
+import { isRankable, money, unitPrice } from '@/lib/compare';
+import { sourceRecordRoute } from '@/lib/live-offer-routes';
+import { colors, fonts, spacing } from '@/theme';
 
-const EMPTY_OFFERS: OfferRecord[] = [];
-const EMPTY_DEALS: DealRecord[] = [];
+type CategoryFilter = { kind: 'all' } | { kind: 'unclassified' } | { kind: 'category'; value: MenuCategory };
+type ReviewFilter = 'all' | 'comparable' | 'review';
+type SortKey = 'recent' | 'total' | 'unit' | 'chain';
+
+const EMPTY_RECORDS: OfferRecord[] = [];
+const REVIEW_FILTERS: { id: ReviewFilter; label: string }[] = [
+  { id: 'all', label: 'All offers' },
+  { id: 'comparable', label: 'Comparable flag on' },
+  { id: 'review', label: 'Needs review' },
+];
 
 export default function SourcesScreen() {
   const router = useRouter();
-  const { area, refreshStatus, refreshMessage, runMockRefresh } = usePrototype();
+  const boardQuery = useLiveOffersQuery();
+  const recentQuery = useRecentOffersQuery();
+  const recentStatus = recentQuery.status;
+  const recentError = recentQuery.status === 'error' ? recentQuery.error : undefined;
+  const records = recentQuery.status === 'success' ? recentQuery.data : EMPTY_RECORDS;
+  const job = boardQuery.status === 'success' ? boardQuery.metadata.job : null;
+  const [search, setSearch] = useState('');
   const [chainId, setChainId] = useState<string | null>(null);
-  const [category, setCategory] = useState<MenuCategory>('chicken-nugget');
-  const offersQuery = useMockConvexQuery(api.offers.all, { area });
-  const dealsQuery = useMockConvexQuery(api.deals.all, {});
-  const records = offersQuery.data ?? EMPTY_OFFERS;
-  const deals = dealsQuery.data ?? EMPTY_DEALS;
+  const [category, setCategory] = useState<CategoryFilter>({ kind: 'all' });
+  const [reviewFilter, setReviewFilter] = useState<ReviewFilter>('all');
+  const [sortBy, setSortBy] = useState<SortKey>('recent');
+
   const chains = useMemo(() => {
     const byId = new Map(records.map(({ chain }) => [chain.id, chain]));
     return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
   }, [records]);
-  const visibleRecords = records.filter(({ offer, chain }) => offer.category === category && (!chainId || chain.id === chainId));
-  const visibleDeals = deals.filter(({ deal, chain }) =>
-    (!chainId || chain.id === chainId) && (deal.applies_to.category == null || deal.applies_to.category === category),
-  );
-  const loading = offersQuery.status === 'loading' || dealsQuery.status === 'loading';
-  const categoryInfo = CATEGORY_INFO[category];
+  const categories = useMemo(() => {
+    return [...new Set(records.flatMap(({ offer }) => offer.category ? [offer.category] : []))]
+      .sort((a, b) => categoryLabel(a).localeCompare(categoryLabel(b)));
+  }, [records]);
+  const providerCount = useMemo(() => new Set(records.map(({ offer }) => offer.source_provider.trim()).filter(Boolean)).size, [records]);
+  const pricedCount = useMemo(() => records.filter(({ offer }) => offer.list_price_cents != null).length, [records]);
+  const normalizedSearch = search.trim().toLocaleLowerCase();
+  const visibleRecords = useMemo(() => {
+    const matching = records.filter(({ offer, chain, location }) => {
+      if (chainId && chain.id !== chainId) return false;
+      if (category.kind === 'unclassified' && offer.category) return false;
+      if (category.kind === 'category' && offer.category !== category.value) return false;
+      if (reviewFilter === 'comparable' && !offer.comparable) return false;
+      if (reviewFilter === 'review' && offer.comparable && offer.validation_status === 'verified') return false;
+      if (!normalizedSearch) return true;
+      const sourceId = offer.source_item_id?.trim() ?? '';
+      const haystack = [
+        offer.original_name,
+        String(offer.id),
+        offer.source_provider,
+        offer.source_url,
+        sourceId,
+        offer.offer_key,
+        offer.product_key,
+        offer.ordering_channel,
+        offer.validation_status,
+        chain.name,
+        location.store_name,
+        location.address,
+      ].filter(Boolean).join(' ').toLocaleLowerCase();
+      return haystack.includes(normalizedSearch);
+    });
 
-  function reload() {
-    runMockRefresh();
-    offersQuery.refetch();
-    dealsQuery.refetch();
+    return matching.sort((a, b) => {
+      if (sortBy === 'chain') {
+        return a.chain.name.localeCompare(b.chain.name) || a.offer.original_name.localeCompare(b.offer.original_name);
+      }
+      if (sortBy === 'total') {
+        return a.offer.currency.localeCompare(b.offer.currency) || compareOptional(a.offer.list_price_cents, b.offer.list_price_cents) || b.offer.observed_at.localeCompare(a.offer.observed_at);
+      }
+      if (sortBy === 'unit') {
+        const aUnit = unitPrice(a.offer);
+        const bUnit = unitPrice(b.offer);
+        return a.offer.currency.localeCompare(b.offer.currency) || compareOptional(aUnit, bUnit) || b.offer.observed_at.localeCompare(a.offer.observed_at);
+      }
+      return dateValue(b.offer.observed_at) - dateValue(a.offer.observed_at);
+    });
+  }, [category, chainId, normalizedSearch, records, reviewFilter, sortBy]);
+
+  function clearFilters() {
+    setSearch('');
+    setChainId(null);
+    setCategory({ kind: 'all' });
+    setReviewFilter('all');
+    setSortBy('recent');
   }
-
-  const refreshLabel = refreshStatus === 'running' ? 'Reading records…' : refreshStatus === 'failed' ? 'Retry local read' : 'Read local records again';
 
   return (
     <AppFrame active="Explore">
-      <PageHeading title="Menu Explorer" description="Choose a chain and category to browse its location-specific menu offers and deals. Rows keep the documented menu schema fields attached." />
-      <NoticeBand title="Mock Convex connection" tone="warning">
-        Expo reads local fixtures through Convex-shaped query functions. This is not connected to a Convex deployment; the displayed prices, source URLs, and locations are synthetic.
-      </NoticeBand>
-      <NoticeBand title="Local query status" tone={refreshStatus === 'failed' ? 'error' : 'neutral'}>{refreshMessage}</NoticeBand>
-      <View style={styles.refreshAction}>
-        <ActionButton kind="primary" disabled={loading || refreshStatus === 'running'} onPress={reload}>{loading ? 'Reading records…' : refreshLabel}</ActionButton>
-      </View>
-
-      <View style={styles.filters}>
-        <View style={styles.filterGroup}>
-          <Text style={styles.controlLabel}>CHAIN</Text>
-          <ChainPicker chains={chains} value={chainId} onChange={setChainId} />
+      <View style={styles.screen}>
+        <View style={styles.hero}>
+          <Text style={styles.heroEyebrow}>CHICKENOMICAL · SOURCE CHECK</Text>
+          <Text accessibilityRole="header" style={styles.heroTitle}>Follow each offer to its source.</Text>
+          <Text style={styles.heroDescription}>Browse the latest stored Convex menu offers across chains and categories. Search an item, provider, or source ID, then inspect its provenance.</Text>
+          <View style={styles.heroWave}>
+            <View style={styles.waveDot} />
+            <View style={styles.waveLine} />
+            <View style={styles.waveDotSmall} />
+            <View style={styles.waveLine} />
+            <View style={styles.waveDot} />
+          </View>
         </View>
-        <View style={styles.filterGroup}>
-          <Text style={styles.controlLabel}>MENU CATEGORY</Text>
-          <CategoryPicker value={category} onChange={setCategory} />
-        </View>
-      </View>
 
-      <SectionHeading title={`${categoryInfo.label} offers`} trailing={`${visibleRecords.length} MOCK RECORDS`} />
-      <Text style={styles.intro}>Showing {chainId ? chains.find((chain) => chain.id === chainId)?.name ?? 'selected chain' : 'all chains'}. Offer keys, product keys, category attributes, `comparable`, and `validation_status` follow the documented menu schema.</Text>
-      <QueryStatePanel
-        status={offersQuery.status === 'error' ? 'error' : offersQuery.status}
-        error={offersQuery.error}
-        onRetry={offersQuery.refetch}
-      />
-      {offersQuery.status === 'success' ? (
-        visibleRecords.length > 0 ? <View style={styles.recordList}>
-          {visibleRecords.map(({ offer, location, chain }) => (
+        <View style={styles.summaryRow}>
+          <SummaryCard label="LATEST STORED ROWS" value={recentQuery.status === 'success' ? String(records.length) : '—'} tone="lime" />
+          <SummaryCard label="SOURCE PROVIDERS" value={recentQuery.status === 'success' ? String(providerCount) : '—'} tone="sky" />
+          <SummaryCard label="WITH A LIST PRICE" value={recentQuery.status === 'success' ? String(pricedCount) : '—'} tone="white" />
+        </View>
+
+        <Text style={styles.scopeNote}>Showing up to 200 most recently stored menuOffers. Records can span multiple chains, locations, and scrape times; this is not a single nearby search.</Text>
+
+        <View style={styles.searchField}>
+          <Text accessibilityElementsHidden style={styles.searchGlyph}>⌕</Text>
+          <TextInput
+            accessibilityLabel="Search menu offers and their sources"
+            clearButtonMode="while-editing"
+            onChangeText={setSearch}
+            placeholder="Item, chain, provider, or source ID"
+            placeholderTextColor={colors.muted}
+            returnKeyType="search"
+            style={styles.searchInput}
+            value={search}
+          />
+        </View>
+
+        <FilterSection label="MENU CATEGORY">
+          <ChipRow>
+            <FilterChip label="All chicken" selected={category.kind === 'all'} onPress={() => setCategory({ kind: 'all' })} />
+            {categories.map((value) => (
+              <FilterChip key={value} label={categoryInfo(value).label} selected={category.kind === 'category' && category.value === value} onPress={() => setCategory({ kind: 'category', value })} />
+            ))}
+            {records.some(({ offer }) => !offer.category) ? (
+              <FilterChip label="Unclassified" selected={category.kind === 'unclassified'} onPress={() => setCategory({ kind: 'unclassified' })} />
+            ) : null}
+          </ChipRow>
+        </FilterSection>
+
+        <FilterSection label="CHAIN">
+          <ChipRow>
+            <FilterChip label="All chains" selected={chainId === null} onPress={() => setChainId(null)} />
+            {chains.map((chain) => (
+              <FilterChip key={chain.id} label={chain.name} selected={chainId === chain.id} onPress={() => setChainId(chain.id)} />
+            ))}
+          </ChipRow>
+        </FilterSection>
+
+        <FilterSection label="RECORD STATUS">
+          <ChipRow>
+            {REVIEW_FILTERS.map((filter) => (
+              <FilterChip key={filter.id} label={filter.label} selected={reviewFilter === filter.id} onPress={() => setReviewFilter(filter.id)} />
+            ))}
+          </ChipRow>
+        </FilterSection>
+
+        {job?.status === 'running' ? (
+          <NoticeBand title="Latest board scrape is running">
+            Convex currently reports {job.offer_count} offers for this job. Explorer rows below still come from the latest stored records across jobs.
+          </NoticeBand>
+        ) : null}
+        {job?.status === 'failed' ? (
+          <NoticeBand title="Latest board scrape failed" tone="error">
+            {job.error?.trim() || `The latest scrape failed without an error message. ${job.offer_count} offers were reported.`}
+          </NoticeBand>
+        ) : null}
+        {boardQuery.status === 'error' ? (
+          <NoticeBand title="Latest board metadata is unavailable" tone="warning">
+            {boardQuery.error.message} Stored records remain available from the separate recent-offers query below.
+          </NoticeBand>
+        ) : null}
+
+        <View style={styles.resultsHeading}>
+          <View style={styles.resultsTitleBlock}>
+            <Text style={styles.sectionEyebrow}>RECENT STORED MENU OFFERS</Text>
+            <Text accessibilityRole="header" style={styles.sectionTitle}>Source trail</Text>
+          </View>
+          <Text style={styles.resultsCount}>{recentStatus === 'success' ? `${visibleRecords.length} found` : '—'}</Text>
+        </View>
+
+        <View style={styles.sortRow}>
+          <Text style={styles.sortLabel}>SORT</Text>
+          {([
+            { id: 'recent', label: 'Recent' },
+            { id: 'total', label: 'Total' },
+            { id: 'unit', label: `/${category.kind === 'category' ? categoryUnit(category.value, 1) : 'unit'}` },
+            { id: 'chain', label: 'Chain' },
+          ] as { id: SortKey; label: string }[]).map((option) => (
             <Pressable
-              key={offer.id}
-              accessibilityRole="link"
-              onPress={() => router.push('/source/' + (offer.source_item_id ?? offer.id) as never)}
-              style={({ pressed }) => [styles.recordRow, pressed && styles.pressed]}>
-              <View style={styles.recordCopy}>
-                <Text style={styles.recordName}>{chain.name} · {offer.original_name}</Text>
-                <Text style={styles.recordMeta}>
-                  {categoryLabel(offer.category)} · {location.store_name} · {offer.ordering_channel} · {offer.validation_status}
-                </Text>
-                <Text style={styles.recordMeta}>
-                  {offer.source_provider} · {offer.source_item_id ?? offer.id} · {new Date(offer.observed_at).toLocaleString()}
-                </Text>
-              </View>
-              <View style={styles.priceCopy}>
-                <Text style={styles.price}>{money(offer.list_price_cents, offer.currency)}</Text>
-                <Text style={styles.unit}>{isRankable(offer) ? `${unitMoney(offer)} / ${categoryUnit(offer.category, 1)}` : 'Not rankable'}</Text>
-              </View>
+              key={option.id}
+              accessibilityRole="button"
+              accessibilityState={{ selected: sortBy === option.id }}
+              onPress={() => setSortBy(option.id)}
+              style={({ pressed }) => [styles.sortChip, sortBy === option.id && styles.sortChipSelected, pressed && styles.pressed]}>
+              <Text style={[styles.sortChipText, sortBy === option.id && styles.sortChipTextSelected]}>{option.label}</Text>
             </Pressable>
           ))}
-        </View> : <NoticeBand title={`No ${categoryInfo.label.toLowerCase()} offers in this view`} tone="warning">Try another chain or category. The explorer only shows records represented in this local mock.</NoticeBand>
-      ) : null}
+        </View>
 
-      <SectionHeading title="Deals" trailing={`${visibleDeals.length} MOCK RECORDS`} />
-      <Text style={styles.intro}>Deals remain separate from list prices and keep their own conditions, schedule, receipt, and location-confirmation state.</Text>
-      <QueryStatePanel
-        status={dealsQuery.status === 'error' ? 'error' : dealsQuery.status}
-        error={dealsQuery.error}
-        onRetry={dealsQuery.refetch}
-      />
-      {dealsQuery.status === 'success' ? (
-        visibleDeals.length > 0 ? <View style={styles.recordList}>
-          {visibleDeals.map(({ deal, location, chain }) => (
-            <View key={deal.id} style={styles.dealCard}>
-              <View style={styles.recordCopy}>
-                <Text style={styles.recordName}>{chain.name} · {deal.name}</Text>
-                <Text style={styles.recordMeta}>
-                  {deal.deal_type.replaceAll('_', ' ')} · {categoryLabel(deal.applies_to.category ?? null)} · {location?.store_name ?? 'Chain-wide'}
-                </Text>
-                <Text style={styles.recordMeta}>
-                  {deal.conditions.requires_app ? 'App required' : 'No app requirement'} · {deal.location_confirmed ? 'Location confirmed' : 'Location unconfirmed'}
-                </Text>
-              </View>
-              <Text style={styles.dealPrice}>
-                {deal.price_cents != null ? money(deal.price_cents) : deal.amount_off_cents != null ? `${money(deal.amount_off_cents)} off` : deal.percent_off != null ? `${deal.percent_off}% off` : 'Conditional'}
-              </Text>
-            </View>
-          ))}
-        </View> : <Text style={styles.noDeals}>No matching deals in this view.</Text>
-      ) : null}
+        <QueryStatePanel status={recentStatus} error={recentError} />
+        {recentStatus === 'success' && visibleRecords.length > 0 ? (
+          <View style={styles.recordList}>
+            {visibleRecords.map((record, index) => (
+              <SourceOfferCard
+                key={record.offer.id}
+                record={record}
+                tone={index % 3 === 0 ? 'lime' : index % 3 === 1 ? 'sky' : 'plain'}
+                onPress={() => router.push(sourceRecordRoute(String(record.offer.id)) as never)}
+              />
+            ))}
+          </View>
+        ) : null}
+        {recentStatus === 'success' && visibleRecords.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>{records.length === 0 ? 'No stored menu offers were returned.' : 'No offers match these filters.'}</Text>
+            <Text style={styles.emptyCopy}>{records.length === 0 ? 'This list reads the latest stored rows from the Convex menuOffers table.' : 'Clear the search or reset the filters to see more source records.'}</Text>
+            {records.length > 0 ? (
+              <Pressable accessibilityRole="button" onPress={clearFilters} style={({ pressed }) => [styles.clearButton, pressed && styles.pressed]}>
+                <Text style={styles.clearButtonText}>Reset search and filters</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
+
+        <SectionHeading title="Deals" trailing="NOT IN SCHEMA" />
+        <Text style={styles.dealsNote}>This Convex deployment stores menu offers, numeric values, and scrape jobs. It has no deals table, so this screen only lists menuOffers records.</Text>
+      </View>
     </AppFrame>
   );
 }
 
+function SummaryCard({ label, value, tone }: { label: string; value: string; tone: 'lime' | 'sky' | 'white' }) {
+  return (
+    <View style={[styles.summaryCard, tone === 'lime' ? styles.summaryLime : tone === 'sky' ? styles.summarySky : styles.summaryWhite]}>
+      <Text style={styles.summaryLabel}>{label}</Text>
+      <Text style={styles.summaryValue}>{value}</Text>
+    </View>
+  );
+}
+
+function FilterSection({ label, children }: PropsWithChildren<{ label: string }>) {
+  return (
+    <View style={styles.filterSection}>
+      <Text style={styles.filterLabel}>{label}</Text>
+      {children}
+    </View>
+  );
+}
+
+function ChipRow({ children }: PropsWithChildren) {
+  return <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>{children}</ScrollView>;
+}
+
+function FilterChip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      style={({ pressed }) => [styles.filterChip, selected && styles.filterChipSelected, pressed && styles.pressed]}>
+      <Text style={[styles.filterChipText, selected && styles.filterChipTextSelected]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function SourceOfferCard({
+  record,
+  tone,
+  onPress,
+}: {
+  record: OfferRecord;
+  tone: 'lime' | 'sky' | 'plain';
+  onPress: () => void;
+}) {
+  const { offer, chain, location } = record;
+  const sourceId = offer.source_item_id?.trim() || String(offer.id);
+  const providerHost = sourceHost(offer.source_url);
+  const rankable = isRankable(offer);
+  const unitLabel = offer.category ? categoryUnit(offer.category, 1) : 'unit';
+
+  return (
+    <Pressable
+      accessibilityRole="link"
+      accessibilityLabel={`Open source record for ${offer.original_name} from ${chain.name}`}
+      onPress={onPress}
+      style={({ pressed }) => [styles.recordCard, tone === 'lime' ? styles.recordLime : tone === 'sky' ? styles.recordSky : styles.recordPlain, pressed && styles.pressed]}>
+      <View style={styles.recordTop}>
+        <View style={styles.recordMain}>
+          <Text numberOfLines={2} style={styles.recordName}>{offer.original_name}</Text>
+          <Text numberOfLines={1} style={styles.recordChain}>{chain.name} · {location.store_name?.trim() || location.id}</Text>
+        </View>
+        <View style={styles.recordPriceBlock}>
+          <Text style={styles.recordPrice}>{safeMoney(offer.list_price_cents, offer.currency)}</Text>
+          <Text style={styles.recordPriceLabel}>list price</Text>
+        </View>
+      </View>
+
+      <View style={styles.recordBadges}>
+        <Text style={styles.categoryBadge}>{categoryLabel(offer.category)}</Text>
+        <Text style={[styles.statusBadge, offer.comparable && styles.statusBadgeComparable]}>{offer.comparable ? 'Comparable flag on' : 'Not marked comparable'}</Text>
+      </View>
+
+      <View style={styles.sourceDetail}>
+        <View style={styles.sourceLine}>
+          <Text style={styles.sourceLabel}>PROVIDER</Text>
+          <Text numberOfLines={1} style={styles.sourceValue}>{offer.source_provider || 'Not stated'}{providerHost ? ` · ${providerHost}` : ''}</Text>
+        </View>
+        <View style={styles.sourceLine}>
+          <Text style={styles.sourceLabel}>SOURCE ITEM</Text>
+          <Text numberOfLines={1} selectable style={styles.sourceValue}>{sourceId}</Text>
+        </View>
+      </View>
+
+      <View style={styles.recordFooter}>
+        <Text numberOfLines={1} style={styles.recordMeta}>{offer.validation_status} · {formatObservedAt(offer.observed_at)}</Text>
+        <Text style={styles.unitPrice}>{rankable ? `${safeMoney(unitPrice(offer), offer.currency)} / ${unitLabel}` : 'Not rankable'}</Text>
+      </View>
+      <Text style={styles.openTrail}>Inspect source trail →</Text>
+    </Pressable>
+  );
+}
+
+function compareOptional(a: number | null | undefined, b: number | null | undefined) {
+  if (a == null && b == null) return 0;
+  if (a == null) return 1;
+  if (b == null) return -1;
+  return a - b;
+}
+
+function dateValue(value: string) {
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? timestamp : Number.NEGATIVE_INFINITY;
+}
+
+function safeMoney(cents: number | null | undefined, currency = 'USD') {
+  if (cents == null) return '—';
+  try {
+    return money(cents, currency);
+  } catch {
+    return `${(cents / 100).toFixed(2)} ${currency}`;
+  }
+}
+
+function sourceHost(value: string) {
+  try {
+    return new URL(value).hostname.replace(/^www\./, '');
+  } catch {
+    return '';
+  }
+}
+
+function formatObservedAt(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'time not stated';
+  return `observed ${new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(date)}`;
+}
+
 const styles = StyleSheet.create({
-  refreshAction: { alignSelf: 'flex-start', minWidth: 220 },
-  filters: { gap: spacing.md },
-  filterGroup: { gap: spacing.xs },
-  controlLabel: { color: colors.muted, fontFamily: fonts.bold, fontSize: 10, letterSpacing: 0.9 },
-  intro: { color: colors.muted, fontFamily: fonts.regular, fontSize: 13, lineHeight: 20 },
-  noDeals: { color: colors.muted, fontFamily: fonts.regular, fontSize: 13, lineHeight: 20 },
-  recordList: { gap: spacing.xs },
-  recordRow: { width: '100%', minHeight: 72, padding: spacing.md, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.rule, borderRadius: radii.sm, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.md },
-  pressed: { opacity: 0.62 },
-  recordCopy: { flex: 1, gap: 3 },
-  recordName: { color: colors.black, fontFamily: fonts.bold, fontSize: 13, lineHeight: 19 },
-  recordMeta: { color: colors.muted, fontFamily: fonts.regular, fontSize: 10, lineHeight: 16 },
-  priceCopy: { alignItems: 'flex-end' },
-  price: { color: colors.black, fontFamily: fonts.bold, fontSize: 14 },
-  unit: { color: colors.muted, fontFamily: fonts.regular, fontSize: 10 },
-  dealCard: { width: '100%', padding: spacing.md, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.rule, borderRadius: radii.sm, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.md },
-  dealPrice: { color: colors.black, fontFamily: fonts.bold, fontSize: 14, textAlign: 'right' },
+  screen: { width: '100%', gap: 20, paddingBottom: spacing.sm, backgroundColor: colors.cream },
+  hero: { position: 'relative', overflow: 'hidden', backgroundColor: colors.orange, borderRadius: 26, paddingHorizontal: 20, paddingTop: 22, paddingBottom: 34, gap: 9 },
+  heroEyebrow: { color: colors.black, fontFamily: fonts.bold, fontSize: 10, letterSpacing: 1.1 },
+  heroTitle: { color: colors.black, fontFamily: fonts.bold, fontSize: 28, lineHeight: 32, letterSpacing: -0.7 },
+  heroDescription: { color: colors.black, fontFamily: fonts.regular, fontSize: 14, lineHeight: 20, maxWidth: 620 },
+  scopeNote: { color: colors.muted, fontFamily: fonts.regular, fontSize: 11, lineHeight: 16, marginTop: -12 },
+  heroWave: { position: 'absolute', bottom: 10, left: 20, right: 20, height: 8, flexDirection: 'row', alignItems: 'center', gap: 5, opacity: 0.62 },
+  waveLine: { height: 2, flex: 1, borderRadius: 2, backgroundColor: colors.cream },
+  waveDot: { width: 8, height: 8, borderRadius: 5, backgroundColor: colors.cream },
+  waveDotSmall: { width: 5, height: 5, borderRadius: 3, backgroundColor: colors.cream },
+  summaryRow: { flexDirection: 'row', gap: 8 },
+  summaryCard: { flex: 1, minWidth: 0, minHeight: 82, borderRadius: 18, padding: 11, justifyContent: 'space-between' },
+  summaryLime: { backgroundColor: colors.lime },
+  summarySky: { backgroundColor: colors.sky },
+  summaryWhite: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.warmRule },
+  summaryLabel: { color: colors.black, fontFamily: fonts.bold, fontSize: 8, lineHeight: 11, letterSpacing: 0.5 },
+  summaryValue: { color: colors.black, fontFamily: fonts.bold, fontSize: 23, lineHeight: 26 },
+  searchField: { minHeight: 54, flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 2, borderColor: colors.purple, borderRadius: 30, paddingHorizontal: 17, backgroundColor: colors.white },
+  searchGlyph: { color: colors.purple, fontFamily: fonts.bold, fontSize: 28, lineHeight: 30, transform: [{ rotate: '-20deg' }] },
+  searchInput: { flex: 1, minWidth: 0, paddingVertical: 11, color: colors.black, fontFamily: fonts.regular, fontSize: 15 },
+  filterSection: { gap: 8 },
+  filterLabel: { color: colors.muted, fontFamily: fonts.bold, fontSize: 10, letterSpacing: 0.9 },
+  chipRow: { gap: 8, paddingRight: 4 },
+  filterChip: { minHeight: 38, justifyContent: 'center', paddingHorizontal: 14, borderRadius: 22, borderWidth: 1, borderColor: colors.warmRule, backgroundColor: colors.white },
+  filterChipSelected: { backgroundColor: colors.purple, borderColor: colors.purple },
+  filterChipText: { color: colors.black, fontFamily: fonts.medium, fontSize: 12 },
+  filterChipTextSelected: { color: colors.white, fontFamily: fonts.bold },
+  resultsHeading: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, paddingTop: 3 },
+  resultsTitleBlock: { gap: 1 },
+  sectionEyebrow: { color: colors.purple, fontFamily: fonts.bold, fontSize: 10, letterSpacing: 0.8 },
+  sectionTitle: { color: colors.orange, fontFamily: fonts.bold, fontSize: 25, lineHeight: 31 },
+  resultsCount: { color: colors.muted, fontFamily: fonts.medium, fontSize: 12, paddingBottom: 4 },
+  sortRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 7 },
+  sortLabel: { color: colors.muted, fontFamily: fonts.bold, fontSize: 9, letterSpacing: 0.7, marginRight: 2 },
+  sortChip: { minHeight: 34, justifyContent: 'center', paddingHorizontal: 12, borderRadius: 18, borderWidth: 1, borderColor: colors.warmRule, backgroundColor: colors.white },
+  sortChipSelected: { backgroundColor: colors.purple, borderColor: colors.purple },
+  sortChipText: { color: colors.black, fontFamily: fonts.medium, fontSize: 11 },
+  sortChipTextSelected: { color: colors.white, fontFamily: fonts.bold },
+  recordList: { gap: 10 },
+  recordCard: { padding: 15, borderRadius: 21, gap: 10, borderWidth: 1, borderColor: 'transparent' },
+  recordLime: { backgroundColor: colors.lime },
+  recordSky: { backgroundColor: colors.sky },
+  recordPlain: { backgroundColor: colors.white, borderColor: colors.warmRule },
+  recordTop: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
+  recordMain: { flex: 1, minWidth: 0, gap: 4 },
+  recordName: { color: colors.black, fontFamily: fonts.bold, fontSize: 16, lineHeight: 20 },
+  recordChain: { color: colors.black, fontFamily: fonts.medium, fontSize: 12, lineHeight: 17 },
+  recordPriceBlock: { alignItems: 'flex-end', paddingTop: 1 },
+  recordPrice: { color: colors.black, fontFamily: fonts.bold, fontSize: 19, lineHeight: 23 },
+  recordPriceLabel: { color: colors.muted, fontFamily: fonts.medium, fontSize: 10 },
+  recordBadges: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
+  categoryBadge: { color: colors.black, fontFamily: fonts.bold, fontSize: 10, backgroundColor: colors.cream, borderRadius: 12, paddingHorizontal: 9, paddingVertical: 5, overflow: 'hidden' },
+  statusBadge: { color: colors.black, fontFamily: fonts.bold, fontSize: 10, backgroundColor: '#F7E6DD', borderRadius: 12, paddingHorizontal: 9, paddingVertical: 5, overflow: 'hidden' },
+  statusBadgeComparable: { backgroundColor: colors.white },
+  sourceDetail: { paddingTop: 8, borderTopWidth: 1, borderTopColor: 'rgba(16,16,16,0.12)', gap: 5 },
+  sourceLine: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  sourceLabel: { width: 78, color: colors.muted, fontFamily: fonts.bold, fontSize: 8, letterSpacing: 0.6 },
+  sourceValue: { flex: 1, color: colors.black, fontFamily: fonts.medium, fontSize: 10, lineHeight: 14 },
+  recordFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+  recordMeta: { flex: 1, color: colors.muted, fontFamily: fonts.medium, fontSize: 9, lineHeight: 13 },
+  unitPrice: { color: colors.black, fontFamily: fonts.bold, fontSize: 10, textAlign: 'right' },
+  openTrail: { alignSelf: 'flex-end', color: colors.purple, fontFamily: fonts.bold, fontSize: 11 },
+  emptyState: { padding: 20, borderRadius: 20, backgroundColor: colors.sky, gap: 8 },
+  emptyTitle: { color: colors.black, fontFamily: fonts.bold, fontSize: 18, lineHeight: 22 },
+  emptyCopy: { color: colors.black, fontFamily: fonts.regular, fontSize: 13, lineHeight: 19 },
+  clearButton: { alignSelf: 'flex-start', minHeight: 40, justifyContent: 'center', borderRadius: 20, paddingHorizontal: 15, backgroundColor: colors.coral, marginTop: 4 },
+  clearButtonText: { color: colors.white, fontFamily: fonts.bold, fontSize: 12 },
+  dealsNote: { color: colors.muted, fontFamily: fonts.regular, fontSize: 12, lineHeight: 18 },
+  pressed: { opacity: 0.72 },
 });

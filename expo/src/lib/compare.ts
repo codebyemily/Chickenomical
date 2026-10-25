@@ -1,6 +1,6 @@
 import type { MenuCategory, MenuOffer } from '@/data/menu-schema';
 import { categoryUnit } from '@/data/menu-schema';
-import type { OfferRecord } from '@/data/mock-convex';
+import type { OfferRecord } from '@/data/live-offers';
 
 const CUT_MIX_FIELDS = ['breast', 'thigh', 'drum', 'wing'] as const;
 
@@ -25,7 +25,7 @@ export function unitPriceLabel(category: MenuCategory | null) {
 
 export function freshnessText(offer: MenuOffer) {
   if (offer.validation_status === 'excluded') return 'EXCLUDED FROM COMPARISON';
-  if (!offer.comparable) return exclusionText(offer);
+  if (!offer.comparable || offer.validation_status !== 'verified') return exclusionText(offer);
 
   const observedAt = Date.parse(offer.observed_at);
   if (Number.isFinite(observedAt) && Date.now() - observedAt > 24 * 60 * 60 * 1000) {
@@ -35,13 +35,19 @@ export function freshnessText(offer: MenuOffer) {
 }
 
 export function exclusionText(offer: MenuOffer) {
-  if (offer.offer_kind !== 'ala_carte') return 'BUNDLE · SCRATCHED FROM UNIT RANKING';
+  if (offer.validation_status === 'excluded') return 'EXCLUDED FROM COMPARISON';
+  if (offer.validation_status !== 'verified') return `VALIDATION STATUS "${offer.validation_status}" IS NOT VERIFIED`;
+  if (offer.offer_kind !== 'ala_carte') {
+    if (offer.offer_kind === 'combo' || offer.offer_kind === 'family_meal' || offer.offer_kind === 'kids_meal') {
+      return 'BUNDLE · SCRATCHED FROM UNIT RANKING';
+    }
+    return `OFFER KIND "${offer.offer_kind}" IS NOT ELIGIBLE FOR UNIT-PRICE RANKING`;
+  }
   if (offer.quantity == null) return 'QUANTITY NOT STATED · SCRATCHED FROM RANKING';
   if (!Number.isInteger(offer.quantity) || offer.quantity <= 0) return 'QUANTITY MUST BE A POSITIVE INTEGER';
   if (offer.list_price_cents == null) return 'PRICE NOT RETURNED · SCRATCHED FROM RANKING';
   if (!Number.isInteger(offer.list_price_cents) || offer.list_price_cents <= 0) return 'PRICE MUST BE A POSITIVE WHOLE-CENT VALUE';
   if (offer.ordering_channel !== 'first_party_pickup') return 'CHANNEL DOES NOT MATCH PICKUP RANKING';
-  if (offer.validation_status !== 'verified') return 'NEEDS REVIEW · SCRATCHED FROM RANKING';
   return 'NOT COMPARABLE · SCRATCHED FROM RANKING';
 }
 
@@ -132,7 +138,7 @@ export function comparisonMatrixGroups(records: OfferRecord[], category: MenuCat
       a.chain.name.localeCompare(b.chain.name) ||
       a.offer.quantity! - b.offer.quantity! ||
       a.offer.original_name.localeCompare(b.offer.original_name) ||
-      a.distance_miles - b.distance_miles,
+      (a.distance_miles ?? Number.POSITIVE_INFINITY) - (b.distance_miles ?? Number.POSITIVE_INFINITY),
     ),
   })).sort((a, b) => a.label.localeCompare(b.label));
 }
@@ -147,7 +153,7 @@ export type QuantitySolution = {
   units: number;
   extraUnits: number;
   totalCents: number;
-  distance_miles: number;
+  distance_miles: number | null;
 };
 
 export function solveAllLocations(records: OfferRecord[], category: MenuCategory, target: number) {
@@ -168,7 +174,7 @@ export function solveAllLocations(records: OfferRecord[], category: MenuCategory
       a.variant.localeCompare(b.variant) ||
       a.totalCents - b.totalCents ||
       a.extraUnits - b.extraUnits ||
-      a.distance_miles - b.distance_miles,
+      (a.distance_miles ?? Number.POSITIVE_INFINITY) - (b.distance_miles ?? Number.POSITIVE_INFINITY),
     );
 }
 

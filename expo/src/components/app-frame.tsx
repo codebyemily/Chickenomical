@@ -10,21 +10,27 @@ import { colors, fonts, radii, spacing } from '@/theme';
 const NAV_ITEMS = [
   { label: 'Compare', href: '/' },
   { label: 'Group', href: '/quantity' },
-  { label: 'Explore', href: '/sources' },
+  { label: 'Sources', href: '/sources' },
   { label: 'Method', href: '/methodology' },
 ];
 
-type AppFrameProps = PropsWithChildren<{ active?: string; compact?: boolean }>;
+type AppFrameProps = PropsWithChildren<{
+  active?: string;
+  compact?: boolean;
+  showDataNotice?: boolean;
+  surface?: 'default' | 'compare';
+}>;
 
-export function AppFrame({ children, compact = false }: AppFrameProps) {
+export function AppFrame({ children, compact = false, showDataNotice = true, surface = 'default' }: AppFrameProps) {
   const web = Platform.OS === 'web';
+  const compareSurface = surface === 'compare';
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const segments = useSegments() as string[];
   const nativeStack = !web && !segments.includes('(tabs)');
 
   return (
-    <SafeAreaView edges={nativeStack ? ['left', 'right'] : ['top', 'left', 'right']} style={styles.safeArea}>
+    <SafeAreaView edges={nativeStack ? ['left', 'right'] : ['top', 'left', 'right']} style={[styles.safeArea, compareSurface && styles.compareSafeArea]}>
       <ScrollView
         testID="app-scroll"
         style={styles.scroll}
@@ -35,17 +41,26 @@ export function AppFrame({ children, compact = false }: AppFrameProps) {
           styles.scrollContent,
           { paddingHorizontal: width >= 900 ? spacing.xxxl : spacing.lg,
             paddingBottom: web ? spacing.xl : Math.max(insets.bottom, spacing.md) + 104 },
+          compareSurface && styles.compareScrollContent,
         ]}
         keyboardShouldPersistTaps="handled">
-        <View role={web ? 'main' : undefined} style={[styles.main, compact && styles.mainCompact]}>
-          <View style={styles.dataNotice}>
-            <Text style={styles.dataNoticeLabel}>SAMPLE DATA</Text>
-            <Text style={styles.dataNoticeText}>Synthetic prices · no live menu connection</Text>
-          </View>
+        <View role={web ? 'main' : undefined} style={[styles.main, compact && styles.mainCompact, compareSurface && styles.compareMain]}>
+          {!compareSurface && showDataNotice ? (
+            <View style={styles.dataNotice}>
+              <Text style={styles.dataNoticeLabel}>CONVEX MENU DATA</Text>
+              <Text style={styles.dataNoticeText}>Recent scraped records · check source and timestamp before ordering</Text>
+            </View>
+          ) : null}
           {children}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>CHICKENOMICAL / ILLUSTRATIVE MENU DATA</Text>
-            <Text style={styles.footerText}>PICKUP ONLY · BEFORE TAX & FEES</Text>
+          <View style={[styles.footer, compareSurface && styles.compareFooter]}>
+            {compareSurface ? (
+              <Text style={[styles.footerText, styles.compareFooterText]}>Menu prices are before tax and fees. Open a source to verify before ordering.</Text>
+            ) : (
+              <>
+                <Text style={styles.footerText}>CHICKENOMICAL / RECENT MENU RECORDS</Text>
+                <Text style={styles.footerText}>PRICE BEFORE TAX & FEES · SOURCE CHANNEL SHOWN</Text>
+              </>
+            )}
           </View>
         </View>
       </ScrollView>
@@ -76,10 +91,14 @@ function WebNavigation() {
   );
 }
 
-export function PageHeading({ title, description, compact = false }: { title: string; description?: string; compact?: boolean }) {
+export function PageHeading({ title, description, compact = false, navOnly = false, tone = 'orange' }: { title: string; description?: string; compact?: boolean; navOnly?: boolean; tone?: 'orange' | 'lime' | 'blue' }) {
   const segments = useSegments() as string[];
   const { width } = useWindowDimensions();
   const nativeStackTitle = Platform.OS !== 'web' && !segments.includes('(tabs)');
+
+  if (navOnly) {
+    return Platform.OS === 'web' ? <View style={styles.navOnly}><WebNavigation /></View> : null;
+  }
 
   if (nativeStackTitle) {
     return description ? <Text style={styles.pageDescription}>{description}</Text> : null;
@@ -92,13 +111,13 @@ export function PageHeading({ title, description, compact = false }: { title: st
       </View>
       <View style={styles.headingCopy}>
         <Text style={styles.eyebrow}>CHICKENOMICAL / FIELD REPORT</Text>
-        <HeadingText level={1} style={[styles.pageTitle, width < 600 && styles.pageTitleNarrow, compact && styles.pageTitleCompact]}>{title}</HeadingText>
+        <HeadingText level={1} style={[styles.pageTitle, tone === 'orange' && styles.pageTitleOrange, tone === 'lime' && styles.pageTitleLime, tone === 'blue' && styles.pageTitleBlue, width < 600 && styles.pageTitleNarrow, compact && styles.pageTitleCompact]}>{title}</HeadingText>
         {description ? <Text style={styles.pageDescription}>{description}</Text> : null}
       </View>
       <View style={[styles.reportMeta, width < 720 && styles.reportMetaNarrow]}>
         <View style={styles.freshness}>
           <View style={styles.sampleDot} />
-          <Text style={styles.freshnessText}>ILLUSTRATIVE SNAPSHOT</Text>
+          <Text style={styles.freshnessText}>DATABASE SNAPSHOT</Text>
         </View>
         <WebNavigation />
       </View>
@@ -130,11 +149,14 @@ export function NoticeBand({ title, children, tone = 'neutral' }: PropsWithChild
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.gray },
+  safeArea: { flex: 1, backgroundColor: colors.cream },
+  compareSafeArea: { backgroundColor: colors.orange },
   scroll: { flex: 1 },
-  scrollContent: { paddingTop: spacing.xl, alignItems: 'center' },
+  scrollContent: { paddingTop: spacing.xl, alignItems: 'center', backgroundColor: colors.cream },
+  compareScrollContent: { paddingHorizontal: 0, paddingTop: 0, backgroundColor: colors.cream },
   main: { width: '100%', maxWidth: 1360, gap: spacing.xl },
   mainCompact: { gap: spacing.md },
+  compareMain: { gap: 0 },
   dataNotice: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm },
   dataNoticeLabel: { color: colors.black, fontFamily: fonts.monoBold, fontSize: 11, lineHeight: 16, letterSpacing: 0.5 },
   dataNoticeText: { color: colors.muted, fontFamily: fonts.regular, fontSize: 12, lineHeight: 18 },
@@ -148,6 +170,9 @@ const styles = StyleSheet.create({
   headingCopy: { flex: 1, gap: spacing.xs, minWidth: 0 },
   eyebrow: { color: colors.black, fontFamily: fonts.monoBold, fontSize: 11, lineHeight: 16, letterSpacing: 0.8 },
   pageTitle: { color: colors.black, fontFamily: fonts.bold, fontSize: 40, lineHeight: 43, letterSpacing: -1.5 },
+  pageTitleOrange: { color: colors.orange },
+  pageTitleLime: { color: '#688B20' },
+  pageTitleBlue: { color: '#27899F' },
   pageTitleNarrow: { fontSize: 27, lineHeight: 30, letterSpacing: -0.9 },
   pageTitleCompact: { fontSize: 21, lineHeight: 25, letterSpacing: -0.55 },
   pageDescription: { color: colors.muted, fontFamily: fonts.regular, fontSize: 14, lineHeight: 21, maxWidth: 760 },
@@ -157,6 +182,7 @@ const styles = StyleSheet.create({
   sampleDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.muted },
   freshnessText: { color: colors.muted, fontFamily: fonts.mono, fontSize: 11, lineHeight: 16, letterSpacing: 0.2 },
   nav: { flexDirection: 'row', gap: spacing.md, flexWrap: 'wrap' },
+  navOnly: { width: '100%', maxWidth: 1360, paddingHorizontal: spacing.lg, paddingTop: spacing.sm, alignItems: 'flex-end' },
   navButton: { minHeight: 32, justifyContent: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
   navButtonNarrow: { minHeight: 44 },
   navSelected: { borderBottomColor: colors.black },
@@ -168,7 +194,9 @@ const styles = StyleSheet.create({
   sectionTrailing: { color: colors.muted, fontFamily: fonts.mono, fontSize: 11, lineHeight: 16, letterSpacing: 0.35, textTransform: 'uppercase' },
   rule: { height: 1, backgroundColor: colors.rule, width: '100%' },
   footer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: spacing.md, paddingTop: spacing.sm },
+  compareFooter: { marginTop: spacing.xl, paddingHorizontal: spacing.lg, paddingVertical: spacing.md, backgroundColor: '#2E252C' },
   footerText: { color: colors.muted, fontFamily: fonts.mono, fontSize: 11, lineHeight: 17 },
+  compareFooterText: { color: colors.white, fontFamily: fonts.medium, fontSize: 12, lineHeight: 18 },
   noticeBand: { padding: spacing.lg, gap: spacing.sm, borderWidth: 1, borderColor: colors.rule, borderRadius: radii.md },
   neutralBand: { backgroundColor: colors.white },
   warningBand: { backgroundColor: colors.paleWarning, borderColor: colors.warning },

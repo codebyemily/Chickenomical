@@ -3,6 +3,16 @@ export const colors = {
   black: '#101010',
   gray: '#F1F2F2',
   white: '#FFFFFF',
+  cream: '#FFF7EE',
+  orange: '#FFA000',
+  purple: '#A900C8',
+  lime: '#D9FF96',
+  sky: '#D7F5F8',
+  blue: '#D7F5F8',
+  blueStrong: '#68BDD1',
+  purpleSoft: '#F0D5F5',
+  coral: '#E93225',
+  warmRule: '#E9DDD1',
   muted: '#687073',
   rule: '#D7D9D9',
   warning: '#7A4B00',
@@ -32,9 +42,9 @@ export const spacing = {
 };
 
 export const radii = {
-  sm: 0,
-  md: 0,
-  lg: 0,
+  sm: 10,
+  md: 16,
+  lg: 24,
   pill: 999,
 };
 

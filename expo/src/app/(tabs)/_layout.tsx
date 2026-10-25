@@ -4,8 +4,8 @@ import { colors } from '@/theme';
 
 export default function TabLayout() {
   return (
-    <NativeTabs tintColor={colors.black} backgroundColor={colors.white}>
-      <NativeTabs.Trigger name="index">
+    <NativeTabs tintColor={colors.purple} backgroundColor={colors.white}>
+      <NativeTabs.Trigger name="(compare)" contentStyle={{ backgroundColor: colors.orange }}>
         <NativeTabs.Trigger.Icon sf="fork.knife" md="restaurant" />
         <NativeTabs.Trigger.Label>Compare</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
@@ -15,7 +15,7 @@ export default function TabLayout() {
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="sources">
         <NativeTabs.Trigger.Icon sf="doc.text.magnifyingglass" md="receipt_long" />
-        <NativeTabs.Trigger.Label>Explore</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>Sources</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="methodology">
         <NativeTabs.Trigger.Icon sf="text.book.closed" md="menu_book" />
