@@ -3,7 +3,7 @@ import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-nativ
 import { AppFrame, BackLink } from '@/components/app-frame';
 import { HeadingText } from '@/components/heading-text';
 import { QueryStatePanel } from '@/components/query-state-panel';
-import { useLiveOffersQuery, type OfferRecord } from '@/data/live-offers';
+import { useStoredOffersQuery, type OfferRecord } from '@/data/live-offers';
 import { decorative } from '@/lib/a11y';
 import { isRankable } from '@/lib/compare';
 import { colors, fonts, radii, spacing } from '@/theme';
@@ -26,14 +26,13 @@ const RULES = [
 ];
 
 export default function MethodologyScreen() {
-  const query = useLiveOffersQuery();
+  const query = useStoredOffersQuery();
   const records = query.status === 'success' ? query.data : EMPTY_RECORDS;
   const chains = new Set(records.map(({ chain }) => chain.id)).size;
   const locations = new Set(records.map(({ location }) => location.id)).size;
   const providers = new Set(records.map(({ offer }) => offer.source_provider.trim()).filter(Boolean)).size;
   const priced = records.filter(({ offer }) => offer.list_price_cents != null).length;
   const comparable = records.filter(({ offer }) => isRankable(offer)).length;
-  const snapshotFailed = query.status === 'success' && query.metadata.job?.status === 'failed';
 
   return (
     <AppFrame active="Method" edgeToEdgeTop nativeSurface="compare" surface="compare" showDataNotice={false}>
@@ -69,7 +68,7 @@ export default function MethodologyScreen() {
 
           {query.status === 'success' ? (
             <>
-              <View style={[styles.snapshotCard, query.metadata.job?.status === 'failed' && styles.snapshotCardFailed]}>
+              <View style={styles.snapshotCard}>
                 <View style={styles.snapshotTop}>
                   <View style={styles.snapshotTitleGroup}>
                     <View style={[styles.statusDot, statusTone(query.metadata.job?.status)]} />
@@ -95,23 +94,16 @@ export default function MethodologyScreen() {
               </View>
 
               <View style={styles.metricsGrid}>
-                <MetricCard label="OFFERS" value={snapshotFailed ? '—' : String(query.metadata.offer_count)} tone="lime" />
-                <MetricCard label="STORES" value={snapshotFailed ? '—' : String(locations)} tone="sky" />
-                <MetricCard label="RESTAURANTS" value={snapshotFailed ? '—' : String(chains)} tone="plain" />
-                <MetricCard label="SOURCES" value={snapshotFailed ? '—' : String(providers)} tone="plain" />
+                <MetricCard label="OFFERS" value={String(query.metadata.offer_count)} tone="lime" />
+                <MetricCard label="STORES" value={String(locations)} tone="sky" />
+                <MetricCard label="RESTAURANTS" value={String(chains)} tone="plain" />
+                <MetricCard label="SOURCES" value={String(providers)} tone="plain" />
               </View>
               <Text style={styles.coverageNote}>
-                {snapshotFailed
-                  ? 'Current counts are unavailable because the latest menu check failed.'
-                  : `${comparable} ready for comparison - ${priced} with a listed price - counts cover this update only.`}
+                {`${comparable} ready for comparison - ${priced} with a listed price - counts cover the offers currently available.`}
               </Text>
 
-              {snapshotFailed ? (
-                <View style={styles.emptyState}>
-                  <Text style={styles.emptyTitle}>Current counts unavailable</Text>
-                  <Text style={styles.emptyCopy}>The latest menu update did not finish before a trustworthy result was available. Try again after the next update.</Text>
-                </View>
-              ) : records.length === 0 ? (
+              {records.length === 0 ? (
                 <View style={styles.emptyState}>
                   <Text style={styles.emptyTitle}>No offers in this board yet</Text>
                   <Text style={styles.emptyCopy}>No menu offers were included in this update. Try again after another update.</Text>
@@ -193,7 +185,6 @@ const styles = StyleSheet.create({
   liveHeadingCopy: { gap: 2 },
   sectionTitle: { color: colors.orangeInk, fontFamily: fonts.bold, fontSize: 23, lineHeight: 29, letterSpacing: -0.5 },
   snapshotCard: { padding: spacing.lg, borderRadius: radii.lg, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.warmRule, gap: spacing.sm },
-  snapshotCardFailed: { borderColor: colors.danger, backgroundColor: colors.paleDanger },
   snapshotTop: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
   snapshotTitleGroup: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   statusDot: { width: 9, height: 9, borderRadius: 5 },
