@@ -6,7 +6,10 @@ export default function App() {
   return (
     <>
       <header className="sticky top-0 z-10 bg-light dark:bg-dark p-4 border-b-2 border-slate-200 dark:border-slate-800 flex flex-row justify-between items-center">
-        Convex + React + WorkOS AuthKit
+        <a href="/" className="flex items-center gap-2" aria-label="Chickenomical home">
+          <img src="/chickenomical.png" alt="" className="h-10 w-10 object-contain" />
+          <span>Chickenomical</span>
+        </a>
         <AuthButton />
       </header>
       <main className="p-8 flex flex-col gap-16">

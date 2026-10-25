@@ -13,7 +13,8 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="description" content="Compare recent chicken menu prices, pack sizes, locations, and source records." />
         <meta name="application-name" content="Chickenomical" />
         <meta name="apple-mobile-web-app-title" content="Chickenomical" />
-        <link rel="icon" type="image/svg+xml" href="/chickenomical.svg" />
+        <link rel="icon" type="image/png" sizes="48x48" href="/chickenomical.png" />
+        <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png" />
         <link rel="manifest" href="/manifest.webmanifest" />
         <meta
           name="viewport"

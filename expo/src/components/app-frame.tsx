@@ -1,11 +1,13 @@
 import { usePathname, useSegments } from 'expo-router';
 import type { PropsWithChildren } from 'react';
-import { Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Image, Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HeadingText } from '@/components/heading-text';
 import { LinkPressable } from '@/components/link-pressable';
 import { colors, fonts, radii, spacing } from '@/theme';
+
+const CHICKENOMICAL_ICON = require('../../assets/images/chickenomical.png');
 
 const NAV_ITEMS = [
   { label: 'Compare', href: '/' },
@@ -78,7 +80,7 @@ function WebNavigation() {
     <View style={styles.navWrap}>
       <View role="navigation" accessibilityLabel="Main navigation" style={styles.nav}>
         <LinkPressable href="/" accessibilityLabel="Chickenomical home" style={({ pressed }) => [styles.brandLink, pressed && styles.pressed]}>
-          <Text accessibilityElementsHidden style={styles.brandEmoji}>🐔</Text>
+          <Image source={CHICKENOMICAL_ICON} accessibilityLabel="Chickenomical logo" style={styles.brandLogo} />
           <Text style={styles.brandName}>chickenomical</Text>
         </LinkPressable>
         <View style={styles.navLinks}>
@@ -115,9 +117,7 @@ export function PageHeading({ title, description, compact = false, tone = 'orang
 
   return (
     <View style={[styles.masthead, width < 720 && styles.mastheadNarrow, compact && styles.mastheadCompact]}>
-      <View style={[styles.brandMark, compact && styles.brandMarkCompact]} accessibilityLabel="Chickenomical">
-        <Text style={styles.brandMarkText}>C<Text style={styles.brandSlash}>/</Text></Text>
-      </View>
+      <Image source={CHICKENOMICAL_ICON} accessibilityLabel="Chickenomical logo" style={[styles.brandMark, compact && styles.brandMarkCompact]} />
       <View style={styles.headingCopy}>
         <Text style={styles.eyebrow}>CHICKENOMICAL / FIELD REPORT</Text>
         <HeadingText level={1} style={[styles.pageTitle, tone === 'orange' && styles.pageTitleOrange, tone === 'lime' && styles.pageTitleLime, tone === 'blue' && styles.pageTitleBlue, width < 600 && styles.pageTitleNarrow, compact && styles.pageTitleCompact]}>{title}</HeadingText>
@@ -174,10 +174,8 @@ const styles = StyleSheet.create({
   masthead: { flexDirection: 'row', gap: 18, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: colors.black, paddingBottom: 28 },
   mastheadNarrow: { flexWrap: 'wrap', columnGap: spacing.md, rowGap: spacing.lg },
   mastheadCompact: { gap: spacing.sm, paddingBottom: spacing.sm, rowGap: spacing.sm },
-  brandMark: { width: 52, height: 52, backgroundColor: colors.black, justifyContent: 'center', alignItems: 'center' },
+  brandMark: { width: 52, height: 52 },
   brandMarkCompact: { width: 36, height: 36 },
-  brandMarkText: { color: colors.yellow, fontFamily: fonts.monoBold, fontSize: 28, letterSpacing: -4 },
-  brandSlash: { color: colors.white },
   headingCopy: { flex: 1, gap: spacing.xs, minWidth: 0 },
   eyebrow: { color: colors.black, fontFamily: fonts.monoBold, fontSize: 11, lineHeight: 16, letterSpacing: 0.8 },
   pageTitle: { color: colors.black, fontFamily: fonts.bold, fontSize: 40, lineHeight: 43, letterSpacing: -1.5 },
@@ -195,7 +193,7 @@ const styles = StyleSheet.create({
   navWrap: { width: '100%', alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: spacing.sm, backgroundColor: colors.cream },
   nav: { width: '100%', maxWidth: 1360, minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, flexWrap: 'wrap' },
   brandLink: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.xs },
-  brandEmoji: { fontSize: 19, lineHeight: 24 },
+  brandLogo: { width: 34, height: 34 },
   brandName: { color: colors.black, fontFamily: fonts.bold, fontSize: 16, lineHeight: 22, letterSpacing: -0.35 },
   navLinks: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: spacing.sm, flexWrap: 'wrap' },
   navButton: { minHeight: 48, minWidth: 72, justifyContent: 'center', alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent', paddingHorizontal: spacing.xs },
