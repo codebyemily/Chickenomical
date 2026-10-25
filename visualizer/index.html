@@ -46,7 +46,7 @@
           <strong id="searchAddress">No scrape loaded yet</strong>
         </div>
         <div class="location-stat"><span class="label">RADIUS</span><strong id="radius">—</strong></div>
-        <div class="location-stat"><span class="label">CHANNEL</span><strong id="channel">—</strong></div>
+        <div class="location-stat"><span class="label">CHANNELS</span><strong id="channel">—</strong></div>
       </section>
 
       <section class="signal-grid">
@@ -65,6 +65,33 @@
         </div>
       </section>
 
+      <section class="compare-panel" aria-label="Channel compare matrix">
+        <div class="compare-heading">
+          <div>
+            <p class="eyebrow">CHANNEL MATRIX</p>
+            <h2>Direct · DoorDash · Uber Eats</h2>
+          </div>
+          <p class="compare-note">Same product_key across tied locations. DoorDash vs Uber Eats highlighted on delivery.</p>
+        </div>
+        <div class="table-wrap">
+          <table class="compare-table">
+            <thead>
+              <tr>
+                <th>ITEM / STORE</th>
+                <th>DIRECT PICKUP</th>
+                <th>DD PICKUP</th>
+                <th class="mkt-col">DD DELIVERY</th>
+                <th>UE PICKUP</th>
+                <th class="mkt-col">UE DELIVERY</th>
+              </tr>
+            </thead>
+            <tbody id="compareRows">
+              <tr><td colspan="6" class="empty">Run a scrape to compare channels.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <section class="workspace">
         <div class="board">
           <div class="board-heading">
@@ -74,13 +101,15 @@
           <div class="filters" aria-label="Offer filters">
             <label>CHAIN <select id="chainFilter"><option value="all">All chains</option></select></label>
             <label>TYPE <select id="categoryFilter"><option value="all">All chicken</option></select></label>
+            <label>PLATFORM <select id="platformFilter"><option value="all">All platforms</option><option value="direct">Direct</option><option value="doordash">DoorDash</option><option value="ubereats">Uber Eats</option></select></label>
+            <label>FULFILLMENT <select id="fulfillmentFilter"><option value="all">Pickup + delivery</option><option value="pickup">Pickup</option><option value="delivery">Delivery</option></select></label>
             <label>SORT <select id="sortFilter"><option value="price">Lowest price</option><option value="unit">Lowest / piece</option><option value="distance">Closest store</option><option value="chain">Chain A–Z</option></select></label>
             <span class="result-count" id="resultCount">—</span>
           </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>OFFER</th><th>CHAIN / STORE</th><th>TYPE</th><th>PRICE</th><th>$/PIECE</th></tr></thead>
-              <tbody id="offerRows"><tr><td colspan="5" class="empty">Loading the offer board…</td></tr></tbody>
+              <thead><tr><th>OFFER</th><th>CHAIN / STORE</th><th>CHANNEL</th><th>TYPE</th><th>PRICE</th><th>$/PIECE</th></tr></thead>
+              <tbody id="offerRows"><tr><td colspan="6" class="empty">Loading the offer board…</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -88,7 +117,7 @@
         <aside class="rail">
           <div class="rail-heading"><p class="eyebrow">FIELD NOTES</p><h2>Store coverage</h2></div>
           <div id="storeList" class="store-list"></div>
-          <div class="method-note"><span class="label">METHOD</span><p>Prices are first-party pickup observations. Yellow marks the lowest verified comparable offer in this snapshot.</p></div>
+          <div class="method-note"><span class="label">METHOD</span><p>Bright Data scrapes first-party pickup first (required). Only chains with direct prices then get parallel Apify DoorDash + Uber Eats pickup/delivery searches. Yellow marks the lowest verified comparable offer. Marketplace-vs-marketplace compare uses delivery columns.</p></div>
         </aside>
       </section>
       <footer><span>CHICKENOMICAL / SOURCE-VERIFIED MENU DATA</span><span id="footerStatus">—</span></footer>

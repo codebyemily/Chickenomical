@@ -67,7 +67,6 @@ http.route({
       ? body.chains.filter((id): id is string => typeof id === 'string' && (SCRAPE_CHAINS as readonly string[]).includes(id))
       : [...SCRAPE_CHAINS];
     if (chains.length === 0) return new Response('No supported chains requested', { status: 400, headers: cors });
-
     const requestedAt = new Date().toISOString();
     const jobId = await ctx.runMutation(internal.scrapeNear.startJob, {
       address: body.address.trim(),

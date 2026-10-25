@@ -1,5 +1,5 @@
 import { geocode, milesBetween } from "./geo";
-import { unlockerJson } from "./brightData";
+import { unlockerExchange, unlockerJson, unlockerText } from "./brightData";
 import { dollarsToCents, roundMiles, toOffer, type MenuOffer } from "./offerShape";
 
 export type Origin = { latitude: number; longitude: number; label: string };
@@ -16,12 +16,17 @@ export type Store = {
 export const SCRAPE_CHAINS = ["raising-canes", "jollibee", "wingstop", "popeyes"] as const;
 export type ScrapeChainId = (typeof SCRAPE_CHAINS)[number];
 
-const CHAIN_NAMES: Record<ScrapeChainId, string> = {
+export const CHAIN_NAMES: Record<ScrapeChainId, string> = {
   "raising-canes": "Raising Cane's",
   jollibee: "Jollibee",
   wingstop: "Wingstop",
   popeyes: "Popeyes",
 };
+
+/** DoorDash search slug (lowercase display name). */
+export function chainSearchName(chainId: ScrapeChainId) {
+  return CHAIN_NAMES[chainId].toLowerCase();
+}
 
 export async function resolveOrigin(address: string): Promise<Origin> {
   return geocode(address);
@@ -40,20 +45,30 @@ export async function scrapeChains(
   }> = [];
   const offers: MenuOffer[] = [];
 
-  for (const chainId of chains) {
+  // Parallelize first-party chains — Bright Data phase should finish before Apify.
+  const settled = await Promise.all(chains.map(async (chainId) => {
     try {
       const stores = await locate(chainId, origin, radiusMiles, limit);
       const scraped = [];
       for (const store of stores) {
-        const storeOffers = await menuOffers(chainId, store, observedAt);
-        scraped.push({ ...store, offers: storeOffers, offer_count: storeOffers.length });
-        offers.push(...storeOffers);
+        try {
+          const storeOffers = await menuOffers(chainId, store, observedAt);
+          scraped.push({ ...store, offers: storeOffers, offer_count: storeOffers.length });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          scraped.push({ ...store, offers: [], offer_count: 0, error: message });
+        }
       }
-      results.push({ chain_id: chainId, name: CHAIN_NAMES[chainId], stores: scraped });
+      return { chain_id: chainId, name: CHAIN_NAMES[chainId], stores: scraped };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      results.push({ chain_id: chainId, name: CHAIN_NAMES[chainId], stores: [], error: message });
+      return { chain_id: chainId, name: CHAIN_NAMES[chainId], stores: [], error: message };
     }
+  }));
+
+  for (const result of settled) {
+    results.push(result);
+    for (const store of result.stores) offers.push(...store.offers);
   }
 
   return { results, offers };
@@ -143,21 +158,42 @@ async function canesOffers(store: Store, observedAt: string) {
 }
 
 async function locateJollibee(origin: Origin, radiusMiles: number, limit: number) {
-  const url = new URL("https://www.jollibeefoods.com/api/location/search");
-  url.searchParams.set("query", origin.label);
-  const payload = await unlockerJson(url, { preferDirect: true });
-  return (payload.results ?? [])
-    .filter((store: { inOlo?: boolean; id?: string; yextDisplayCoordinate?: { latitude: number; longitude: number } }) =>
-      store.inOlo && store.id && store.yextDisplayCoordinate)
-    .map((store: {
-      id: string;
-      name?: string;
-      address?: { line1?: string; city?: string; region?: string; postalCode?: string };
-      yextDisplayCoordinate: { latitude: number; longitude: number };
-      distanceMiles?: number;
-    }) => {
-      const latitude = Number(store.yextDisplayCoordinate.latitude);
-      const longitude = Number(store.yextDisplayCoordinate.longitude);
+  // City labels sometimes miss Olo-enabled stores; fall back to lat,lng.
+  const queries = [
+    origin.label,
+    `${origin.latitude},${origin.longitude}`,
+    origin.label.split(",")[0]?.trim(),
+  ].filter((value, index, all): value is string => Boolean(value) && all.indexOf(value) === index);
+
+  let results: unknown[] = [];
+  let lastError: unknown;
+  for (const query of queries) {
+    try {
+      const url = new URL("https://www.jollibeefoods.com/api/location/search");
+      url.searchParams.set("query", query);
+      const payload = await unlockerJson(url, { preferDirect: true });
+      results = payload.results ?? [];
+      if (results.length) break;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  if (!results.length && lastError) throw lastError;
+
+  type JollibeeHit = {
+    inOlo?: boolean;
+    id?: string;
+    name?: string;
+    distanceMiles?: number;
+    address?: { line1?: string; city?: string; region?: string; postalCode?: string };
+    yextDisplayCoordinate?: { latitude: number; longitude: number };
+  };
+
+  return (results as JollibeeHit[])
+    .filter((store) => store.inOlo && store.id && store.yextDisplayCoordinate)
+    .map((store) => {
+      const latitude = Number(store.yextDisplayCoordinate!.latitude);
+      const longitude = Number(store.yextDisplayCoordinate!.longitude);
       const address = store.address ?? {};
       return {
         id: String(store.id),
@@ -170,10 +206,10 @@ async function locateJollibee(origin: Origin, radiusMiles: number, limit: number
             ?? milesBetween(origin, { latitude, longitude }),
         ),
         pickup: true,
-      };
+      } satisfies Store;
     })
-    .filter((store: Store) => Number.isFinite(store.latitude) && store.distance_miles <= radiusMiles)
-    .sort((a: Store, b: Store) => a.distance_miles - b.distance_miles)
+    .filter((store) => Number.isFinite(store.latitude) && store.distance_miles <= radiusMiles)
+    .sort((a, b) => a.distance_miles - b.distance_miles)
     .slice(0, limit);
 }
 
@@ -186,12 +222,22 @@ async function jollibeeOffers(store: Store, observedAt: string) {
     "chicken-sandwiches",
     "family-meals",
     "meal-deals",
+    "limited-time-offers",
   ];
   const offers: MenuOffer[] = [];
   const seen = new Set<string>();
-  for (const slug of slugs) {
+  // Parallel category fetches — empty/404 categories are soft-skipped.
+  const categoryResults = await Promise.all(slugs.map(async (slug) => {
+    try {
+      return { slug, products: await fetchJollibeeCategory(slug, cookie) };
+    } catch (error) {
+      console.warn(`Jollibee ${store.id} menu/${slug}: ${error instanceof Error ? error.message : error}`);
+      return { slug, products: [] as Record<string, unknown>[] };
+    }
+  }));
+
+  for (const { slug, products } of categoryResults) {
     const sourceUrl = `https://www.jollibeefoods.com/menu/${slug}`;
-    const products = await fetchJollibeeCategory(slug, cookie);
     for (const product of products) {
       if (product.Available === false) continue;
       const name = String(product.Name ?? "");
@@ -223,49 +269,56 @@ async function jollibeeOffers(store: Store, observedAt: string) {
       offers.push(offer);
     }
   }
+  if (offers.length === 0) {
+    throw new Error(`Jollibee ${store.id} returned no priced chicken offers after basket open.`);
+  }
   return offers;
 }
 
 async function openJollibeeBasket(locationId: string) {
-  const response = await fetch("https://www.jollibeefoods.com/api/basket", {
+  const headers = {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+    Origin: "https://www.jollibeefoods.com",
+    Referer: "https://www.jollibeefoods.com/locations",
+  };
+  const body = JSON.stringify({ Id: String(locationId) });
+  // Direct first (cookie jar works), Unlocker fallback when Convex IP is blocked.
+  const exchange = await unlockerExchange("https://www.jollibeefoods.com/api/basket", {
+    preferDirect: true,
     method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      "User-Agent": "Chickenomical/1.0",
-      Origin: "https://www.jollibeefoods.com",
-      Referer: "https://www.jollibeefoods.com/locations",
-    },
-    body: JSON.stringify({ Id: String(locationId) }),
+    headers,
+    body,
   });
-  const text = await response.text();
-  if (!response.ok) throw new Error(`Jollibee basket HTTP ${response.status}: ${text.slice(0, 180)}`);
-  const cookies = response.headers.getSetCookie?.() ?? [];
-  const header = cookies.map((cookie) => cookie.split(";")[0]).filter(Boolean).join("; ");
-  if (!/JOL_BASKET_ID=/.test(header)) throw new Error("Jollibee basket response missing JOL_BASKET_ID cookie.");
-  return header;
+  if (!/JOL_BASKET_ID=/.test(exchange.setCookie)) {
+    throw new Error("Jollibee basket response missing JOL_BASKET_ID cookie.");
+  }
+  return exchange.setCookie;
 }
 
 async function fetchJollibeeCategory(slug: string, cookie: string) {
-  const response = await fetch(`https://www.jollibeefoods.com/menu/${slug}`, {
-    headers: {
-      Accept: "text/html",
-      "User-Agent": "Chickenomical/1.0",
-      Cookie: cookie,
-      Referer: "https://www.jollibeefoods.com/menu",
-    },
-  });
-  if (response.status === 404) return [];
-  const html = await response.text();
-  if (!response.ok) throw new Error(`Jollibee menu/${slug} HTTP ${response.status}`);
-  const match = html.match(/<script id="__NEXT_DATA__"[^>]*>(.*?)<\/script>/s);
-  if (!match) return [];
-  const next = JSON.parse(match[1]);
-  const category = next.props?.pageProps?.category;
-  return (category?.Products ?? []).map((product: Record<string, unknown>) => ({
-    ...product,
-    categoryName: category?.Name ?? slug,
-  }));
+  try {
+    const html = await unlockerText(`https://www.jollibeefoods.com/menu/${slug}`, {
+      preferDirect: true,
+      headers: {
+        Accept: "text/html",
+        Cookie: cookie,
+        Referer: "https://www.jollibeefoods.com/menu",
+      },
+    });
+    const match = html.match(/<script id="__NEXT_DATA__"[^>]*>(.*?)<\/script>/s);
+    if (!match) return [];
+    const next = JSON.parse(match[1]);
+    const category = next.props?.pageProps?.category;
+    return (category?.Products ?? []).map((product: Record<string, unknown>) => ({
+      ...product,
+      categoryName: category?.Name ?? slug,
+    }));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/\b404\b/.test(message)) return [];
+    throw error;
+  }
 }
 
 async function locateWingstop(origin: Origin, radiusMiles: number, limit: number) {

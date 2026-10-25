@@ -117,7 +117,7 @@ export const board = query({
         latitude: job?.latitude ?? null,
         longitude: job?.longitude ?? null,
         radius_miles: job?.radius_miles ?? null,
-        ordering_channel: 'first_party_pickup',
+        ordering_channel: 'multi_channel',
       },
       observed_at: job?.completed_at ?? job?.requested_at ?? offers[0]?.observed_at ?? null,
       job: job

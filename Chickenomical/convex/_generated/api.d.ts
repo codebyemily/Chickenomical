@@ -10,6 +10,7 @@
 
 import type * as http from "../http.js";
 import type * as ingest from "../ingest.js";
+import type * as lib_apifyMarketplace from "../lib/apifyMarketplace.js";
 import type * as lib_brightData from "../lib/brightData.js";
 import type * as lib_geo from "../lib/geo.js";
 import type * as lib_offerShape from "../lib/offerShape.js";
@@ -28,6 +29,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   http: typeof http;
   ingest: typeof ingest;
+  "lib/apifyMarketplace": typeof lib_apifyMarketplace;
   "lib/brightData": typeof lib_brightData;
   "lib/geo": typeof lib_geo;
   "lib/offerShape": typeof lib_offerShape;
