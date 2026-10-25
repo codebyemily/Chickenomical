@@ -81,6 +81,10 @@ export function toOffer(card: OfferCard, sourceUrl: string, observedAt: string):
     && (resolvedQuantity as number) > 0
     && Number.isInteger(listPriceCents)
     && (listPriceCents as number) >= 0;
+  const verified = Number.isInteger(resolvedQuantity)
+    && (resolvedQuantity as number) > 0
+    && Number.isInteger(listPriceCents)
+    && (listPriceCents as number) >= 0;
 
   return {
     chain_id: card.chain_id,
@@ -106,7 +110,7 @@ export function toOffer(card: OfferCard, sourceUrl: string, observedAt: string):
     includes: [],
     ordering_channel: orderingChannel,
     comparable,
-    validation_status: comparable ? "verified" : "needs_review",
+    validation_status: verified ? "verified" : "needs_review",
     source_provider: sourceProvider,
     source_url: sourceUrl,
     source_item_id: card.href || null,
@@ -122,6 +126,8 @@ export function parseQuantity(...parts: Array<string | null | undefined>) {
     /(\d+)\s*[- ]?fingers?\b/i,
     /(\d+)\s+(?:chicken\s+)?fingers?\b/i,
     /(\d+)\s*[- ]?wings?\b/i,
+    /(\d+)\s+(?:[a-z]+(?:[-'][a-z]+)?\s+){0,3}(?:bone[- ]?in\s+|boneless\s+)?wings?\b/i,
+    /(\d+)\s+(?:[a-z]+(?:[-'][a-z]+)?\s+){0,2}tenders?\b/i,
     /(\d+)\s+boneless\b/i,
   ];
   for (const part of parts) {

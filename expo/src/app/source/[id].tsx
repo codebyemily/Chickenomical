@@ -9,6 +9,7 @@ import { useLiveOffersQuery, useRecentOffersQuery, type OfferRecord } from '@/da
 import { categoryUnit } from '@/data/menu-schema';
 import { isRankable, money, unitMoney } from '@/lib/compare';
 import { offerDetailRoute } from '@/lib/live-offer-routes';
+import { isWingstopApiMenuUrl } from '@/lib/order-links';
 import { colors, fonts, radii, spacing, tabular } from '@/theme';
 import { pageMetadata } from '@/data/page-metadata';
 import type { GenerateMetadataFunction } from 'expo-router/server';
@@ -121,7 +122,11 @@ export default function SourceDetailScreen() {
             <View style={styles.fieldGroup}>
               <Text style={styles.groupTitle}>Source</Text>
               <FieldRow label="Source" value={offer.source_provider} />
-              <FieldRow label="Link" value={offer.source_url} href={offer.source_url || undefined} />
+              <FieldRow
+                label="Link"
+                value={offer.source_url}
+                href={isWingstopApiMenuUrl(offer.chain_id, offer.source_url) ? undefined : offer.source_url || undefined}
+              />
             </View>
 
             <View style={[styles.fieldGroup, styles.fieldGroupSky]}>

@@ -20,15 +20,15 @@ export const byLocation = query({
   handler: async (ctx, args) => {
     if (args.ordering_channel) {
       const channel = args.ordering_channel;
-      return await ctx.db
+      return (await ctx.db
         .query('menuOffers')
         .withIndex('by_location_and_channel', (q) => q.eq('location_id', args.location_id).eq('ordering_channel', channel))
-        .take(200);
+        .take(200)).filter(isValidStoredOffer);
     }
-    return await ctx.db
+    return (await ctx.db
       .query('menuOffers')
       .withIndex('by_location_and_channel', (q) => q.eq('location_id', args.location_id))
-      .take(200);
+      .take(200)).filter(isValidStoredOffer);
   },
 });
 
@@ -51,6 +51,9 @@ const CHAIN_NAMES: Record<string, string> = {
   wendys: "Wendy's",
   mcdonalds: "McDonald's",
   'chick-fil-a': 'Chick-fil-A',
+  'jack-in-the-box': 'Jack in the Box',
+  ihop: 'IHOP',
+  'buffalo-wild-wings': 'Buffalo Wild Wings',
   kfc: 'KFC',
 };
 
@@ -170,7 +173,7 @@ export const rankByUnitPrice = query({
       .withIndex('by_category', (q) => q.eq('category', args.category))
       .take(MAX_SCAN);
     const ranked = rows
-      .filter((o) => isEligible(o, args.chain_id, args.ordering_channel))
+      .filter((o) => isValidStoredOffer(o) && isEligible(o, args.chain_id, args.ordering_channel))
       .map((o) => ({
         chain_id: o.chain_id,
         location_id: o.location_id,
@@ -222,7 +225,7 @@ export const cheapestForQuantity = query({
     // direct menu and its DoorDash menu are solved independently.
     const groups = new Map<string, { meta: (typeof rows)[number]; offers: EligibleOffer[] }>();
     for (const o of rows) {
-      if (!isEligible(o, args.chain_id, args.ordering_channel)) continue;
+      if (!isValidStoredOffer(o) || !isEligible(o, args.chain_id, args.ordering_channel)) continue;
       const key = `${o.location_id}|${o.ordering_channel}`;
       if (!groups.has(key)) groups.set(key, { meta: o, offers: [] });
       groups.get(key)!.offers.push({ quantity: o.quantity as number, list_price_cents: o.list_price_cents as number, original_name: o.original_name });

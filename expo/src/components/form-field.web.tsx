@@ -6,6 +6,7 @@ import { colors, fonts, radii } from '@/theme';
 
 export function FormField({
   label,
+  labelHidden = false,
   value,
   onChangeText,
   placeholder,
@@ -25,7 +26,7 @@ export function FormField({
 
   return (
     <View style={styles.field}>
-      <Text style={[styles.label, appearance === 'search' && styles.searchLabel]}>{label}</Text>
+      {!labelHidden ? <Text style={[styles.label, appearance === 'search' && styles.searchLabel]}>{label}</Text> : null}
       <View style={[
         styles.inputHost,
         appearance === 'search' && (focused ? styles.searchInputHostFocused : styles.searchInputHost),

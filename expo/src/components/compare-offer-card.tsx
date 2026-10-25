@@ -1,10 +1,11 @@
-import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { LinkPressable } from '@/components/link-pressable';
 import type { OfferRecord } from '@/data/live-offers';
 import { categoryLabel, categoryUnit, quantityText } from '@/data/menu-schema';
 import { freshnessText, money, unitMoney } from '@/lib/compare';
 import { offerDetailRoute } from '@/lib/live-offer-routes';
+import { canOpenOrderLink, openOrderLink } from '@/lib/order-links';
 import { colors, curve, fonts, ripple, spacing, tabular } from '@/theme';
 
 type CompareOfferCardProps = {
@@ -26,7 +27,7 @@ export function FeaturedOfferCard({ record, kind, compact = false }: { record: O
     ? `${money(offer.list_price_cents, offer.currency)} total`
     : `${unitMoney(offer)} per ${categoryUnit(offer.category, 1)}`;
   const order = orderAction(offer.ordering_channel);
-  const orderUrl = orderUrlFor(offer.source_url);
+  const hasOrderLink = canOpenOrderLink(offer);
   const ranking = kind === 'unit' ? 'Best quantity per dollar' : 'Lowest overall';
 
   return (
@@ -40,13 +41,13 @@ export function FeaturedOfferCard({ record, kind, compact = false }: { record: O
       <Text style={[styles.featuredPrice, compact && styles.featuredPriceCompact, tabular]}>{headline}</Text>
       <Text style={[styles.featuredPriceDetail, compact && styles.featuredPriceDetailCompact]}>{supportingPrice}</Text>
       <Text numberOfLines={2} style={[styles.featuredSource, compact && styles.featuredSourceCompact]}>{sourceLine}</Text>
-      {orderUrl ? (
+      {hasOrderLink ? (
         <Pressable
           accessibilityRole="link"
           accessibilityLabel={order.label}
           accessibilityHint="Opens the restaurant’s ordering page."
           android_ripple={ripple}
-          onPress={() => openOrderLink(orderUrl)}
+          onPress={() => openOrderLink(offer, location)}
           style={({ pressed }) => [styles.orderButton, compact && styles.orderButtonCompact, orderButtonStyle(order.tone), pressed && styles.pressed]}>
           <Text style={[styles.orderButtonText, compact && styles.orderButtonTextCompact, order.tone !== 'direct' && order.tone !== 'doordash' && styles.orderButtonTextDark]}>{order.label}</Text>
         </Pressable>
@@ -138,23 +139,6 @@ function orderButtonStyle(tone: 'direct' | 'doordash' | 'uber' | 'other') {
   if (tone === 'uber') return styles.orderUber;
   if (tone === 'other') return styles.orderOther;
   return styles.orderDirect;
-}
-
-function orderUrlFor(value: string) {
-  try {
-    const url = new URL(value);
-    return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString() : null;
-  } catch {
-    return null;
-  }
-}
-
-function openOrderLink(url: string) {
-  if (Platform.OS === 'web') {
-    window.open(url, '_blank', 'noopener,noreferrer');
-    return;
-  }
-  void Linking.openURL(url);
 }
 
 function storeName(name: string | null, address: string | null) {

@@ -7,7 +7,7 @@ import type { ErrorBoundaryProps } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
 import { useEffect } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { ConvexProvider } from 'convex/react';
 
 import { AppFrame } from '@/components/app-frame';
@@ -54,6 +54,7 @@ export default function RootLayout() {
         <Stack
           screenOptions={{
             headerShown: false,
+            animation: Platform.OS === 'web' ? 'none' : undefined,
             statusBarStyle: 'dark',
             contentStyle: { backgroundColor: colors.cream },
             headerStyle: { backgroundColor: colors.cream },

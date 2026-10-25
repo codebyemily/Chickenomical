@@ -12,6 +12,7 @@ import { freshnessText, isRankable, money, unitMoney } from '@/lib/compare';
 import { decorative } from '@/lib/a11y';
 import { sourceRecordRoute } from '@/lib/live-offer-routes';
 import type { LatLng } from '@/lib/distance';
+import { canOpenOrderLink, openOrderLink } from '@/lib/order-links';
 import { colors, fonts, radii, spacing, tabular } from '@/theme';
 import { pageMetadata } from '@/data/page-metadata';
 import type { GenerateMetadataFunction } from 'expo-router/server';
@@ -50,7 +51,7 @@ export default function OfferDetailScreen() {
     ? { latitude: record.location.latitude, longitude: record.location.longitude }
     : null;
   const mapsUrl = offer ? mapsUrlFor(chainName, storeAddress, storePoint) : null;
-  const orderUrl = offer ? orderUrlFor(offer.source_url) : null;
+  const hasOrderLink = offer ? canOpenOrderLink(offer) : false;
   const orderLabelText = offer ? orderLabel(offer.ordering_channel, chainName) : '';
 
   return (
@@ -112,12 +113,12 @@ export default function OfferDetailScreen() {
               <Text style={styles.priceSupport}>
                 {money(offer.list_price_cents, offer.currency)} total - {offer.quantity_label || quantityText(offer.category, offer.quantity)}
               </Text>
-              {orderUrl ? (
+              {hasOrderLink ? (
                 <Pressable
                   accessibilityRole="link"
                   accessibilityLabel={orderLabelText}
                   accessibilityHint="Opens the restaurant’s ordering page."
-                  onPress={() => openOrderLink(orderUrl)}
+                  onPress={() => openOrderLink(offer, record.location)}
                   style={({ pressed }) => [styles.orderButton, pressed && styles.pressed]}>
                   <Text style={styles.orderButtonText}>{orderLabelText}</Text>
                   <Text {...decorative} style={styles.buttonArrow}>↗</Text>
@@ -318,24 +319,6 @@ function orderLabel(channel: string, chainName: string) {
   if (channel.startsWith('doordash')) return 'Order from DoorDash';
   if (channel.startsWith('ubereats')) return 'Order from Uber Eats';
   return `Order from ${chainName}`;
-}
-
-function orderUrlFor(value: string | null | undefined) {
-  if (!value) return null;
-  try {
-    const url = new URL(value);
-    return url.protocol === 'http:' || url.protocol === 'https:' ? url.toString() : null;
-  } catch {
-    return null;
-  }
-}
-
-function openOrderLink(url: string) {
-  if (Platform.OS === 'web') {
-    window.open(url, '_blank', 'noopener,noreferrer');
-    return;
-  }
-  void Linking.openURL(url);
 }
 
 function mapsUrlFor(chainName: string, address: string, point: LatLng | null) {

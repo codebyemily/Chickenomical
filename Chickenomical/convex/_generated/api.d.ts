@@ -15,6 +15,7 @@ import type * as lib_brightData from "../lib/brightData.js";
 import type * as lib_geo from "../lib/geo.js";
 import type * as lib_offerShape from "../lib/offerShape.js";
 import type * as lib_takeout from "../lib/takeout.js";
+import type * as manualCleanup from "../manualCleanup.js";
 import type * as myFunctions from "../myFunctions.js";
 import type * as offers from "../offers.js";
 import type * as scrapeNear from "../scrapeNear.js";
@@ -34,6 +35,7 @@ declare const fullApi: ApiFromModules<{
   "lib/geo": typeof lib_geo;
   "lib/offerShape": typeof lib_offerShape;
   "lib/takeout": typeof lib_takeout;
+  manualCleanup: typeof manualCleanup;
   myFunctions: typeof myFunctions;
   offers: typeof offers;
   scrapeNear: typeof scrapeNear;

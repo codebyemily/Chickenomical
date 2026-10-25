@@ -593,15 +593,12 @@ function SortChip({ option, selected, onPress }: { option: { id: SortKey; label:
 function SearchField({ value, onChangeText, onSubmitEditing }: { value: string; onChangeText: (value: string) => void; onSubmitEditing: () => void }) {
   return (
     <View style={styles.searchBox}>
-      <View {...decorative} style={styles.searchIcon}>
-        <View style={styles.searchLens} />
-        <View style={styles.searchHandle} />
-      </View>
+      {value.length > 0 ? <SearchMark /> : null}
       <FormField
         label="Search menu offers"
+        labelHidden
         value={value}
         onChangeText={onChangeText}
-        placeholder="Search menu offers"
         submitLabel="next"
         blurOnSubmit={false}
         autoComplete="off"
@@ -609,11 +606,26 @@ function SearchField({ value, onChangeText, onSubmitEditing }: { value: string; 
         onSubmitEditing={onSubmitEditing}
         appearance="search"
       />
+      {value.length === 0 ? (
+        <View {...decorative} pointerEvents="none" style={styles.searchPlaceholderGroup}>
+          <SearchMark />
+          <Text style={styles.searchPlaceholderText}>Search menu offers</Text>
+        </View>
+      ) : null}
       {value.length > 0 ? (
         <Pressable accessibilityRole="button" accessibilityLabel="Clear search" android_ripple={ripple} onPress={() => onChangeText('')} style={styles.clearSearch}>
           <Text style={styles.clearSearchText}>×</Text>
         </Pressable>
       ) : null}
+    </View>
+  );
+}
+
+function SearchMark() {
+  return (
+    <View {...decorative} style={styles.searchIcon}>
+      <View style={styles.searchLens} />
+      <View style={styles.searchHandle} />
     </View>
   );
 }
@@ -761,10 +773,12 @@ const styles = StyleSheet.create({
   inner: { width: '100%', paddingHorizontal: spacing.lg, paddingTop: spacing.lg, gap: spacing.lg },
   centeredLoading: { minHeight: 260, alignItems: 'center', justifyContent: 'center', gap: spacing.md },
   centeredLoadingText: { color: colors.muted, fontFamily: fonts.medium, fontSize: 15, lineHeight: 21, textAlign: 'center' },
-  searchBox: { minHeight: 54, flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingLeft: spacing.lg, paddingRight: spacing.sm, borderWidth: 2, borderColor: colors.purple, borderRadius: 30, borderCurve: curve, backgroundColor: colors.white },
+  searchBox: { minHeight: 54, position: 'relative', flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingLeft: spacing.lg, paddingRight: spacing.sm, borderWidth: 2, borderColor: colors.purple, borderRadius: 30, borderCurve: curve, backgroundColor: colors.white },
   searchIcon: { width: 22, height: 22, justifyContent: 'center' },
   searchLens: { width: 14, height: 14, borderWidth: 2, borderColor: colors.purple, borderRadius: 8 },
   searchHandle: { position: 'absolute', width: 8, height: 2, right: 0, bottom: 2, backgroundColor: colors.purple, transform: [{ rotate: '48deg' }] },
+  searchPlaceholderGroup: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.md },
+  searchPlaceholderText: { color: colors.muted, fontFamily: fonts.medium, fontSize: 16, lineHeight: 22 },
   searchInput: { flex: 1, minWidth: 0, minHeight: 48, paddingVertical: spacing.sm, color: colors.black, fontFamily: fonts.regular, fontSize: 16, lineHeight: 22 },
   clearSearch: { width: 48, height: 48, justifyContent: 'center', alignItems: 'center' },
   clearSearchText: { color: colors.muted, fontFamily: fonts.regular, fontSize: 26, lineHeight: 30 },

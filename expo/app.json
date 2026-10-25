@@ -61,7 +61,7 @@
       "scrapeProxyUrl": "https://chickenomical-web.quacksire.workers.dev",
       "router": {
         "asyncRoutes": {
-          "web": true
+          "web": false
         }
       },
       "eas": {
