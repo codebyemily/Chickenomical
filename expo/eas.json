@@ -6,18 +6,30 @@
     "development-simulator": {
       "developmentClient": true,
       "distribution": "internal",
+      "environment": "development",
+      "env": {
+        "EXPO_PUBLIC_CONVEX_URL": "https://focused-chameleon-321.convex.cloud"
+      },
       "ios": {
         "simulator": true
       }
     },
     "preview": {
       "distribution": "internal",
+      "environment": "preview",
+      "env": {
+        "EXPO_PUBLIC_CONVEX_URL": "https://focused-chameleon-321.convex.cloud"
+      },
       "android": {
         "buildType": "apk"
       }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "environment": "production",
+      "env": {
+        "EXPO_PUBLIC_CONVEX_URL": "https://focused-chameleon-321.convex.cloud"
+      }
     }
   }
 }

@@ -2,8 +2,4 @@ import { ConvexReactClient } from 'convex/react';
 
 const convexUrl = process.env.EXPO_PUBLIC_CONVEX_URL;
 
-if (!convexUrl) {
-  throw new Error('EXPO_PUBLIC_CONVEX_URL is missing. Add the Convex deployment URL to the Expo environment.');
-}
-
-export const convexClient = new ConvexReactClient(convexUrl);
+export const convexClient = convexUrl?.trim() ? new ConvexReactClient(convexUrl.trim()) : null;

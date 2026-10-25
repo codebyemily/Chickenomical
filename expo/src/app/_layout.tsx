@@ -39,6 +39,15 @@ export default function RootLayout() {
 
   if (!fontsLoaded && !fontError) return null;
 
+  if (!convexClient) {
+    return (
+      <View style={styles.unavailable}>
+        <Text style={styles.unavailableTitle}>Chickenomical is temporarily unavailable.</Text>
+        <Text style={styles.errorMessage}>Menu data couldn’t be loaded. Please try again later.</Text>
+      </View>
+    );
+  }
+
   return (
     <ConvexProvider client={convexClient}>
       <PrototypeProvider>
@@ -86,6 +95,8 @@ export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
 }
 
 const styles = StyleSheet.create({
+  unavailable: { flex: 1, justifyContent: 'center', gap: spacing.md, padding: spacing.xl, backgroundColor: colors.cream },
+  unavailableTitle: { color: colors.black, fontFamily: fonts.bold, fontSize: 24, lineHeight: 30 },
   errorContent: { flex: 1, justifyContent: 'center', gap: spacing.md, padding: spacing.xl },
   errorTitle: { color: colors.black, fontFamily: fonts.bold, fontSize: 30, lineHeight: 37 },
   errorMessage: { color: colors.muted, fontFamily: fonts.regular, fontSize: 15, lineHeight: 23, marginBottom: spacing.md },

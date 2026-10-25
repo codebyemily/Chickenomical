@@ -275,7 +275,7 @@ export default function CompareScreen() {
           <View style={[styles.allHeader, Platform.OS !== 'web' && styles.allHero]}>
             {Platform.OS === 'web' ? (
               <LinkPressable
-                href="/search"
+                href={'/search' as never}
                 accessibilityLabel="Back to the cheapest nearby"
                 style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
                 <Text style={styles.backArrow}>‹</Text>
