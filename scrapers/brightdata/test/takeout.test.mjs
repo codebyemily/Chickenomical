@@ -3,6 +3,7 @@ import test from "node:test";
 import { milesBetween, parseAt } from "../src/geo.mjs";
 import { offersFromCanesMenu } from "../src/takeout/canes.mjs";
 import { offersFromChickfilaMenu } from "../src/takeout/chickfila.mjs";
+import { offersFromJollibeeProducts } from "../src/takeout/jollibee.mjs";
 import { offersFromPopeyesPriced } from "../src/takeout/popeyes.mjs";
 import { offersFromWendysMenu } from "../src/takeout/wendys.mjs";
 import { offersFromWingstopProduct } from "../src/takeout/wingstop.mjs";
@@ -175,4 +176,29 @@ test("Chick-fil-A decoupled menu prices nuggets from minorUnits", () => {
   assert.equal(offers[0].category, "chicken-nugget");
   assert.equal(offers[0].quantity, 8);
   assert.equal(offers[0].list_price_cents, 529);
+});
+
+test("Jollibee store menu prices Chickenjoy buckets and sandwiches", () => {
+  const jolliStore = {
+    id: "265845",
+    name: "San Francisco Downtown Market St",
+    address: "934 Market Street, San Francisco, CA 94102",
+    latitude: 37.7839,
+    longitude: -122.4087,
+    distance_miles: 0.85,
+  };
+  const offers = offersFromJollibeeProducts([
+    { Id: 1, Name: "6pc Chickenjoy Bucket", Cost: 19.99, Available: true, Slug: "6pc-chickenjoy-bucket" },
+    { Id: 2, Name: "Original Chicken Sandwich", Cost: 6.99, Available: true, Slug: "original-chicken-sandwich" },
+    { Id: 3, Name: "Napkins", Cost: 0, Available: true },
+  ], jolliStore, "https://www.jollibeefoods.com/menu/chickenjoy-fried-chicken", observedAt);
+
+  assert.equal(offers.length, 2);
+  const bucket = offers.find((offer) => offer.category === "chicken-bucket");
+  const sandwich = offers.find((offer) => offer.category === "chicken-sandwich");
+  assert.equal(bucket.location_id, "jollibee:265845");
+  assert.equal(bucket.quantity, 6);
+  assert.equal(bucket.list_price_cents, 1999);
+  assert.equal(sandwich.list_price_cents, 699);
+  assert.equal(sandwich.comparable, true);
 });

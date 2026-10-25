@@ -72,9 +72,15 @@ export const chains = [
     ],
     refine(card) {
       const name = card.original_name.toLowerCase();
-      if (/spaghetti|palabok|burger steak|peach mango|pie\b/.test(name) && !/chicken/.test(name)) {
+      if (/spaghetti|palabok|burger steak|peach mango|pie\b|utensil|napkin/.test(name) && !/chicken/.test(name)) {
         return { skip: true };
       }
+      if (/chickenjoy|bucket treat|pc chickenjoy/.test(name)) {
+        return { category: "chicken-bucket" };
+      }
+      if (/tender/.test(name)) return { category: "chicken-tender" };
+      if (/nugget/.test(name)) return { category: "chicken-nugget" };
+      if (/sandwich/.test(name)) return { category: "chicken-sandwich" };
       return null;
     },
   },

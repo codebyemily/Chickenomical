@@ -409,5 +409,6 @@ node src/run.mjs --address "Palace of Fine Arts, San Francisco, CA" --at 37.8029
 | Popeyes | `www.popeyes.com/graphql` `GetNearbyRestaurants` | `AppMenuMenuFlat` + `AppMenuPicker`/`Item`/`Combo` with `storeId` + `serviceMode=pickup` | Prefer direct fetch; Unlocker 403s GraphQL. Prices are integer cents in `price.default` |
 | Chick-fil-A | Yext `liveapi.yext.com/.../geosearch` (public key on order site) | `commerce.api.my.chick-fil-a.com/.../GetDecoupledOldDataMenu` | Locate works. Menu needs `order.chick-fil-a.com` guest auth; Unlocker returns 401. Browser session returns `itemPrice.minorUnits` |
 | McDonald's | `mcdonalds.com/googleappsv2/geolocation` | — | Web pickup redirects to app; no public priced menu |
+| Jollibee | `jollibeefoods.com/api/location/search?query=` | POST `api/basket` `{Id:"<yextId>"}` → cookie, then SSR `/menu/{slug}` `__NEXT_DATA__` `category.Products[].Cost` | Direct fetch; missing category slugs 404 and are skipped. Nuggets/tenders may be empty at some stores. |
 
 `apiJson()` in `bright-data.mjs` tries Bright Data Web Unlocker first, then falls back to direct fetch for unlocker-blocked endpoints.

@@ -1,6 +1,7 @@
 import { chains } from "../chains.mjs";
 import { locateCanes, canesOffers } from "./canes.mjs";
 import { locateChickfila, chickfilaOffers } from "./chickfila.mjs";
+import { locateJollibee, jollibeeOffers } from "./jollibee.mjs";
 import { locateMcdonalds, mcdonaldsOffers } from "./mcdonalds.mjs";
 import { locatePopeyes, popeyesOffers } from "./popeyes.mjs";
 import { locateWendys, wendysOffers } from "./wendys.mjs";
@@ -21,6 +22,7 @@ const adapters = {
   popeyes: { locate: locatePopeyes, offers: popeyesOffers },
   "raising-canes": { locate: locateCanes, offers: canesOffers },
   wingstop: { locate: locateWingstop, offers: wingstopOffers },
+  jollibee: { locate: locateJollibee, offers: jollibeeOffers },
 };
 
 export function takeoutAdapter(chainId) {
