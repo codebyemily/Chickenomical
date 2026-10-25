@@ -61,6 +61,21 @@ http.route({
     if (!isObject(body) || !isString(body.address) || body.address.trim().length < 2) {
       return new Response('address is required', { status: 400, headers: cors });
     }
+    const hasLatitude = body.latitude !== undefined;
+    const hasLongitude = body.longitude !== undefined;
+    if (hasLatitude !== hasLongitude) return new Response('latitude and longitude must be provided together', { status: 400, headers: cors });
+    let latitude: number | null = null;
+    let longitude: number | null = null;
+    if (hasLatitude) {
+      if (!isFiniteNumber(body.latitude) || Math.abs(body.latitude) > 90) {
+        return new Response('latitude is invalid', { status: 400, headers: cors });
+      }
+      if (!isFiniteNumber(body.longitude) || Math.abs(body.longitude) > 180) {
+        return new Response('longitude is invalid', { status: 400, headers: cors });
+      }
+      latitude = body.latitude;
+      longitude = body.longitude;
+    }
     const radiusMiles = typeof body.radius_miles === 'number' && body.radius_miles > 0 ? body.radius_miles : 8;
     const limit = typeof body.limit === 'number' && body.limit > 0 ? Math.min(body.limit, 3) : 1;
     const chains = Array.isArray(body.chains)
@@ -70,14 +85,16 @@ http.route({
     const requestedAt = new Date().toISOString();
     const jobId = await ctx.runMutation(internal.scrapeNear.startJob, {
       address: body.address.trim(),
-      latitude: null,
-      longitude: null,
+      latitude,
+      longitude,
       radius_miles: radiusMiles,
       requested_at: requestedAt,
     });
     await ctx.scheduler.runAfter(0, internal.scrapeNear.run, {
       jobId,
       address: body.address.trim(),
+      latitude,
+      longitude,
       radiusMiles,
       limit,
       chains,
@@ -115,3 +132,4 @@ function isObject(value: unknown): value is Record<string, unknown> { return typ
 function isString(value: unknown): value is string { return typeof value === 'string'; }
 function isNullableString(value: unknown): value is string | null { return value === null || typeof value === 'string'; }
 function isNullableNumber(value: unknown): value is number | null { return value === null || (typeof value === 'number' && Number.isFinite(value)); }
+function isFiniteNumber(value: unknown): value is number { return typeof value === 'number' && Number.isFinite(value); }

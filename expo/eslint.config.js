@@ -7,4 +7,12 @@ module.exports = defineConfig([
   {
     ignores: ['dist/*'],
   },
+  {
+    files: ['src/components/nearby-map.tsx', 'src/components/nearby-map.web.tsx'],
+    settings: {
+      'import/resolver': {
+        typescript: { alwaysTryTypes: true },
+      },
+    },
+  },
 ]);

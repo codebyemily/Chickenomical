@@ -11,6 +11,7 @@ import { FormField } from '@/components/form-field';
 import { LinkPressable } from '@/components/link-pressable';
 import { QueryStatePanel } from '@/components/query-state-panel';
 import { useStoredOffersQuery, type OfferRecord } from '@/data/live-offers';
+import { startNearbyScrape } from '@/data/nearby-scrape';
 import { categoryInfo } from '@/data/menu-schema';
 import { exclusionText, isRankable, unitPrice } from '@/lib/compare';
 import { decorative } from '@/lib/a11y';
@@ -56,7 +57,7 @@ export default function CompareScreen() {
   const [visiblePage, setVisiblePage] = useState({ key: '', count: COMPARISON_PAGE_SIZE });
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [showExcluded, setShowExcluded] = useState(false);
-  const query = useStoredOffersQuery();
+  const query = useStoredOffersQuery(searchSession?.scrapeJobId);
   const placeEditedRef = useRef(false);
   const moodRef = useRef(mood);
   const placeRef = useRef<ComponentRef<typeof TextInput>>(null);
@@ -120,8 +121,9 @@ export default function CompareScreen() {
   const resultFrame = Math.min(width, 1360);
   const resultCardWidth = (resultFrame - spacing.lg * 2 - spacing.sm * (resultColumns - 1)) / resultColumns;
 
-  function rememberOrigin(origin: LatLng & { label: string }, originType: 'device' | 'place') {
+  function rememberOrigin(origin: LatLng & { label: string }, originType: 'device' | 'place', scrapeJobId?: string) {
     const key = placeKey(origin, radiusMiles);
+    const sameSearch = searchSession?.key === key;
     setSearchSession({
       key,
       mood: moodRef.current.trim(),
@@ -130,8 +132,9 @@ export default function CompareScreen() {
       longitude: origin.longitude,
       originType,
       radiusMiles,
-      cached: searchSession?.key === key,
+      cached: sameSearch,
       browseAll: moodRef.current.trim().length === 0,
+      scrapeJobId: scrapeJobId ?? (sameSearch ? searchSession?.scrapeJobId : undefined),
     });
     setPlace(origin.label);
     if (originType === 'device') setDevicePoint({ latitude: origin.latitude, longitude: origin.longitude });
@@ -195,7 +198,15 @@ export default function CompareScreen() {
       const origin = useDevice
         ? { latitude: devicePoint.latitude, longitude: devicePoint.longitude, label: address || `${devicePoint.latitude.toFixed(4)}, ${devicePoint.longitude.toFixed(4)}` }
         : await resolvePlace(address);
-      rememberOrigin(origin, useDevice ? 'device' : 'place');
+      const originType = useDevice ? 'device' : 'place';
+      rememberOrigin(origin, originType);
+      const job = await startNearbyScrape({
+        address: origin.label,
+        latitude: origin.latitude,
+        longitude: origin.longitude,
+        radiusMiles,
+      });
+      rememberOrigin(origin, originType, job.jobId);
     } catch (error) {
       setSearchError(errorText(error));
     } finally {
@@ -254,7 +265,7 @@ export default function CompareScreen() {
         android_ripple={ripple}
         onPress={() => { void submitSearch(); }}
         style={({ pressed }) => [styles.seeAllButton, pressed && styles.pressed, (submitting || locating) && styles.disabled]}>
-        <Text style={styles.seeAllText}>{submitting ? 'Finding that place…' : 'Compare'}</Text>
+        <Text style={styles.seeAllText}>{submitting ? 'Starting nearby search…' : 'Compare'}</Text>
       </Pressable>
       {searchError ? <Text accessibilityRole="alert" style={styles.snapshotError}>{searchError}</Text> : null}
       <LocationBand origin={shortPlace(origin)} radiusMiles={searchRadiusMiles} />
@@ -405,6 +416,16 @@ export default function CompareScreen() {
 
           {query.status === 'error' ? <QueryStatePanel status="error" /> : null}
           {searchSession && query.status === 'loading' ? <QueryStatePanel status="loading" /> : null}
+          {query.status === 'success' && searchSession?.scrapeJobId && query.metadata.job?._id === searchSession.scrapeJobId && query.metadata.job.status === 'running' ? (
+            <NoticeBand title="Checking nearby menus" tone="warning">
+              Your current prices stay visible while the latest nearby scrape runs. New results will appear here automatically.
+            </NoticeBand>
+          ) : null}
+          {query.status === 'success' && searchSession?.scrapeJobId && query.metadata.job?._id === searchSession.scrapeJobId && query.metadata.job.status === 'failed' ? (
+            <NoticeBand title="Nearby search could not finish" tone="error">
+              {query.metadata.job.error || 'The scrape failed. Try Compare again in a moment.'}
+            </NoticeBand>
+          ) : null}
 
           {query.status === 'success' && screen === 'home' && searchSession && showPicks ? (
             <>
@@ -428,6 +449,8 @@ export default function CompareScreen() {
                 <NoticeBand title="No comparable prices in this area yet" tone="warning">
                   {query.metadata.job?.status === 'running'
                     ? 'The current menu update is still running. Picks show up when a verified price is available nearby.'
+                    : query.metadata.job?.status === 'failed'
+                      ? 'The latest menu update failed. Try Compare again to start another search.'
                     : matchingRecords.length > 0
                       ? 'Restaurants nearby have this food, but none has a verified pickup price and pack count.'
                       : nearestStores(inRadius).length === 0

@@ -1,9 +1,26 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "chickenomical-web",
+  "account_id": "46560285c6da2e4dbfb619ffea59e297",
   "compatibility_date": "2026-10-25",
+  "main": "./worker.ts",
   "assets": {
     "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"],
     "not_found_handling": "single-page-application"
-  }
+  },
+  "vars": {
+    "CONVEX_SITE_URL": "https://focused-chameleon-321.convex.site"
+  },
+  "ratelimits": [
+    {
+      "name": "SCRAPE_RATE_LIMITER",
+      "namespace_id": "7114975142492",
+      "simple": {
+        "limit": 5,
+        "period": 60
+      }
+    }
+  ]
 }

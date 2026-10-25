@@ -1,0 +1,2 @@
+# Set this to the same value as INGEST_SHARED_SECRET on the Convex deployment.
+CONVEX_INGEST_SHARED_SECRET=replace-with-the-existing-convex-secret

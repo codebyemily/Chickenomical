@@ -14,6 +14,7 @@ export type SearchSession = {
   radiusMiles: number;
   cached: boolean;
   browseAll: boolean;
+  scrapeJobId?: string;
 };
 
 type PrototypeState = {

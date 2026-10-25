@@ -57,6 +57,8 @@
       "reactCompiler": false
     },
     "extra": {
+      "convexUrl": "https://focused-chameleon-321.convex.cloud",
+      "scrapeProxyUrl": "https://chickenomical-web.quacksire.workers.dev",
       "router": {
         "asyncRoutes": {
           "web": true

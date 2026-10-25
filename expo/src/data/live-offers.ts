@@ -93,8 +93,8 @@ const EMPTY_STORED_METADATA: LiveOffersMetadata = {
 };
 
 /** Latest menu check plus other stored offers, so a search can reach every restaurant coordinate Convex already returned. */
-export function useStoredOffersQuery(): LiveOffersQuery {
-  const board = useLiveOffersQuery();
+export function useStoredOffersQuery(jobId?: string): LiveOffersQuery {
+  const board = useLiveOffersQuery(jobId);
   const recent = useRecentOffersQuery();
   if (board.status === 'loading' && recent.status !== 'success') return { status: 'loading' };
   if (board.status === 'error' && recent.status !== 'success') return { status: 'error', error: board.error };

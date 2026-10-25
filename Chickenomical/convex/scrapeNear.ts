@@ -160,6 +160,8 @@ export const run = internalAction({
   args: {
     jobId: v.id("scrapeJobs"),
     address: v.string(),
+    latitude: v.union(v.number(), v.null()),
+    longitude: v.union(v.number(), v.null()),
     radiusMiles: v.number(),
     limit: v.number(),
     chains: v.array(v.string()),
@@ -168,7 +170,9 @@ export const run = internalAction({
     const observedAt = new Date().toISOString();
     const marketplaceNotes: string[] = [];
     try {
-      const origin = await resolveOrigin(args.address);
+      const origin: Origin = args.latitude !== null && args.longitude !== null
+        ? { latitude: args.latitude, longitude: args.longitude, label: args.address }
+        : await resolveOrigin(args.address);
       await ctx.runMutation(internal.scrapeNear.patchJobOrigin, {
         jobId: args.jobId,
         address: origin.label,
