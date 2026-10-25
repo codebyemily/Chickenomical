@@ -31,6 +31,7 @@ export default defineSchema({
     .index('by_offer_key', ['offer_key'])
     .index('by_location_and_channel', ['location_id', 'ordering_channel'])
     .index('by_chain_and_location', ['chain_id', 'location_id'])
+    .index('by_observed_at', ['observed_at'])
     .index('by_category', ['category']),
 });
 

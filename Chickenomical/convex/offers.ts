@@ -3,6 +3,7 @@ import { query } from './_generated/server';
 import { marketplaceStoreMatchesChain } from './lib/apifyMarketplace';
 
 const OFFER_VALIDATION_SCAN_LIMIT = 500;
+const LATEST_JOB_BOARD_LIMIT = 1000;
 
 /** Bounded list of recently stored offers, newest first. */
 export const listRecent = query({
@@ -68,10 +69,16 @@ export const board = query({
       ? await ctx.db.get(args.jobId)
       : (await ctx.db.query('scrapeJobs').order('desc').take(1))[0] ?? null;
 
-    const rows = (await ctx.db.query('menuOffers').order('desc').take(500)).filter(isValidStoredOffer);
-    const offers = job?.requested_at
-      ? rows.filter((offer) => offer.observed_at >= job.requested_at)
-      : rows;
+    // A scrape updates existing offer documents in place, so creation-time
+    // ordering can hide most of a new job's live results once the table grows.
+    // Read the active job's rows by their scrape observation time instead.
+    const rows = job?.requested_at
+      ? await ctx.db.query('menuOffers')
+        .withIndex('by_observed_at', (q) => q.gte('observed_at', job.requested_at!))
+        .order('desc')
+        .take(LATEST_JOB_BOARD_LIMIT)
+      : await ctx.db.query('menuOffers').order('desc').take(500);
+    const offers = rows.filter(isValidStoredOffer);
 
     const chainMap = new Map<string, {
       chain_id: string;

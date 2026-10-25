@@ -12,7 +12,7 @@ import { LinkPressable } from '@/components/link-pressable';
 import { useRecentOffersQuery, useStoredOffersQuery, type OfferRecord } from '@/data/live-offers';
 import { categoryInfo, categoryUnit, quantityText } from '@/data/menu-schema';
 import { isRankable, money, solveAllLocations } from '@/lib/compare';
-import { withStraightLineDistance } from '@/lib/distance';
+import { isValidLatLng, withStraightLineDistance } from '@/lib/distance';
 import { offerDetailRoute } from '@/lib/live-offer-routes';
 import { usePrototype } from '@/state/prototype-context';
 import { pageMetadata } from '@/data/page-metadata';
@@ -34,15 +34,24 @@ export default function QuantityScreen() {
   const goal = goalDraft ?? String(groupSize);
   const query = useStoredOffersQuery();
   const recentQuery = useRecentOffersQuery();
-  const boardRows = query.status === 'success' ? withStraightLineDistance(query.data, searchSession) : EMPTY_RECORDS;
-  const boardCategories = useMemo(() => [...new Set(
-    boardRows.flatMap(({ offer }) => offer.category ? [offer.category] : []),
-  )].sort((a, b) => categoryInfo(a).label.localeCompare(categoryInfo(b).label)), [boardRows]);
-  const selectedCategory = boardCategories.includes(category) ? category : boardCategories[0] ?? null;
+  const boardQuery = query.status === 'success' ? query.metadata.query : null;
+  const boardCoordinates = boardQuery
+    ? { latitude: boardQuery.latitude, longitude: boardQuery.longitude }
+    : null;
+  const boardOrigin = boardCoordinates && isValidLatLng(boardCoordinates) ? boardCoordinates : null;
+  const originPoint = searchSession
+    ? { latitude: searchSession.latitude, longitude: searchSession.longitude }
+    : boardOrigin;
+  const nearbyRadiusMiles = searchSession?.radiusMiles ?? boardQuery?.radius_miles ?? radiusMiles;
+  const boardRows = query.status === 'success' ? withStraightLineDistance(query.data, originPoint) : EMPTY_RECORDS;
+  const records = boardRows.filter(({ distance_miles }) => distance_miles != null && distance_miles <= nearbyRadiusMiles);
+  const nearbyCategories = useMemo(() => [...new Set(
+    records.flatMap(({ offer }) => offer.category ? [offer.category] : []),
+  )].sort((a, b) => categoryInfo(a).label.localeCompare(categoryInfo(b).label)), [records]);
+  const selectedCategory = nearbyCategories.includes(category) ? category : nearbyCategories[0] ?? null;
   const recentRows = recentQuery.status === 'success' ? recentQuery.data : EMPTY_RECORDS;
   const recentChainCount = new Set(recentRows.map(({ chain }) => chain.id)).size;
   const recentCategoryCount = new Set(recentRows.flatMap(({ offer }) => offer.category ? [offer.category] : [])).size;
-  const records = boardRows.filter(({ distance_miles }) => distance_miles != null && distance_miles <= radiusMiles);
   const boardChainCount = query.status === 'success'
     ? new Set(query.data.map(({ chain }) => chain.id)).size
     : 0;
@@ -72,9 +81,9 @@ export default function QuantityScreen() {
   const stackExactEntry = width < 520;
 
   useEffect(() => {
-    if (query.status !== 'success' || boardCategories.length === 0 || boardCategories.includes(category)) return;
-    setCategory(boardCategories[0]);
-  }, [boardCategories, category, query.status, setCategory]);
+    if (query.status !== 'success' || nearbyCategories.length === 0 || nearbyCategories.includes(category)) return;
+    setCategory(nearbyCategories[0]);
+  }, [nearbyCategories, category, query.status, setCategory]);
 
   useEffect(() => {
     if (query.status !== 'success') return;
@@ -132,9 +141,9 @@ export default function QuantityScreen() {
           <View style={styles.goalPanel}>
             <View style={styles.categoryBlock}>
               <Text style={styles.controlLabel}>CHOOSE YOUR CHICKEN</Text>
-              {boardCategories.length > 0 ? (
+              {nearbyCategories.length > 0 ? (
                 <View style={styles.categoryOptions}>
-                  {boardCategories.map((option) => {
+                  {nearbyCategories.map((option) => {
                     const selected = option === selectedCategory;
                     return (
                       <Pressable
@@ -221,7 +230,7 @@ export default function QuantityScreen() {
             <HeadingText level={2} style={styles.resultTitle}>At least {quantityText(selectedCategory, groupSize)}</HeadingText>
             <Text style={styles.resultIntro}>
               {query.status === 'success'
-                ? `${solutionGroups.length} matching menu variant${solutionGroups.length === 1 ? '' : 's'} across ${solutionLocationCount} location${solutionLocationCount === 1 ? '' : 's'} within ${radiusMiles} miles.`
+                ? `${solutionGroups.length} matching menu variant${solutionGroups.length === 1 ? '' : 's'} across ${solutionLocationCount} location${solutionLocationCount === 1 ? '' : 's'} within ${nearbyRadiusMiles} miles.`
                 : 'Finding repeatable menu sizes in the latest menu data.'}
             </Text>
           </View>
@@ -295,8 +304,8 @@ export default function QuantityScreen() {
               ))}
             </View>
           ) : query.status === 'success' ? (
-            <NoticeBand title={emptyTitle(query.data.length, records.length, boardCategories.length, categoryRecords.length, eligibleCount)} tone="warning">
-              {emptyMessage(query.data.length, records.length, boardCategories.length, categoryRecords.length, eligibleCount, selectedCategoryInfo.label, radiusMiles)}
+            <NoticeBand title={emptyTitle(query.data.length, records.length, nearbyCategories.length, categoryRecords.length, eligibleCount)} tone="warning">
+              {emptyMessage(query.data.length, records.length, nearbyCategories.length, categoryRecords.length, eligibleCount, selectedCategoryInfo.label, nearbyRadiusMiles)}
             </NoticeBand>
           ) : null)}
 

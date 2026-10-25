@@ -11,7 +11,7 @@ import { useRecentOffersQuery, useStoredOffersQuery, type OfferRecord } from '@/
 import { categoryInfo } from '@/data/menu-schema';
 import { comparisonMatrixGroups, exclusionText, isRankable, unitPrice } from '@/lib/compare';
 import { decorative } from '@/lib/a11y';
-import { withStraightLineDistance } from '@/lib/distance';
+import { isValidLatLng, withStraightLineDistance } from '@/lib/distance';
 import { offerDetailRoute } from '@/lib/live-offer-routes';
 import { usePrototype } from '@/state/prototype-context';
 import { pageMetadata } from '@/data/page-metadata';
@@ -38,13 +38,22 @@ export default function CategoryResultsScreen() {
   const [showUnrankable, setShowUnrankable] = useState(false);
   const query = useStoredOffersQuery();
   const recentQuery = useRecentOffersQuery();
+  const boardQuery = query.status === 'success' ? query.metadata.query : null;
+  const boardCoordinates = boardQuery
+    ? { latitude: boardQuery.latitude, longitude: boardQuery.longitude }
+    : null;
+  const boardOrigin = boardCoordinates && isValidLatLng(boardCoordinates) ? boardCoordinates : null;
+  const originPoint = searchSession
+    ? { latitude: searchSession.latitude, longitude: searchSession.longitude }
+    : boardOrigin;
+  const nearbyRadiusMiles = searchSession?.radiusMiles ?? boardQuery?.radius_miles ?? radiusMiles;
 
-  const boardRecords = query.status === 'success' ? withStraightLineDistance(query.data, searchSession) : [];
+  const boardRecords = query.status === 'success' ? withStraightLineDistance(query.data, originPoint) : [];
   const categoryRows = category
     ? boardRecords.filter(({ offer }) => offer.category === category)
     : [];
   const nearbyRows = categoryRows.filter(({ distance_miles }) =>
-    distance_miles != null && distance_miles <= radiusMiles,
+    distance_miles != null && distance_miles <= nearbyRadiusMiles,
   );
   const chainOptions = [...new Map(nearbyRows.map(({ chain }) => [chain.id, chain.name] as const))]
     .map(([id, name]) => ({ id, name }))
@@ -63,7 +72,8 @@ export default function CategoryResultsScreen() {
     }))
     .sort((a, b) => compareRecords(a.records[0], b.records[0], sortBy) || a.label.localeCompare(b.label));
   const origin = searchSession?.address
-    ?? (query.status === 'success' ? query.metadata.query.address?.trim() || locationLabel : locationLabel);
+    ?? boardQuery?.address?.trim()
+    ?? (boardOrigin ? `${boardOrigin.latitude.toFixed(4)}, ${boardOrigin.longitude.toFixed(4)}` : locationLabel);
   const allCategoryRows = query.status === 'success' ? categoryRows : [];
   const excludedFromRadius = allCategoryRows.length - nearbyRows.length;
   const recentCategoryCount = recentQuery.status === 'success'
@@ -86,7 +96,7 @@ export default function CategoryResultsScreen() {
         ) : <BackLink label="Compare" tone="orange" />}
           <HeadingText level={1} style={styles.title}>{details.label} prices nearby</HeadingText>
         <Text style={styles.description}>
-          Current offers within {radiusMiles} miles, ranked by comparable pickup price.
+          Current offers within {nearbyRadiusMiles} miles, ranked by comparable pickup price.
         </Text>
       </View>
 
@@ -112,7 +122,7 @@ export default function CategoryResultsScreen() {
           <View style={styles.titleCopy}>
             <Text style={styles.sectionTitle}>{query.status === 'success' ? `${comparable.length} comparable offers` : 'Nearby offers'}</Text>
             <Text style={styles.subtitle}>
-              {origin} - {radiusMiles} mi - {chainOptions.length} {chainOptions.length === 1 ? 'restaurant' : 'restaurants'}
+              {origin} - {nearbyRadiusMiles} mi - {chainOptions.length} {chainOptions.length === 1 ? 'restaurant' : 'restaurants'}
             </Text>
           </View>
           <Pressable
@@ -187,7 +197,7 @@ export default function CategoryResultsScreen() {
             {nearbyRows.length === 0 ? (
               <NoticeBand title={`No current ${details.label.toLocaleLowerCase()} offers nearby`} tone="warning">
                 {categoryRows.length > 0
-                  ? `The current board returned ${categoryRows.length} ${categoryRows.length === 1 ? 'offer' : 'offers'} for this category, but none has a distance within ${radiusMiles} miles of ${origin}.`
+                  ? `The current board returned ${categoryRows.length} ${categoryRows.length === 1 ? 'offer' : 'offers'} for this category, but none has a distance within ${nearbyRadiusMiles} miles of ${origin}.`
                   : query.metadata.job?.status === 'running'
                     ? 'The current update is still running. Results will appear here when it finishes.'
                     : `There are no ${details.label.toLocaleLowerCase()} offers for this area yet.`}
@@ -256,7 +266,7 @@ export default function CategoryResultsScreen() {
               <NoticeBand title="No offers for this chain in the selected area" tone="warning">Choose All chains to see other current board results.</NoticeBand>
             ) : null}
             {excludedFromRadius > 0 ? (
-              <Text style={styles.radiusNote}>{excludedFromRadius} offer{excludedFromRadius === 1 ? '' : 's'} omitted because a distance within {radiusMiles} miles was not available.</Text>
+              <Text style={styles.radiusNote}>{excludedFromRadius} offer{excludedFromRadius === 1 ? '' : 's'} omitted because a distance within {nearbyRadiusMiles} miles was not available.</Text>
             ) : null}
           </>
         ) : null}

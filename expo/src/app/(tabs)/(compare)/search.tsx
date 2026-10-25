@@ -61,11 +61,17 @@ export default function CompareScreen() {
   const placeEditedRef = useRef(false);
   const moodRef = useRef(mood);
   const placeRef = useRef<ComponentRef<typeof TextInput>>(null);
+  const boardQuery = query.status === 'success' ? query.metadata.query : null;
+  const boardCoordinates = boardQuery
+    ? { latitude: boardQuery.latitude, longitude: boardQuery.longitude }
+    : null;
+  const boardOrigin = boardCoordinates && isValidLatLng(boardCoordinates) ? boardCoordinates : null;
   const originPoint = searchSession
     ? { latitude: searchSession.latitude, longitude: searchSession.longitude }
-    : null;
+    : boardOrigin;
+  const baseRadiusMiles = searchSession?.radiusMiles ?? boardQuery?.radius_miles ?? radiusMiles;
   const measured = query.status === 'success' ? withStraightLineDistance(query.data, originPoint) : [];
-  const searchRadiusMiles = expandRadiusToMinimumStores(measured, radiusMiles, MIN_NEARBY_STORES);
+  const searchRadiusMiles = expandRadiusToMinimumStores(measured, baseRadiusMiles, MIN_NEARBY_STORES);
   const inRadius = measured.filter(({ distance_miles }) => distance_miles != null && distance_miles <= searchRadiusMiles);
   const categoryOptions = [...new Set(inRadius.flatMap(({ offer }) => offer.category ? [offer.category] : []))]
     .sort((a, b) => categoryInfo(a).label.localeCompare(categoryInfo(b).label));
@@ -105,7 +111,9 @@ export default function CompareScreen() {
     unitPrice(a.offer)! - unitPrice(b.offer)! ||
     (a.distance_miles ?? Number.POSITIVE_INFINITY) - (b.distance_miles ?? Number.POSITIVE_INFINITY),
   )[0];
-  const origin = searchSession?.address || 'Choose a place';
+  const origin = searchSession?.address || boardQuery?.address?.trim() || (boardOrigin
+    ? `${boardOrigin.latitude.toFixed(4)}, ${boardOrigin.longitude.toFixed(4)}`
+    : 'Choose a place');
   const chainCount = new Set(comparable.map(({ chain }) => chain.id)).size;
   const categoryDetails = activeCategory
     ? categoryInfo(activeCategory)
@@ -267,7 +275,7 @@ export default function CompareScreen() {
         style={({ pressed }) => [styles.seeAllButton, pressed && styles.pressed, (submitting || locating) && styles.disabled]}>
         <Text style={styles.seeAllText}>{submitting ? 'Starting nearby search…' : 'Compare'}</Text>
       </Pressable>
-      {searchError ? <Text accessibilityRole="alert" style={styles.snapshotError}>{searchError}</Text> : null}
+      {searchError && !originPoint ? <Text accessibilityRole="alert" style={styles.snapshotError}>{searchError}</Text> : null}
       <LocationBand origin={shortPlace(origin)} radiusMiles={searchRadiusMiles} />
     </View>
   );
@@ -427,7 +435,7 @@ export default function CompareScreen() {
             </NoticeBand>
           ) : null}
 
-          {query.status === 'success' && screen === 'home' && searchSession && showPicks ? (
+          {query.status === 'success' && screen === 'home' && originPoint && showPicks ? (
             <>
               <View style={styles.sectionHeading}>
                 <HeadingText level={2} style={styles.sectionTitle}>
