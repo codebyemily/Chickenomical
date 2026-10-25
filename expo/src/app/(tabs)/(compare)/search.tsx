@@ -15,7 +15,7 @@ import { startNearbyScrape } from '@/data/nearby-scrape';
 import { categoryInfo } from '@/data/menu-schema';
 import { exclusionText, isRankable, unitPrice } from '@/lib/compare';
 import { decorative } from '@/lib/a11y';
-import { matchesMood, moodCategory, placeKey, resolveDeviceCity, resolvePlace, shortPlace, withStraightLineDistance, type LatLng } from '@/lib/distance';
+import { isValidLatLng, matchesMood, moodCategory, placeKey, resolveDeviceCity, resolvePlace, shortPlace, withStraightLineDistance, type LatLng } from '@/lib/distance';
 import { offerDetailRoute } from '@/lib/live-offer-routes';
 import { usePrototype } from '@/state/prototype-context';
 import { pageMetadata } from '@/data/page-metadata';
@@ -681,9 +681,12 @@ async function readDeviceLocation(): Promise<LatLng> {
     const permission = await Location.requestForegroundPermissionsAsync();
     if (permission.status !== 'granted') throw new Error('Location permission was denied. Type an address instead.');
     const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-    return { latitude: position.coords.latitude, longitude: position.coords.longitude };
+    const point = { latitude: position.coords.latitude, longitude: position.coords.longitude };
+    if (!isValidLatLng(point)) throw new Error('Current location is outside the supported map area. Type an address instead.');
+    return point;
   } catch (error) {
     if (error instanceof Error && error.message.startsWith('Location permission')) throw error;
+    if (error instanceof Error && error.message.startsWith('Current location is outside')) throw error;
     throw new Error('Current location is unavailable in this build. Type an address instead.');
   }
 }

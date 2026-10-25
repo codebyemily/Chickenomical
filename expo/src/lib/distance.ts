@@ -5,6 +5,17 @@ const EARTH_RADIUS_MILES = 3958.8;
 
 export type LatLng = { latitude: number; longitude: number };
 
+export function isValidLatLng(point: unknown): point is LatLng {
+  if (typeof point !== 'object' || point === null) return false;
+  const { latitude, longitude } = point as { latitude?: unknown; longitude?: unknown };
+  return typeof latitude === 'number'
+    && Number.isFinite(latitude)
+    && Math.abs(latitude) <= 90
+    && typeof longitude === 'number'
+    && Number.isFinite(longitude)
+    && Math.abs(longitude) <= 180;
+}
+
 const MOODS: { id: string; terms: string[] }[] = [
   { id: 'chicken-boneless-wing', terms: ['boneless'] },
   { id: 'chicken-wing', terms: ['wing', 'wings'] },
@@ -33,13 +44,15 @@ export function straightLineMiles(from: LatLng, to: LatLng) {
 
 export function withStraightLineDistance(records: OfferRecord[], origin: LatLng | null) {
   if (!origin) return records;
+  if (!isValidLatLng(origin)) return records.map((record) => ({ ...record, distance_miles: null }));
   return records.map((record) => {
     const latitude = record.location.latitude;
     const longitude = record.location.longitude;
-    if (latitude == null || longitude == null) return { ...record, distance_miles: null };
+    const point = { latitude, longitude };
+    if (!isValidLatLng(point)) return { ...record, distance_miles: null };
     return {
       ...record,
-      distance_miles: straightLineMiles(origin, { latitude, longitude }),
+      distance_miles: straightLineMiles(origin, point),
     };
   });
 }
@@ -97,11 +110,12 @@ export async function resolvePlace(address: string): Promise<LatLng & { label: s
   const feature = body[0];
   const latitude = feature?.lat == null ? null : Number(feature.lat);
   const longitude = feature?.lon == null ? null : Number(feature.lon);
-  if (latitude == null || longitude == null || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+  const resolvedCoordinates = { latitude, longitude };
+  if (!isValidLatLng(resolvedCoordinates)) {
     throw new Error(`No coordinates found for "${typed}".`);
   }
   const label = [feature?.name, feature?.address?.city, feature?.address?.state].filter((part, index, parts) => Boolean(part) && parts.indexOf(part) === index).join(', ') || typed;
-  const resolved = { latitude, longitude, label };
+  const resolved = { ...resolvedCoordinates, label };
   placeCache.set(cacheKey, resolved);
   return resolved;
 }

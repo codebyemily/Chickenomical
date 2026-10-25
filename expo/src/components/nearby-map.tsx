@@ -1,9 +1,9 @@
-import { useMemo } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
-import MapView, { Marker, UrlTile, type Region } from 'react-native-maps';
+import MapView, { Marker, UrlTile } from 'react-native-maps';
 
 import { decorative } from '@/lib/a11y';
-import type { LatLng } from '@/lib/distance';
+import { isValidLatLng, type LatLng } from '@/lib/distance';
+import { mapViewportFor, safeMapRadiusMiles } from '@/lib/map-viewport';
 import { nearbyMapLabel } from '@/lib/nearby-map-label';
 import { colors, curve, fonts, spacing } from '@/theme';
 
@@ -24,16 +24,31 @@ export function NearbyMap({
   radiusMiles: number;
   originLabel?: string;
 }) {
-  const region = useMemo(() => regionFor(origin, radiusMiles), [origin, radiusMiles]);
-  const hasSeparateUserLocation = userLocation != null && !samePoint(userLocation, origin);
+  const viewport = mapViewportFor(origin, radiusMiles);
+  const validUserLocation = isValidLatLng(userLocation) ? userLocation : null;
+  const validPlaces = places.filter((place) => isValidLatLng(place));
+  const hasSeparateUserLocation = viewport != null
+    && validUserLocation != null
+    && !samePoint(validUserLocation, viewport);
+  const mapLabelRadius = safeMapRadiusMiles(radiusMiles);
   const label = nearbyMapLabel(
-    radiusMiles,
-    places.map((place) => place.label),
+    mapLabelRadius,
+    validPlaces.map((place) => place.label),
     Platform.OS === 'android' ? 'Map data from OpenStreetMap and CARTO.' : 'Map data from Apple Maps.',
     hasSeparateUserLocation,
     originLabel,
   );
-  const mapKey = `${origin.latitude.toFixed(3)}:${origin.longitude.toFixed(3)}:${radiusMiles}`;
+  if (!viewport) {
+    return (
+      <View accessible accessibilityRole="image" accessibilityLabel="Map unavailable" style={styles.frame}>
+        <View style={styles.unavailable}>
+          <Text {...decorative} style={styles.unavailableText}>Map unavailable</Text>
+        </View>
+      </View>
+    );
+  }
+
+  const mapKey = `${viewport.latitude.toFixed(3)}:${viewport.longitude.toFixed(3)}:${viewport.latitudeDelta.toFixed(3)}:${viewport.longitudeDelta.toFixed(3)}`;
 
   return (
     <View style={styles.frame}>
@@ -42,7 +57,7 @@ export function NearbyMap({
         {...decorative}
         pointerEvents="none"
         style={styles.map}
-        initialRegion={region}
+        initialRegion={viewport}
         mapType={Platform.OS === 'android' ? 'none' : 'standard'}
         scrollEnabled={false}
         zoomEnabled={false}
@@ -60,8 +75,8 @@ export function NearbyMap({
           <UrlTile urlTemplate={CARTO_TILES} maximumZ={19} tileSize={256} />
         ) : null}
         <Marker coordinate={origin} pinColor={colors.purple} tracksViewChanges={false} />
-        {hasSeparateUserLocation ? <Marker coordinate={userLocation} pinColor={colors.blueStrong} tracksViewChanges={false} /> : null}
-        {places.map((place) => (
+        {hasSeparateUserLocation && validUserLocation ? <Marker coordinate={validUserLocation} pinColor={colors.blueStrong} tracksViewChanges={false} /> : null}
+        {validPlaces.map((place) => (
           <Marker
             key={place.id}
             coordinate={{ latitude: place.latitude, longitude: place.longitude }}
@@ -86,17 +101,6 @@ function samePoint(a: LatLng, b: LatLng) {
   return Math.abs(a.latitude - b.latitude) < 0.00001 && Math.abs(a.longitude - b.longitude) < 0.00001;
 }
 
-function regionFor(origin: LatLng, radiusMiles: number): Region {
-  const latitudeDelta = Math.max((radiusMiles * 2.6) / 69, 0.05);
-  const longitudeDelta = latitudeDelta / Math.max(Math.cos((origin.latitude * Math.PI) / 180), 0.2);
-  return {
-    latitude: origin.latitude,
-    longitude: origin.longitude,
-    latitudeDelta,
-    longitudeDelta,
-  };
-}
-
 const styles = StyleSheet.create({
   frame: {
     width: '100%',
@@ -111,6 +115,12 @@ const styles = StyleSheet.create({
   },
   map: { ...StyleSheet.absoluteFill },
   hit: { ...StyleSheet.absoluteFill },
+  unavailable: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
+  unavailableText: {
+    color: colors.muted,
+    fontFamily: fonts.medium,
+    fontSize: 14,
+  },
   attribution: {
     position: 'absolute',
     left: spacing.sm,
