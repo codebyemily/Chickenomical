@@ -13,6 +13,7 @@ import { ConvexProvider } from 'convex/react';
 import { AppFrame } from '@/components/app-frame';
 import { HeadingText } from '@/components/heading-text';
 import { LinkPressable } from '@/components/link-pressable';
+import { WebAppleStatusBar } from '@/components/web-apple-status-bar';
 import { ActionButton } from '@/components/ui/action-button';
 import { convexClient } from '@/data/convex-client';
 import { PrototypeProvider } from '@/state/prototype-context';
@@ -37,20 +38,24 @@ export default function RootLayout() {
     if (fontsLoaded || fontError) void SplashScreen.hideAsync();
   }, [fontsLoaded, fontError]);
 
-  if (!fontsLoaded && !fontError) return null;
+  if (!fontsLoaded && !fontError) return <WebAppleStatusBar />;
 
   if (!convexClient) {
     return (
-      <View style={styles.unavailable}>
-        <Text style={styles.unavailableTitle}>Chickenomical is temporarily unavailable.</Text>
-        <Text style={styles.errorMessage}>Menu data couldn’t be loaded. Please try again later.</Text>
-      </View>
+      <>
+        <WebAppleStatusBar />
+        <View style={styles.unavailable}>
+          <Text style={styles.unavailableTitle}>Chickenomical is temporarily unavailable.</Text>
+          <Text style={styles.errorMessage}>Menu data couldn’t be loaded. Please try again later.</Text>
+        </View>
+      </>
     );
   }
 
   return (
     <ConvexProvider client={convexClient}>
       <PrototypeProvider>
+        <WebAppleStatusBar />
         <Stack
           screenOptions={{
             headerShown: false,

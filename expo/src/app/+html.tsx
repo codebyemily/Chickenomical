@@ -17,7 +17,7 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-title" content="Chickenomical" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link rel="icon" type="image/png" sizes="48x48" href="/chickenomical.png" />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/manifest.webmanifest" />
@@ -25,10 +25,10 @@ export default function Root({ children }: PropsWithChildren) {
           name="viewport"
           content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
         />
-        {/* The visual reference intentionally uses the same light surface in both OS themes. */}
+        {/* The browser chrome follows the dark footer in both OS themes. */}
         <meta name="color-scheme" content="light" />
-        <meta name="theme-color" media="(prefers-color-scheme: light)" content={colors.gray} />
-        <meta name="theme-color" media="(prefers-color-scheme: dark)" content={colors.gray} />
+        <meta name="theme-color" media="(prefers-color-scheme: light)" content={colors.footerInk} />
+        <meta name="theme-color" media="(prefers-color-scheme: dark)" content={colors.footerInk} />
         <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.15.0/dist/maplibre-gl.css" />
         <ScrollViewStyleReset />
         {headNodes}

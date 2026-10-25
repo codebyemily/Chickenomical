@@ -33,7 +33,9 @@
       "output": "single",
       "bundler": "metro",
       "name": "Chickenomical",
-      "shortName": "Chickenomical"
+      "shortName": "Chickenomical",
+      "themeColor": "#2E252C",
+      "barStyle": "black-translucent"
     },
     "plugins": [
       "expo-router",
