@@ -47,6 +47,7 @@ const CHAIN_NAMES: Record<string, string> = {
   wendys: "Wendy's",
   mcdonalds: "McDonald's",
   'chick-fil-a': 'Chick-fil-A',
+  kfc: 'KFC',
 };
 
 /**

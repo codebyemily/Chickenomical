@@ -1,4 +1,5 @@
 import { geocode, milesBetween } from "./geo";
+import { runApifyActor } from "./apifyMarketplace";
 import { unlockerExchange, unlockerJson, unlockerText } from "./brightData";
 import { dollarsToCents, roundMiles, toOffer, type MenuOffer } from "./offerShape";
 
@@ -13,7 +14,15 @@ export type Store = {
   pickup: boolean;
 };
 
-export const SCRAPE_CHAINS = ["raising-canes", "jollibee", "wingstop", "popeyes"] as const;
+export const SCRAPE_CHAINS = [
+  "raising-canes",
+  "jollibee",
+  "wingstop",
+  "popeyes",
+  "chick-fil-a",
+  "mcdonalds",
+  "kfc",
+] as const;
 export type ScrapeChainId = (typeof SCRAPE_CHAINS)[number];
 
 export const CHAIN_NAMES: Record<ScrapeChainId, string> = {
@@ -21,7 +30,15 @@ export const CHAIN_NAMES: Record<ScrapeChainId, string> = {
   jollibee: "Jollibee",
   wingstop: "Wingstop",
   popeyes: "Popeyes",
+  "chick-fil-a": "Chick-fil-A",
+  mcdonalds: "McDonald's",
+  kfc: "KFC",
 };
+
+/** Store-level CFA guest menu via Apify (Bright Data Unlocker alone gets 401). */
+const CHICKFILA_MENU_ACTOR = "memo23/chick-fil-a-menu-scraper";
+const CFA_YEXT_KEY = "23469f663d79c395602fba3788145555";
+const CFA_MENU_DNA = "MENU_DNA_VERSION_3_2";
 
 /** DoorDash search slug (lowercase display name). */
 export function chainSearchName(chainId: ScrapeChainId) {
@@ -84,6 +101,12 @@ async function locate(chainId: ScrapeChainId, origin: Origin, radiusMiles: numbe
       return locateWingstop(origin, radiusMiles, limit);
     case "popeyes":
       return locatePopeyes(origin, radiusMiles, limit);
+    case "chick-fil-a":
+      return locateChickfila(origin, radiusMiles, limit);
+    case "mcdonalds":
+      return locateMcdonalds(origin, radiusMiles, limit);
+    case "kfc":
+      return locateKfc(origin, radiusMiles, limit);
   }
 }
 
@@ -97,6 +120,12 @@ async function menuOffers(chainId: ScrapeChainId, store: Store, observedAt: stri
       return wingstopOffers(store, observedAt);
     case "popeyes":
       return popeyesOffers(store, observedAt);
+    case "chick-fil-a":
+      return chickfilaOffers(store, observedAt);
+    case "mcdonalds":
+      return mcdonaldsOffers(store, observedAt);
+    case "kfc":
+      return kfcOffers(store, observedAt);
   }
 }
 
@@ -594,4 +623,516 @@ function pricePopeyesCents(price: { default?: number; min?: number } | null | un
   const value = Number(price.default ?? price.min);
   if (!Number.isFinite(value) || value <= 0) return null;
   return Math.round(value);
+}
+
+async function locateChickfila(origin: Origin, radiusMiles: number, limit: number) {
+  const url = new URL("https://liveapi.yext.com/v2/accounts/me/entities/geosearch");
+  url.searchParams.set("api_key", CFA_YEXT_KEY);
+  url.searchParams.set("entityTypes", "restaurant");
+  // Omit fields= so we get pickup flags (airport LIC stores often lack mobile pickup menus).
+  url.searchParams.set("limit", String(Math.max(limit * 8, 20)));
+  url.searchParams.set("location", `${origin.latitude},${origin.longitude}`);
+  url.searchParams.set("radius", String(Math.max(radiusMiles * 2, 25)));
+  url.searchParams.set("v", "20200401");
+  url.searchParams.set("countryBias", "US");
+
+  const payload = await unlockerJson(url, { preferDirect: true });
+  const entities = payload.response?.entities ?? [];
+  const distances = new Map<string, number>(
+    (payload.response?.distances ?? []).map((row: { id: string; distanceMiles: number }) => [String(row.id), Number(row.distanceMiles)]),
+  );
+
+  return entities
+    .filter((entity: Record<string, unknown>) => {
+      const meta = entity.meta as { id?: string } | undefined;
+      const name = String(entity.c_locationName ?? entity.name ?? "");
+      if (!meta?.id || /CLOSED/i.test(name) || entity.closed === true || entity.c_status === "CLOSED") return false;
+      // Airport / food-court licenses often have no orderable pickup menu.
+      if (entity.c_airport === true || entity.c_offersPickup === false || entity.c_carryout === false) return false;
+      if (entity.c_offersOnlineOrdering === false && entity.c_offersMobileOrdering === false) return false;
+      return true;
+    })
+    .map((entity: Record<string, unknown>) => {
+      const meta = entity.meta as { id: string };
+      const id = String(entity.c_eID ?? meta.id);
+      const coords = (entity.geocodedCoordinate ?? entity.yextDisplayCoordinate ?? {}) as {
+        latitude?: number;
+        longitude?: number;
+      };
+      const latitude = Number(coords.latitude);
+      const longitude = Number(coords.longitude);
+      const address = (entity.address ?? {}) as {
+        line1?: string; city?: string; region?: string; postalCode?: string;
+      };
+      return {
+        id,
+        name: String(entity.c_locationName || entity.name || `Chick-fil-A ${id}`),
+        address: [address.line1, address.city, address.region, address.postalCode].filter(Boolean).join(", "),
+        latitude,
+        longitude,
+        distance_miles: roundMiles(
+          distances.get(String(meta.id))
+            ?? distances.get(id)
+            ?? milesBetween(origin, { latitude, longitude }),
+        ),
+        pickup: true,
+      } satisfies Store;
+    })
+    .filter((store: Store) => Number.isFinite(store.latitude) && store.distance_miles <= radiusMiles)
+    .sort((a: Store, b: Store) => a.distance_miles - b.distance_miles)
+    .slice(0, limit);
+}
+
+async function chickfilaOffers(store: Store, observedAt: string) {
+  try {
+    return await chickfilaOffersUnlocker(store, observedAt);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!/401|403|unauthenticated|Unauthorized/i.test(message)) throw error;
+    console.warn(`Chick-fil-A ${store.id} Unlocker menu blocked (${message.slice(0, 80)}); falling back to Apify guest scraper.`);
+    return chickfilaOffersApify(store, observedAt);
+  }
+}
+
+async function chickfilaOffersUnlocker(store: Store, observedAt: string) {
+  const message = {
+    menudnaVersion: CFA_MENU_DNA,
+    locationNumber: store.id.padStart(5, "0"),
+    salesChannel: "SALES_CHANNEL_PICKUP",
+  };
+  const url = new URL("https://commerce.api.my.chick-fil-a.com/cfa.d2c.menu.v2.MenuService/GetDecoupledOldDataMenu");
+  url.searchParams.set("connect", "v1");
+  url.searchParams.set("encoding", "json");
+  url.searchParams.set("message", JSON.stringify(message));
+  const payload = await unlockerJson(url.toString(), {
+    preferDirect: false,
+    headers: {
+      accept: "application/json",
+      origin: "https://order.chick-fil-a.com",
+      referer: "https://order.chick-fil-a.com/menu",
+    },
+  });
+  return offersFromChickfilaMenu(payload, store, url.toString(), observedAt);
+}
+
+async function chickfilaOffersApify(store: Store, observedAt: string) {
+  const locationNumber = store.id.replace(/\D/g, "").padStart(5, "0");
+  const run = await runApifyActor({
+    actorId: CHICKFILA_MENU_ACTOR,
+    input: {
+      // Prefer address resolution when location numbers are airport/non-orderable.
+      addresses: store.address ? [store.address] : [],
+      locationNumbers: [locationNumber],
+      maxStoresPerAddress: 1,
+      includeUnpriced: false,
+      maxItems: 200,
+    },
+    timeoutMs: 180_000,
+  });
+  const offers: MenuOffer[] = [];
+  const seen = new Set<string>();
+  for (const item of run.items) {
+    if (String(item.type ?? "menu-item") === "store") continue;
+    const name = stripHtml(String(item.itemName ?? item.name ?? ""));
+    const tag = String(item.tag ?? item.itemId ?? "");
+    if (!name || !isChickfilaChicken(tag, name)) continue;
+    const price = Number(item.price);
+    if (!Number.isFinite(price) || price <= 0) continue;
+    const sourceUrl = `https://order.chick-fil-a.com/menu?location=${locationNumber}`;
+    const offer = toOffer({
+      chain_id: "chick-fil-a",
+      location_id: `chick-fil-a:${store.id}`,
+      store_name: String(item.storeName ?? store.name),
+      address: [
+        item.storeAddress,
+        item.storeCity,
+        item.storeState,
+        item.storePostalCode,
+      ].filter(Boolean).join(", ") || store.address,
+      latitude: numberOr(item.storeLatitude, store.latitude),
+      longitude: numberOr(item.storeLongitude, store.longitude),
+      distance_miles: store.distance_miles,
+      original_name: name,
+      body: String(item.description ?? ""),
+      section: String(item.categoryName ?? item.dayPart ?? ""),
+      list_price_cents: Math.round(price * 100),
+      offer_kind: item.isMeal === true || /_MEAL$|_MEALS$/i.test(tag) || /\bmeal\b/i.test(name) ? "combo" : undefined,
+      href: tag,
+      source_provider: "apify",
+    }, sourceUrl, observedAt);
+    if (!offer || seen.has(offer.offer_key)) continue;
+    seen.add(offer.offer_key);
+    offers.push(offer);
+  }
+  if (offers.length === 0) {
+    throw new Error(`Chick-fil-A ${store.id} Apify guest menu returned no priced chicken offers.`);
+  }
+  return offers;
+}
+
+function offersFromChickfilaMenu(
+  payload: { menu?: { all?: Record<string, Record<string, unknown>> } },
+  store: Store,
+  sourceUrl: string,
+  observedAt: string,
+) {
+  const items = payload.menu?.all ?? {};
+  const offers: MenuOffer[] = [];
+  for (const [tag, item] of Object.entries(items)) {
+    if (!item || item.disabled || item.isSellable === false) continue;
+    const name = stripHtml(String(item.name ?? tag));
+    if (!isChickfilaChicken(tag, name)) continue;
+    const listPriceCents = Number((item.itemPrice as { minorUnits?: number } | undefined)?.minorUnits);
+    if (!Number.isFinite(listPriceCents) || listPriceCents <= 0) continue;
+    const offer = toOffer({
+      chain_id: "chick-fil-a",
+      location_id: `chick-fil-a:${store.id}`,
+      store_name: store.name,
+      address: store.address,
+      latitude: store.latitude,
+      longitude: store.longitude,
+      distance_miles: store.distance_miles,
+      original_name: name,
+      body: String(item.description ?? ""),
+      section: String(item.dayPart ?? ""),
+      list_price_cents: Math.round(listPriceCents),
+      offer_kind: /_MEAL$|_MEALS$/.test(tag) || /\bmeal\b/i.test(name) ? "combo" : undefined,
+      href: tag,
+    }, sourceUrl, observedAt);
+    if (offer) offers.push(offer);
+  }
+  if (offers.length === 0) {
+    throw new Error(`Chick-fil-A ${store.id} Unlocker menu returned no priced chicken offers.`);
+  }
+  return offers;
+}
+
+function isChickfilaChicken(tag: string, name: string) {
+  const blob = `${tag} ${name}`.toLowerCase();
+  if (/sauce|drink|lemonade|frosted|waffle.?fry|hash.?brown|fruit|cookie|brownie|milk|coffee|tea\b|nugget.?tray.?sauce|mac.?cheese|side salad|chips|waffle$|gluten.?free.?bun|veggie/.test(blob)) {
+    if (!/chicken|nugget|strip|filet|sandwich|minis|wrap/.test(blob)) return false;
+  }
+  return /chicken|nugget|strip|filet|sandwich|minis|wrap|grilled.?nugget|chick.?n/.test(blob);
+}
+
+async function locateMcdonalds(origin: Origin, radiusMiles: number, limit: number) {
+  const url = new URL("https://www.mcdonalds.com/googleappsv2/geolocation");
+  url.searchParams.set("latitude", String(origin.latitude));
+  url.searchParams.set("longitude", String(origin.longitude));
+  url.searchParams.set("radius", String(radiusMiles));
+  url.searchParams.set("maxResults", String(Math.max(limit * 3, limit)));
+  url.searchParams.set("country", "us");
+  url.searchParams.set("language", "en-us");
+  const headers = {
+    Accept: "application/json",
+    Referer: "https://www.mcdonalds.com/us/en-us/restaurant-locator.html",
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  };
+  // Prefer Unlocker — McD edge often 403s bare Convex egress.
+  const payload = await unlockerJson(url, { headers, preferDirect: false });
+  return (payload.features ?? [])
+    .map((feature: {
+      properties?: Record<string, unknown>;
+      geometry?: { coordinates?: [number, number] };
+    }) => {
+      const props = feature.properties ?? {};
+      const [longitude, latitude] = feature.geometry?.coordinates ?? [];
+      return {
+        id: String(props.identifierValue ?? props.id ?? ""),
+        name: String(props.longDescription || props.addressLine1 || `McDonald's`),
+        address: [props.addressLine1, props.customAddress || props.addressLine3].filter(Boolean).join(", "),
+        latitude: Number(latitude),
+        longitude: Number(longitude),
+        distance_miles: roundMiles(milesBetween(origin, { latitude: Number(latitude), longitude: Number(longitude) })),
+        pickup: true,
+      } satisfies Store;
+    })
+    .filter((store: Store) => store.id && Number.isFinite(store.latitude) && store.distance_miles <= radiusMiles)
+    .sort((a: Store, b: Store) => a.distance_miles - b.distance_miles)
+    .slice(0, limit);
+}
+
+async function mcdonaldsOffers(store: Store, observedAt: string) {
+  const sourceUrl = `https://us-prod.api.mcd.com/us/gma/api/v1/restaurants/${store.id}/menus`;
+  const payload = await unlockerJson(sourceUrl, {
+    headers: {
+      accept: "application/json",
+      "mcd-clientid": "GMA",
+      "mcd-marketid": "US",
+      "mcd-uuid": cryptoRandom(),
+    },
+  });
+  const offers = offersFromMcdonaldsMenu(payload, store, sourceUrl, observedAt);
+  if (offers.length === 0) {
+    throw new Error(
+      `McDonald's ${store.id}: GMA menu returned no priced chicken items (web pickup is app-gated; Unlocker may need a fresh GMA session).`,
+    );
+  }
+  return offers;
+}
+
+function offersFromMcdonaldsMenu(
+  payload: Record<string, unknown>,
+  store: Store,
+  sourceUrl: string,
+  observedAt: string,
+) {
+  const offers: MenuOffer[] = [];
+  const seen = new Set<string>();
+  const roots = [
+    payload.menu,
+    payload.data,
+    payload.restaurant,
+    payload,
+  ];
+  for (const root of roots) {
+    walkMcdonalds(root, (name, priceCents, href, section) => {
+      if (!/chicken|nugget|mccrispy|mcchicken|strip|tenders?|sandwich|wrap/i.test(name)) return;
+      if (/sauce|drink|fries|cola|coffee|shake|apple|cookie|pie\b/i.test(name) && !/chicken|nugget|mccrispy|mcchicken/i.test(name)) {
+        return;
+      }
+      if (priceCents == null || priceCents <= 0) return;
+      const offer = toOffer({
+        chain_id: "mcdonalds",
+        location_id: `mcdonalds:${store.id}`,
+        store_name: store.name,
+        address: store.address,
+        latitude: store.latitude,
+        longitude: store.longitude,
+        distance_miles: store.distance_miles,
+        original_name: name,
+        section: section ?? "",
+        list_price_cents: priceCents,
+        href: href ?? name,
+      }, sourceUrl, observedAt);
+      if (!offer || seen.has(offer.offer_key)) return;
+      seen.add(offer.offer_key);
+      offers.push(offer);
+    });
+  }
+  return offers;
+}
+
+function walkMcdonalds(
+  node: unknown,
+  emit: (name: string, priceCents: number | null, href: string | null, section: string | null) => void,
+  section: string | null = null,
+) {
+  if (Array.isArray(node)) {
+    for (const child of node) walkMcdonalds(child, emit, section);
+    return;
+  }
+  if (!node || typeof node !== "object") return;
+  const row = node as Record<string, unknown>;
+  const name = String(row.name ?? row.productName ?? row.item_name ?? row.title ?? "");
+  const nextSection = String(row.category ?? row.categoryName ?? row.family_group ?? section ?? "") || section;
+  const priceCents = mcdonaldsPriceCents(row);
+  if (name && priceCents != null) {
+    emit(name, priceCents, String(row.id ?? row.productCode ?? row.item_id ?? ""), nextSection);
+  }
+  for (const key of ["categories", "products", "items", "menuItems", "meals", "children", "subcategories", "data"]) {
+    if (row[key] != null) walkMcdonalds(row[key], emit, nextSection);
+  }
+}
+
+function mcdonaldsPriceCents(row: Record<string, unknown>) {
+  const candidates = [
+    row.pickup_price,
+    row.eat_in_price,
+    row.price,
+    (row.price as { amount?: number } | undefined)?.amount,
+    (row.productPrice as { price?: number } | undefined)?.price,
+    row.nationalPrice,
+  ];
+  for (const value of candidates) {
+    if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+      return value > 100 ? Math.round(value) : Math.round(value * 100);
+    }
+    if (typeof value === "string" && value.trim() && Number.isFinite(Number(value))) {
+      const num = Number(value);
+      return num > 100 ? Math.round(num) : Math.round(num * 100);
+    }
+  }
+  return null;
+}
+
+async function locateKfc(origin: Origin, radiusMiles: number, limit: number) {
+  const queries = [
+    origin.label,
+    `${origin.latitude},${origin.longitude}`,
+    origin.label.split(",")[0]?.trim(),
+  ].filter((value, index, all): value is string => Boolean(value) && all.indexOf(value) === index);
+
+  let results: Array<Record<string, unknown>> = [];
+  let lastError: unknown;
+  for (const address of queries) {
+    try {
+      const body = new URLSearchParams({
+        address,
+        distance: String(Math.max(radiusMiles, 10)),
+        catering: "false",
+        buffet: "false",
+        wifi: "false",
+      }).toString();
+      const exchange = await unlockerExchange("https://services.kfc.com/services/query/locations", {
+        preferDirect: false,
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/x-www-form-urlencoded",
+          Origin: "https://www.kfc.com",
+          Referer: "https://www.kfc.com/store-locator",
+        },
+        body,
+      });
+      const payload = JSON.parse(exchange.text) as { results?: Array<Record<string, unknown>> };
+      results = payload.results ?? [];
+      if (results.length) break;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  if (!results.length && lastError) throw lastError;
+
+  return results
+    .map((store) => {
+      const latitude = Number(store.latitude);
+      const longitude = Number(store.longitude);
+      return {
+        id: String(store.storeNumber ?? store.entityID ?? ""),
+        name: `KFC ${store.storeNumber ?? store.city ?? ""}`.trim(),
+        address: [store.addressLine, store.city, store.state, store.postalCode].filter(Boolean).join(", "),
+        latitude,
+        longitude,
+        distance_miles: roundMiles(
+          Number(store.distance) || milesBetween(origin, { latitude, longitude }),
+        ),
+        pickup: true,
+      } satisfies Store;
+    })
+    .filter((store: Store) => store.id && Number.isFinite(store.latitude) && store.distance_miles <= radiusMiles)
+    .sort((a: Store, b: Store) => a.distance_miles - b.distance_miles)
+    .slice(0, limit);
+}
+
+async function kfcOffers(store: Store, observedAt: string) {
+  // KFC US has no documented public priced-menu API; try a few live storefront shapes via Unlocker.
+  const candidates = [
+    `https://www.kfc.com/api/menu?storeNumber=${encodeURIComponent(store.id)}`,
+    `https://www.kfc.com/menu?store=${encodeURIComponent(store.id)}`,
+    `https://orders.kfc.com/api/menu/${encodeURIComponent(store.id)}`,
+  ];
+  let lastError: unknown;
+  for (const sourceUrl of candidates) {
+    try {
+      const text = await unlockerText(sourceUrl, {
+        headers: { Accept: "application/json, text/html", Referer: "https://www.kfc.com/menu" },
+      });
+      const offers = offersFromKfcPayload(text, store, sourceUrl, observedAt);
+      if (offers.length) return offers;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  const detail = lastError instanceof Error ? lastError.message : String(lastError ?? "no priced chicken items");
+  throw new Error(
+    `KFC ${store.id}: first-party priced menu unavailable (${detail.slice(0, 160)}). Locator works; menu needs a digital-ordering session or marketplace compare.`,
+  );
+}
+
+function offersFromKfcPayload(text: string, store: Store, sourceUrl: string, observedAt: string) {
+  const offers: MenuOffer[] = [];
+  const seen = new Set<string>();
+  let parsed: unknown = null;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    const match = text.match(/<script id="__NEXT_DATA__"[^>]*>(.*?)<\/script>/s);
+    if (match) {
+      try { parsed = JSON.parse(match[1]); } catch { parsed = null; }
+    }
+  }
+  if (!parsed) return offers;
+
+  walkKfc(parsed, (name, priceCents, href, section) => {
+    if (!/chicken|tender|nugget|wing|sandwich|bucket|piece|wrap|drum|thigh|breast/i.test(name)) return;
+    if (/sauce|drink|biscuit$|coleslaw|mac.?cheese|cookie|pie\b|potato|corn|gravy/i.test(name) && !/chicken|tender|nugget|wing/i.test(name)) {
+      return;
+    }
+    if (priceCents == null || priceCents <= 0) return;
+    const offer = toOffer({
+      chain_id: "kfc",
+      location_id: `kfc:${store.id}`,
+      store_name: store.name,
+      address: store.address,
+      latitude: store.latitude,
+      longitude: store.longitude,
+      distance_miles: store.distance_miles,
+      original_name: name,
+      section: section ?? "",
+      list_price_cents: priceCents,
+      href: href ?? name,
+    }, sourceUrl, observedAt);
+    if (!offer || seen.has(offer.offer_key)) return;
+    seen.add(offer.offer_key);
+    offers.push(offer);
+  });
+  return offers;
+}
+
+function walkKfc(
+  node: unknown,
+  emit: (name: string, priceCents: number | null, href: string | null, section: string | null) => void,
+  section: string | null = null,
+) {
+  if (Array.isArray(node)) {
+    for (const child of node) walkKfc(child, emit, section);
+    return;
+  }
+  if (!node || typeof node !== "object") return;
+  const row = node as Record<string, unknown>;
+  const name = String(row.name ?? row.displayName ?? row.title ?? row.productName ?? "");
+  const nextSection = String(row.category ?? row.categoryName ?? section ?? "") || section;
+  const priceCents = kfcPriceCents(row);
+  if (name && priceCents != null) {
+    emit(name, priceCents, String(row.id ?? row.productId ?? row.sku ?? ""), nextSection);
+  }
+  for (const value of Object.values(row)) {
+    if (value && typeof value === "object") walkKfc(value, emit, nextSection);
+  }
+}
+
+function kfcPriceCents(row: Record<string, unknown>) {
+  const candidates = [
+    row.price,
+    row.priceCents,
+    row.list_price_cents,
+    (row.price as { amount?: number; cents?: number } | undefined)?.amount,
+    (row.price as { amount?: number; cents?: number } | undefined)?.cents,
+  ];
+  for (const value of candidates) {
+    if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+      // Heuristic: integer >= 100 is already cents; small floats are dollars.
+      if (Number.isInteger(value) && value >= 100) return value;
+      return Math.round(value * (value < 100 ? 100 : 1));
+    }
+    if (typeof value === "string" && /\$?\d/.test(value)) {
+      const num = Number(value.replace(/[^0-9.]/g, ""));
+      if (Number.isFinite(num) && num > 0) return Math.round(num * 100);
+    }
+  }
+  return null;
+}
+
+function stripHtml(value: string) {
+  return value.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&reg;/g, "®").trim();
+}
+
+function numberOr(value: unknown, fallback: number) {
+  const num = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(num) ? num : fallback;
+}
+
+function cryptoRandom() {
+  return `${Date.now().toString(16)}-${Math.random().toString(16).slice(2)}`;
 }

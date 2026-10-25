@@ -409,8 +409,9 @@ node src/run.mjs --address "Palace of Fine Arts, San Francisco, CA" --at 37.8029
 | Wingstop | `api.wingstop.com/restaurants/near` | `.../restaurants/{id}/menu` (+ options) | Bright Data / NomNom |
 | Raising Cane's | `nomnom-prod-api.raisingcanes.com/restaurants/near` | `.../restaurants/{id}/menu` | Bright Data; headers `clientid` + `nomnom-platform` |
 | Popeyes | `www.popeyes.com/graphql` `GetNearbyRestaurants` | `AppMenuMenuFlat` + `AppMenuPicker`/`Item`/`Combo` with `storeId` + `serviceMode=pickup` | Prefer direct fetch; Unlocker 403s GraphQL. Prices are integer cents in `price.default` |
-| Chick-fil-A | Yext `liveapi.yext.com/.../geosearch` (public key on order site) | `commerce.api.my.chick-fil-a.com/.../GetDecoupledOldDataMenu` | Locate works. Menu needs `order.chick-fil-a.com` guest auth; Unlocker returns 401. Browser session returns `itemPrice.minorUnits` |
-| McDonald's | `mcdonalds.com/googleappsv2/geolocation` | — | Web pickup redirects to app; no public priced menu |
+| Chick-fil-A | Yext geosearch (filter out airport / non-pickup LIC stores) | Unlocker `GetDecoupledOldDataMenu`, else Apify `memo23/chick-fil-a-menu-scraper` | **Live.** SJ smoke: store `03229`, 16 first-party chicken offers + DD/UE secondary. |
+| McDonald's | `mcdonalds.com/googleappsv2/geolocation` via Unlocker | GMA `.../restaurants/{id}/menus` | **Blocked.** Locator returns Akamai 403 even through Unlocker from Convex; GMA menu needs app session. Code is wired; needs a residential/browser Unlocker profile or alternate locator. |
+| KFC | Unlocker POST `services.kfc.com/services/query/locations` | Best-effort storefront menu URLs | **Blocked.** Legacy locator host often unreachable; no public priced-menu API. Code is wired for when Unlocker can reach `services.kfc.com`. |
 | Jollibee | `jollibeefoods.com/api/location/search?query=` | POST `api/basket` `{Id:"<yextId>"}` → cookie, then SSR `/menu/{slug}` `__NEXT_DATA__` `category.Products[].Cost` | Direct fetch; missing category slugs 404 and are skipped. Nuggets/tenders may be empty at some stores. |
 
 `apiJson()` in `bright-data.mjs` tries Bright Data Web Unlocker first, then falls back to direct fetch for unlocker-blocked endpoints.

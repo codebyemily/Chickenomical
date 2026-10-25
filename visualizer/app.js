@@ -31,6 +31,7 @@ const chainName = (id) => ({
   wendys: "Wendy's",
   mcdonalds: "McDonald's",
   "chick-fil-a": "Chick-fil-A",
+  kfc: "KFC",
 }[id] ?? id);
 
 const CHANNEL_LABEL = {
