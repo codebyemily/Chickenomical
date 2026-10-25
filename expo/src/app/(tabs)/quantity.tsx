@@ -1,27 +1,35 @@
-import { Slider } from '@expo/ui/community/slider';
+import { Host, Slider } from '@expo/ui';
 import * as Haptics from 'expo-haptics';
-import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppFrame, NoticeBand, PageHeading } from '@/components/app-frame';
+import { AppFrame, NoticeBand } from '@/components/app-frame';
 import { QueryStatePanel } from '@/components/query-state-panel';
 import { ActionButton } from '@/components/ui/action-button';
+import { FormField } from '@/components/form-field';
+import { HeadingText } from '@/components/heading-text';
+import { LinkPressable } from '@/components/link-pressable';
 import { useLiveOffersQuery, useRecentOffersQuery, type OfferRecord } from '@/data/live-offers';
 import { categoryInfo, categoryUnit, quantityText } from '@/data/menu-schema';
 import { isRankable, money, solveAllLocations } from '@/lib/compare';
 import { offerDetailRoute } from '@/lib/live-offer-routes';
 import { usePrototype } from '@/state/prototype-context';
+import { pageMetadata } from '@/data/page-metadata';
 import { colors, fonts, spacing, tabular } from '@/theme';
+import type { GenerateMetadataFunction } from 'expo-router/server';
 
 const EMPTY_RECORDS: OfferRecord[] = [];
 
+export const generateMetadata: GenerateMetadataFunction = () => pageMetadata(
+  'Plan a group chicken order',
+  'Estimate the lowest recent menu total for feeding a group at one nearby restaurant.',
+);
+
 export default function QuantityScreen() {
-  const router = useRouter();
-  const { category, setCategory, radiusMiles } = usePrototype();
-  const [goal, setGoal] = useState('12');
-  const [submittedGoal, setSubmittedGoal] = useState(12);
+  const { category, setCategory, radiusMiles, groupSize, setGroupSize } = usePrototype();
+  const [goalDraft, setGoalDraft] = useState<string | null>(null);
   const [goalError, setGoalError] = useState<string | null>(null);
+  const goal = goalDraft ?? String(groupSize);
   const query = useLiveOffersQuery();
   const recentQuery = useRecentOffersQuery();
   const boardRows = query.status === 'success' ? query.data : EMPTY_RECORDS;
@@ -45,7 +53,7 @@ export default function QuantityScreen() {
   const selectedCategoryInfo = selectedCategory
     ? categoryInfo(selectedCategory)
     : { label: 'available category', unit: 'item', plural: 'items' };
-  const solutions = selectedCategory ? solveAllLocations(records, selectedCategory, submittedGoal) : [];
+  const solutions = selectedCategory ? solveAllLocations(records, selectedCategory, groupSize) : [];
   const byVariant = new Map<string, typeof solutions>();
   for (const solution of solutions) {
     const rows = byVariant.get(solution.variantKey) ?? [];
@@ -55,6 +63,7 @@ export default function QuantityScreen() {
   const solutionGroups = [...byVariant].map(([key, rows]) => ({ key, variant: rows[0].variant, rows }));
   const solutionLocationCount = new Set(solutions.map((solution) => solution.location.id)).size;
   const best = solutions[0];
+  const hasUnappliedGoal = goal.trim() !== String(groupSize);
   const bestPlanKey = best
     ? `${best.location.id}:${best.orders.map(({ offer, quantity }) => `${offer.id}x${quantity}`).join(',')}`
     : 'no-solution';
@@ -91,33 +100,29 @@ export default function QuantityScreen() {
       return false;
     }
     setGoalError(null);
-    setGoal(String(count));
-    setSubmittedGoal(count);
+    setGoalDraft(null);
+    setGroupSize(count);
     return true;
   }
 
   function changeFromSlider(value: number) {
     const next = Math.min(100, Math.max(1, Math.round(value)));
-    setGoal(String(next));
-    setSubmittedGoal(next);
+    setGoalDraft(null);
+    setGroupSize(next);
     setGoalError(null);
   }
 
   function changeFromText(value: string) {
-    setGoal(value);
+    setGoalDraft(value);
     setGoalError(null);
-    if (!/^[0-9]+$/.test(value)) return;
-    const next = Number(value);
-    if (next >= 1 && next <= 100) setSubmittedGoal(next);
   }
 
   return (
     <AppFrame active="Group" compact surface="compare">
       <View style={styles.screen}>
-        <PageHeading title="Chickenomical" compact navOnly />
         <View style={styles.hero}>
           <Text style={styles.brand}>Chickenomical</Text>
-          <Text accessibilityRole="header" style={styles.heroTitle}>How many are we feeding?</Text>
+          <HeadingText level={1} style={styles.heroTitle}>How many are we feeding?</HeadingText>
           <Text style={styles.heroDescription}>Build a chicken order from recent pickup prices nearby.</Text>
         </View>
 
@@ -134,6 +139,7 @@ export default function QuantityScreen() {
                         key={option}
                         accessibilityRole="button"
                         accessibilityState={{ selected }}
+                        aria-pressed={selected}
                         onPress={() => setCategory(option)}
                         style={({ pressed }) => [styles.categoryChip, selected && styles.categoryChipSelected, pressed && styles.pressed]}>
                         <Text style={[styles.categoryChipText, selected && styles.categoryChipTextSelected]}>{categoryInfo(option).label}</Text>
@@ -156,8 +162,8 @@ export default function QuantityScreen() {
               <View>
                 <Text style={styles.controlLabel}>MINIMUM ORDER SIZE</Text>
                 <View style={styles.goalValueLine}>
-                  <Text accessibilityLiveRegion="polite" style={[styles.goalValue, tabular]}>{submittedGoal}</Text>
-                  <Text style={styles.goalUnit}>{categoryUnit(selectedCategory, submittedGoal)}</Text>
+                  <Text accessibilityLiveRegion="polite" style={[styles.goalValue, tabular]}>{groupSize}</Text>
+                  <Text style={styles.goalUnit}>{categoryUnit(selectedCategory, groupSize)}</Text>
                 </View>
               </View>
               <View style={styles.rangeBadge}>
@@ -166,20 +172,16 @@ export default function QuantityScreen() {
             </View>
 
             <View style={styles.sliderBlock}>
-              <Slider
-                accessibilityLabel="Minimum group size"
-                accessibilityHint={`Set the number of ${selectedCategoryInfo.plural} for the order. The least-cost combination updates as you move the slider.`}
-                minimumValue={1}
-                maximumValue={100}
-                step={1}
-                value={submittedGoal}
-                minimumTrackTintColor={colors.purple}
-                maximumTrackTintColor="#B8C59F"
-                thumbTintColor={colors.purple}
-                onValueChange={changeFromSlider}
-                style={Platform.OS === 'web' ? styles.sliderWeb : styles.slider}
-                testID="piece-goal-slider"
-              />
+              <Host matchContents={{ vertical: true }} colorScheme="light" seedColor={colors.purple} style={styles.sliderHost}>
+                <Slider
+                  value={groupSize}
+                  min={1}
+                  max={100}
+                  step={1}
+                  onValueChange={changeFromSlider}
+                  testID="piece-goal-slider"
+                />
+              </Host>
               <View style={styles.sliderLabels}>
                 <Text style={styles.sliderLabel}>1 {categoryUnit(selectedCategory, 1)}</Text>
                 <Text style={styles.sliderLabel}>100 {selectedCategoryInfo.plural}</Text>
@@ -188,23 +190,29 @@ export default function QuantityScreen() {
 
             <View style={styles.exactEntry}>
               <Text style={styles.controlLabel}>OR SET AN EXACT SIZE</Text>
-              <TextInput
-                accessibilityLabel={`Set an exact ${selectedCategoryInfo.unit} goal`}
+              <View style={styles.exactEntryRow}>
+              <FormField
+                label={`${selectedCategoryInfo.unit} goal`}
                 value={goal}
                 onChangeText={changeFromText}
                 keyboardType="numeric"
-                returnKeyType="done"
+                submitLabel="done"
                 onSubmitEditing={() => commitGoal(goal)}
-                style={styles.exactInput}
+                onBlur={() => commitGoal(goal)}
+                help="Enter a whole number from 1 to 100."
+                error={goalError ?? undefined}
               />
-              <Text style={styles.inputHelp}>Enter a whole number from 1 to 100.</Text>
-              {goalError ? <Text accessibilityRole="alert" style={styles.goalError}>{goalError}</Text> : null}
+              <ActionButton kind="primary" onPress={() => commitGoal(goal)}>Apply size</ActionButton>
+              </View>
+              {hasUnappliedGoal && !goalError ? (
+                <Text style={styles.inputHelp}>Results still show the last valid size of {groupSize} until this entry is applied.</Text>
+              ) : null}
             </View>
           </View>
 
           <View style={styles.resultsHeader}>
             <Text style={styles.sectionEyebrow}>GROUP ORDER IDEAS</Text>
-            <Text accessibilityRole="header" style={styles.resultTitle}>At least {quantityText(selectedCategory, submittedGoal)}</Text>
+            <HeadingText level={2} style={styles.resultTitle}>At least {quantityText(selectedCategory, groupSize)}</HeadingText>
             <Text style={styles.resultIntro}>
               {query.status === 'success'
                 ? `${solutionGroups.length} matching menu variant${solutionGroups.length === 1 ? '' : 's'} across ${solutionLocationCount} location${solutionLocationCount === 1 ? '' : 's'} within ${radiusMiles} miles.`
@@ -222,17 +230,17 @@ export default function QuantityScreen() {
           ) : null}
 
           {recentQuery.status === 'success' && recentRows.length > 0 ? (
-            <Pressable accessibilityRole="link" onPress={() => router.push('/sources' as never)} style={({ pressed }) => [styles.recentInventory, pressed && styles.pressed]}>
+            <LinkPressable href="/sources" style={({ pressed }) => [styles.recentInventory, pressed && styles.pressed]}>
               <View style={styles.recentInventoryCopy}>
                 <Text style={styles.recentInventoryLabel}>MORE RECENT DATABASE RECORDS</Text>
                 <Text style={styles.recentInventoryText}>{recentRows.length} recent offers · {recentChainCount} {recentChainCount === 1 ? 'chain' : 'chains'} · {recentCategoryCount} {recentCategoryCount === 1 ? 'category' : 'categories'}</Text>
                 <Text style={styles.recentInventoryNote}>May include other crawl locations; kept out of these totals.</Text>
               </View>
               <Text style={styles.recentInventoryLink}>Sources →</Text>
-            </Pressable>
+            </LinkPressable>
           ) : null}
 
-          <QueryStatePanel status={query.status} error={query.status === 'error' ? query.error : undefined} />
+          <QueryStatePanel status={query.status} />
 
           {query.status === 'success' && (solutions.length ? (
             <View style={styles.solutionGroups}>
@@ -274,9 +282,11 @@ export default function QuantityScreen() {
                           </Text>
                         </View>
                         <View style={styles.inspectButton}>
-                          <ActionButton kind="secondary" onPress={() => router.push(offerDetailRoute(solution.orders[0].offer.id, query.metadata.job?._id) as never)}>
-                            Inspect menu size
-                          </ActionButton>
+                          <LinkPressable
+                            href={offerDetailRoute(solution.orders[0].offer.id, query.metadata.job?._id) as never}
+                            style={styles.inspectLink}>
+                            <Text style={styles.inspectLinkText}>Inspect menu size</Text>
+                          </LinkPressable>
                         </View>
                       </View>
                     ))}
@@ -335,7 +345,7 @@ const styles = StyleSheet.create({
   goalPanel: { backgroundColor: colors.lime, borderRadius: 28, padding: spacing.lg, gap: spacing.lg },
   categoryBlock: { gap: spacing.sm },
   categoryOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  categoryChip: { minHeight: 40, justifyContent: 'center', paddingHorizontal: spacing.md, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.warmRule, borderRadius: 999 },
+  categoryChip: { minHeight: 48, justifyContent: 'center', paddingHorizontal: spacing.md, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.warmRule, borderRadius: 999 },
   categoryChipSelected: { backgroundColor: colors.purple, borderColor: colors.purple },
   categoryChipText: { color: colors.black, fontFamily: fonts.bold, fontSize: 13 },
   categoryChipTextSelected: { color: colors.white },
@@ -349,17 +359,15 @@ const styles = StyleSheet.create({
   rangeBadge: { backgroundColor: '#FFFFFFA8', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7, marginBottom: 8 },
   rangeText: { color: colors.black, fontFamily: fonts.bold, fontSize: 11 },
   sliderBlock: { alignSelf: 'stretch', gap: spacing.xs },
-  slider: { height: 42 },
-  sliderWeb: { width: '100%', height: 42 },
+  sliderHost: { width: '100%', height: 48, justifyContent: 'center' },
   sliderLabels: { flexDirection: 'row', justifyContent: 'space-between' },
   sliderLabel: { color: '#485439', fontFamily: fonts.medium, fontSize: 11 },
   exactEntry: { gap: spacing.xs },
-  exactInput: { width: 130, height: 50, backgroundColor: colors.white, borderColor: colors.purple, borderWidth: 2, borderRadius: 999, paddingHorizontal: spacing.lg, color: colors.black, fontFamily: fonts.bold, fontSize: 19 },
+  exactEntryRow: { flexDirection: 'row', alignItems: 'flex-end', flexWrap: 'wrap', gap: spacing.md },
   inputHelp: { color: '#485439', fontFamily: fonts.regular, fontSize: 12, lineHeight: 17 },
-  goalError: { color: colors.danger, fontFamily: fonts.medium, fontSize: 13, lineHeight: 18 },
   resultsHeader: { gap: spacing.xs },
   sectionEyebrow: { color: colors.purple, fontFamily: fonts.bold, fontSize: 11, letterSpacing: 0.7, lineHeight: 16 },
-  resultTitle: { color: colors.orange, fontFamily: fonts.bold, fontSize: 25, lineHeight: 30, letterSpacing: -0.4 },
+  resultTitle: { color: colors.orangeInk, fontFamily: fonts.bold, fontSize: 25, lineHeight: 30, letterSpacing: -0.4 },
   resultIntro: { color: colors.muted, fontFamily: fonts.regular, fontSize: 13, lineHeight: 20 },
   snapshotBand: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.cream, borderRadius: 16, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   snapshotDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.purple },
@@ -394,5 +402,7 @@ const styles = StyleSheet.create({
   solutionFacts: { color: colors.black, fontFamily: fonts.bold, fontSize: 11, lineHeight: 17 },
   solutionStatus: { color: colors.muted, fontFamily: fonts.medium, fontSize: 11, lineHeight: 16 },
   inspectButton: { alignSelf: 'flex-start', minWidth: 150 },
+  inspectLink: { minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 999, backgroundColor: colors.cream, paddingHorizontal: spacing.md },
+  inspectLinkText: { color: colors.black, fontFamily: fonts.bold, fontSize: 13 },
   bestInk: { color: colors.black },
 });

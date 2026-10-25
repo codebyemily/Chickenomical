@@ -1,13 +1,21 @@
-import { useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppFrame, PageHeading } from '@/components/app-frame';
+import { AppFrame } from '@/components/app-frame';
+import { HeadingText } from '@/components/heading-text';
+import { LinkPressable } from '@/components/link-pressable';
 import { useLiveOffersQuery, type OfferRecord } from '@/data/live-offers';
 import { usePrototype } from '@/state/prototype-context';
 import { colors, fonts, radii, spacing, tabular } from '@/theme';
+import { pageMetadata } from '@/data/page-metadata';
+import type { GenerateMetadataFunction } from 'expo-router/server';
 
 const RADII = [1, 3, 5, 10];
 const VISIBLE_STORES = 5;
+
+export const generateMetadata: GenerateMetadataFunction = () => pageMetadata(
+  'Choose a saved distance',
+  'Adjust how far away a menu record can be based on its stored crawl distance.',
+);
 
 type NearbyStore = {
   id: string;
@@ -19,7 +27,6 @@ type NearbyStore = {
 };
 
 export default function LocationScreen() {
-  const router = useRouter();
   const { radiusMiles, setRadiusMiles } = usePrototype();
   const query = useLiveOffersQuery();
   const stores = query.status === 'success' ? groupStores(query.data) : [];
@@ -37,11 +44,9 @@ export default function LocationScreen() {
   return (
     <AppFrame compact surface="compare">
       <View style={styles.screen}>
-        <PageHeading title="Chickenomical" compact navOnly />
-
         <View style={styles.hero}>
           <Text style={styles.heroEyebrow}>NEARBY / LIVE CRAWL</Text>
-          <Text accessibilityRole="header" style={styles.heroTitle}>Set your distance.</Text>
+          <HeadingText level={1} style={styles.heroTitle}>Set your distance.</HeadingText>
           <Text style={styles.heroDescription}>
             Choose how far away a saved menu offer can be to appear in Compare.
           </Text>
@@ -52,7 +57,7 @@ export default function LocationScreen() {
             <View style={styles.radiusHeading}>
               <View style={styles.radiusTitleCopy}>
                 <Text style={styles.eyebrow}>COMPARE FILTER</Text>
-                <Text accessibilityRole="header" style={styles.sectionTitle}>Maximum saved distance</Text>
+                <HeadingText level={2} style={styles.sectionTitle}>Maximum saved distance</HeadingText>
               </View>
               <View style={styles.currentBadge}>
                 <Text style={styles.currentBadgeText}>{radiusMiles} MI</Text>
@@ -69,6 +74,7 @@ export default function LocationScreen() {
                     key={radius}
                     accessibilityRole="button"
                     accessibilityState={{ selected }}
+                    aria-pressed={selected}
                     onPress={() => setRadiusMiles(radius)}
                     style={({ pressed }) => [styles.radiusButton, selected && styles.radiusButtonSelected, pressed && styles.pressed]}>
                     <Text style={[styles.radiusButtonText, selected && styles.radiusButtonTextSelected]}>{radius} mi</Text>
@@ -81,7 +87,7 @@ export default function LocationScreen() {
           <View style={styles.sectionHeader}>
             <View style={styles.sectionHeadingCopy}>
               <Text style={styles.eyebrow}>CONVEX / CURRENT BOARD</Text>
-              <Text accessibilityRole="header" style={styles.sectionTitle}>Live locations</Text>
+              <HeadingText level={2} style={styles.sectionTitle}>Live locations</HeadingText>
             </View>
             {query.status === 'success' ? (
               <Text style={styles.sectionCount}>{stores.length} STORE{stores.length === 1 ? '' : 'S'}</Text>
@@ -101,8 +107,8 @@ export default function LocationScreen() {
           {query.status === 'error' ? (
             <View style={[styles.stateCard, styles.errorCard]}>
               <Text style={styles.stateTitle}>Couldn&apos;t load live locations</Text>
-              <Text style={styles.bodyCopy} numberOfLines={3}>{query.error.message || 'The Convex offers board is unavailable right now.'}</Text>
-              <Text style={styles.errorHint}>Your selected distance is still saved for this app session.</Text>
+              <Text accessibilityRole="alert" accessibilityLiveRegion="assertive" style={styles.bodyCopy}>The live menu board is temporarily unavailable. Try again in a moment.</Text>
+              <Text style={styles.errorHint}>Your selected distance is saved on this device.</Text>
             </View>
           ) : null}
 
@@ -191,7 +197,7 @@ export default function LocationScreen() {
             </>
           ) : null}
 
-          <BackButton onPress={() => router.dismissTo('/')} label="Back to comparison" />
+          <BackButton label="Back to Compare" />
         </View>
       </View>
     </AppFrame>
@@ -232,12 +238,12 @@ function dateTimeLabel(value: string) {
   return new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(parsed);
 }
 
-function BackButton({ onPress, label }: { onPress: () => void; label: string }) {
+function BackButton({ label }: { label: string }) {
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
+    <LinkPressable href="/" replace style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
       <Text style={styles.backButtonText}>{label}</Text>
       <Text style={styles.backArrow}>→</Text>
-    </Pressable>
+    </LinkPressable>
   );
 }
 
@@ -265,7 +271,7 @@ const styles = StyleSheet.create({
   currentBadgeText: { color: colors.purple, fontFamily: fonts.monoBold, fontSize: 11, lineHeight: 16 },
   bodyCopy: { color: colors.muted, fontFamily: fonts.regular, fontSize: 13, lineHeight: 20 },
   radiusButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  radiusButton: { minHeight: 42, minWidth: 62, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.md, borderWidth: 1, borderColor: colors.warmRule, borderRadius: radii.pill, backgroundColor: colors.cream },
+  radiusButton: { minHeight: 48, minWidth: 64, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.md, borderWidth: 1, borderColor: colors.warmRule, borderRadius: radii.pill, backgroundColor: colors.cream },
   radiusButtonSelected: { borderColor: colors.purple, backgroundColor: colors.purple },
   radiusButtonText: { color: colors.black, fontFamily: fonts.bold, fontSize: 13, lineHeight: 18 },
   radiusButtonTextSelected: { color: colors.white },
@@ -311,8 +317,8 @@ const styles = StyleSheet.create({
   noteCard: { padding: spacing.lg, gap: spacing.xs, backgroundColor: colors.sky, borderRadius: radii.md },
   noteTitle: { color: colors.black, fontFamily: fonts.bold, fontSize: 13, lineHeight: 18 },
   noteText: { color: colors.black, fontFamily: fonts.regular, fontSize: 12, lineHeight: 18 },
-  backButton: { minHeight: 54, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, borderRadius: radii.pill, backgroundColor: colors.coral },
-  backButtonText: { color: colors.white, fontFamily: fonts.bold, fontSize: 15, lineHeight: 20 },
-  backArrow: { color: colors.white, fontFamily: fonts.bold, fontSize: 22, lineHeight: 24 },
+  backButton: { minHeight: 54, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, borderRadius: radii.pill, backgroundColor: colors.yellow },
+  backButtonText: { color: colors.black, fontFamily: fonts.bold, fontSize: 15, lineHeight: 20 },
+  backArrow: { color: colors.black, fontFamily: fonts.bold, fontSize: 22, lineHeight: 24 },
   pressed: { opacity: 0.72 },
 });

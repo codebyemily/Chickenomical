@@ -31,6 +31,7 @@ export function AppFrame({ children, compact = false, showDataNotice = true, sur
 
   return (
     <SafeAreaView edges={nativeStack ? ['left', 'right'] : ['top', 'left', 'right']} style={[styles.safeArea, compareSurface && styles.compareSafeArea]}>
+      {web ? <WebNavigation /> : null}
       <ScrollView
         testID="app-scroll"
         style={styles.scroll}
@@ -40,7 +41,7 @@ export function AppFrame({ children, compact = false, showDataNotice = true, sur
         contentContainerStyle={[
           styles.scrollContent,
           { paddingHorizontal: width >= 900 ? spacing.xxxl : spacing.lg,
-            paddingBottom: web ? spacing.xl : Math.max(insets.bottom, spacing.md) + 104 },
+            paddingBottom: web ? Math.max(insets.bottom, spacing.xl) : Math.max(insets.bottom, spacing.md) + 104 },
           compareSurface && styles.compareScrollContent,
         ]}
         keyboardShouldPersistTaps="handled">
@@ -74,31 +75,39 @@ function WebNavigation() {
   if (Platform.OS !== 'web') return null;
 
   return (
-    <View role="navigation" accessibilityLabel="Main navigation" style={styles.nav}>
-      {NAV_ITEMS.map((item) => {
-        const selected = pathname === item.href || (item.href === '/sources' && pathname.startsWith('/source/'));
-        return (
-          <LinkPressable
-            key={item.href}
-            href={item.href as never}
-            {...{ 'aria-current': selected ? 'page' as const : undefined }}
-            style={({ pressed }) => [styles.navButton, width < 600 && styles.navButtonNarrow, selected && styles.navSelected, pressed && styles.pressed]}>
-            <Text style={[styles.navText, selected && styles.navTextSelected]}>{item.label}</Text>
-          </LinkPressable>
-        );
-      })}
+    <View style={styles.navWrap}>
+      <View role="navigation" accessibilityLabel="Main navigation" style={styles.nav}>
+        <LinkPressable href="/" accessibilityLabel="Chickenomical home" style={({ pressed }) => [styles.brandLink, pressed && styles.pressed]}>
+          <Text accessibilityElementsHidden style={styles.brandEmoji}>🐔</Text>
+          <Text style={styles.brandName}>chickenomical</Text>
+        </LinkPressable>
+        <View style={styles.navLinks}>
+          {NAV_ITEMS.map((item) => {
+            const selected = pathname === item.href
+              || (item.href === '/' && pathname.startsWith('/category/'))
+              || (item.href === '/sources' && pathname.startsWith('/source/'))
+              || (item.href === '/' && (pathname.startsWith('/offer/') || pathname === '/location'))
+              || (item.href === '/methodology' && pathname.startsWith('/states'));
+            return (
+              <LinkPressable
+                key={item.href}
+                href={item.href as never}
+                {...{ 'aria-current': selected ? 'page' as const : undefined }}
+                style={({ pressed }) => [styles.navButton, width < 900 && styles.navButtonNarrow, selected && styles.navSelected, pressed && styles.pressed]}>
+                <Text style={[styles.navText, selected && styles.navTextSelected]}>{item.label}</Text>
+              </LinkPressable>
+            );
+          })}
+        </View>
+      </View>
     </View>
   );
 }
 
-export function PageHeading({ title, description, compact = false, navOnly = false, tone = 'orange' }: { title: string; description?: string; compact?: boolean; navOnly?: boolean; tone?: 'orange' | 'lime' | 'blue' }) {
+export function PageHeading({ title, description, compact = false, tone = 'orange' }: { title: string; description?: string; compact?: boolean; tone?: 'orange' | 'lime' | 'blue' }) {
   const segments = useSegments() as string[];
   const { width } = useWindowDimensions();
   const nativeStackTitle = Platform.OS !== 'web' && !segments.includes('(tabs)');
-
-  if (navOnly) {
-    return Platform.OS === 'web' ? <View style={styles.navOnly}><WebNavigation /></View> : null;
-  }
 
   if (nativeStackTitle) {
     return description ? <Text style={styles.pageDescription}>{description}</Text> : null;
@@ -119,7 +128,6 @@ export function PageHeading({ title, description, compact = false, navOnly = fal
           <View style={styles.sampleDot} />
           <Text style={styles.freshnessText}>DATABASE SNAPSHOT</Text>
         </View>
-        <WebNavigation />
       </View>
     </View>
   );
@@ -141,7 +149,10 @@ export function HardRule() {
 export function NoticeBand({ title, children, tone = 'neutral' }: PropsWithChildren<{ title: string; tone?: 'neutral' | 'warning' | 'error' }>) {
   const style = tone === 'error' ? styles.errorBand : tone === 'warning' ? styles.warningBand : styles.neutralBand;
   return (
-    <View style={[styles.noticeBand, style]}>
+    <View
+      accessibilityRole={tone === 'error' ? 'alert' : undefined}
+      accessibilityLiveRegion={tone === 'error' ? 'assertive' : undefined}
+      style={[styles.noticeBand, style]}>
       <Text style={styles.noticeTitle}>{title}</Text>
       <Text style={styles.noticeText}>{children}</Text>
     </View>
@@ -170,7 +181,7 @@ const styles = StyleSheet.create({
   headingCopy: { flex: 1, gap: spacing.xs, minWidth: 0 },
   eyebrow: { color: colors.black, fontFamily: fonts.monoBold, fontSize: 11, lineHeight: 16, letterSpacing: 0.8 },
   pageTitle: { color: colors.black, fontFamily: fonts.bold, fontSize: 40, lineHeight: 43, letterSpacing: -1.5 },
-  pageTitleOrange: { color: colors.orange },
+  pageTitleOrange: { color: colors.orangeInk },
   pageTitleLime: { color: '#688B20' },
   pageTitleBlue: { color: '#27899F' },
   pageTitleNarrow: { fontSize: 27, lineHeight: 30, letterSpacing: -0.9 },
@@ -181,10 +192,14 @@ const styles = StyleSheet.create({
   freshness: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
   sampleDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.muted },
   freshnessText: { color: colors.muted, fontFamily: fonts.mono, fontSize: 11, lineHeight: 16, letterSpacing: 0.2 },
-  nav: { flexDirection: 'row', gap: spacing.md, flexWrap: 'wrap' },
-  navOnly: { width: '100%', maxWidth: 1360, paddingHorizontal: spacing.lg, paddingTop: spacing.sm, alignItems: 'flex-end' },
-  navButton: { minHeight: 32, justifyContent: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  navButtonNarrow: { minHeight: 44 },
+  navWrap: { width: '100%', alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: spacing.sm, backgroundColor: colors.cream },
+  nav: { width: '100%', maxWidth: 1360, minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, flexWrap: 'wrap' },
+  brandLink: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.xs },
+  brandEmoji: { fontSize: 19, lineHeight: 24 },
+  brandName: { color: colors.black, fontFamily: fonts.bold, fontSize: 16, lineHeight: 22, letterSpacing: -0.35 },
+  navLinks: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: spacing.sm, flexWrap: 'wrap' },
+  navButton: { minHeight: 48, minWidth: 72, justifyContent: 'center', alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent', paddingHorizontal: spacing.xs },
+  navButtonNarrow: { minHeight: 48, minWidth: 66 },
   navSelected: { borderBottomColor: colors.black },
   navText: { color: colors.muted, fontFamily: fonts.medium, fontSize: 12 },
   navTextSelected: { color: colors.black, fontFamily: fonts.bold },

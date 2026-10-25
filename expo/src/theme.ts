@@ -5,6 +5,7 @@ export const colors = {
   white: '#FFFFFF',
   cream: '#FFF7EE',
   orange: '#FFA000',
+  orangeInk: '#7C4300',
   purple: '#A900C8',
   lime: '#D9FF96',
   sky: '#D7F5F8',

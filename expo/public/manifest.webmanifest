@@ -1,0 +1,16 @@
+{
+  "name": "Chickenomical",
+  "short_name": "Chickenomical",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFF7EE",
+  "theme_color": "#F1F2F2",
+  "icons": [
+    {
+      "src": "/chickenomical.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

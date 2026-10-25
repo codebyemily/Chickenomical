@@ -9,6 +9,8 @@ type PrototypeState = {
   setCategory: (value: Category) => void;
   radiusMiles: number;
   setRadiusMiles: (value: number) => void;
+  groupSize: number;
+  setGroupSize: (value: number) => void;
   area: DemoArea;
   locationLabel: string;
   setDemoArea: (area: DemoArea, label: string) => void;
@@ -22,6 +24,7 @@ const PrototypeContext = createContext<PrototypeState | null>(null);
 export function PrototypeProvider({ children }: PropsWithChildren) {
   const [category, setCategory] = useState<Category>('chicken-nugget');
   const [radiusMiles, setRadiusMiles] = useState(5);
+  const [groupSize, setGroupSize] = useState(12);
   const [area, setArea] = useState<DemoArea>('market');
   const [locationLabel, setLocationLabel] = useState('Saved crawl distances');
   const [refreshStatus, setRefreshStatus] = useState<RefreshStatus>('idle');
@@ -51,6 +54,8 @@ export function PrototypeProvider({ children }: PropsWithChildren) {
       setCategory,
       radiusMiles,
       setRadiusMiles,
+      groupSize,
+      setGroupSize,
       area,
       locationLabel,
       setDemoArea,
@@ -58,7 +63,7 @@ export function PrototypeProvider({ children }: PropsWithChildren) {
       refreshMessage,
       runMockRefresh,
     }),
-    [category, radiusMiles, area, locationLabel, setDemoArea, refreshStatus, refreshMessage, runMockRefresh],
+    [category, radiusMiles, groupSize, area, locationLabel, setDemoArea, refreshStatus, refreshMessage, runMockRefresh],
   );
 
   return <PrototypeContext.Provider value={value}>{children}</PrototypeContext.Provider>;

@@ -1,5 +1,7 @@
-import { Button as HeroButton } from '@heroui/react/button';
+import { Button, Host } from '@expo/ui';
+import type { UniversalStyle } from '@expo/ui';
 import type { PropsWithChildren } from 'react';
+import { StyleSheet, Text } from 'react-native';
 
 import { colors, fonts, radii } from '@/theme';
 
@@ -8,46 +10,43 @@ type Props = PropsWithChildren<{
   kind?: 'primary' | 'secondary' | 'text';
   disabled?: boolean;
   selected?: boolean;
-  width?: number | string;
+  width?: UniversalStyle['width'];
   testID?: string;
 }>;
 
 export function ActionButton({ children, onPress, kind = 'secondary', disabled, selected, width, testID }: Props) {
   const label = typeof children === 'string' ? children : undefined;
-  const buttonWidth = width ?? (label ? Math.max(100, Math.ceil(label.length * 8.5 + 32)) : 160);
+  const minimumWidth = width ?? (label ? Math.max(100, Math.ceil(label.length * 8.5 + 32)) : 160);
+  const primary = kind === 'primary';
 
   return (
-    <HeroButton
-      variant={kind === 'primary' ? 'primary' : kind === 'secondary' ? 'outline' : 'tertiary'}
-      size="md"
-      isDisabled={disabled}
-      aria-pressed={selected}
-      onPress={onPress}
-      data-testid={testID}
-      style={{
-        minWidth: typeof buttonWidth === 'number' ? buttonWidth : undefined,
-        width: typeof buttonWidth === 'string' ? buttonWidth : undefined,
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: 46,
-        paddingInline: 14,
-        borderRadius: radii.pill,
-        borderStyle: 'solid',
-        borderWidth: kind === 'secondary' ? 1 : 0,
-        borderColor: kind === 'primary' ? colors.yellow : colors.black,
-        backgroundColor: kind === 'text' ? 'transparent' : kind === 'primary' ? colors.yellow : colors.white,
-        color: colors.black,
-        fontFamily: fonts.medium,
-        fontSize: 14,
-        fontWeight: 600,
-        lineHeight: '20px',
-        whiteSpace: 'nowrap',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.5 : 1,
-        textDecoration: 'none',
-      }}>
-      {children}
-    </HeroButton>
+    <Host matchContents seedColor={colors.black} colorScheme="light" style={{ maxWidth: '100%', minWidth: minimumWidth }}>
+      <Button
+        label={label}
+        onPress={onPress}
+        disabled={disabled}
+        variant="text"
+        testID={testID}
+        style={{
+          width,
+          height: 48,
+          paddingHorizontal: 14,
+          borderRadius: radii.pill,
+          borderWidth: kind === 'secondary' ? 1 : 0,
+          borderColor: primary ? colors.yellow : colors.black,
+          backgroundColor: kind === 'text' ? 'transparent' : primary ? colors.yellow : colors.white,
+          opacity: disabled ? 0.5 : 1,
+        }}>
+        {label ? (
+          <Text accessibilityLabel={selected === undefined ? undefined : `${label}, ${selected ? 'selected' : 'not selected'}`} style={styles.label}>
+            {label}
+          </Text>
+        ) : children}
+      </Button>
+    </Host>
   );
 }
+
+const styles = StyleSheet.create({
+  label: { color: colors.black, fontFamily: fonts.medium, fontSize: 14, fontWeight: '600', lineHeight: 20 },
+});

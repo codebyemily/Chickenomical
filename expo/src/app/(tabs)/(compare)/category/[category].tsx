@@ -1,21 +1,31 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppFrame, NoticeBand } from '@/components/app-frame';
+import { HeadingText } from '@/components/heading-text';
 import { CompareOfferCard } from '@/components/compare-offer-card';
+import { FormField } from '@/components/form-field';
+import { LinkPressable } from '@/components/link-pressable';
 import { useLiveOffersQuery, useRecentOffersQuery, type OfferRecord } from '@/data/live-offers';
 import { categoryInfo } from '@/data/menu-schema';
 import { comparisonMatrixGroups, exclusionText, isRankable, unitPrice } from '@/lib/compare';
 import { offerDetailRoute } from '@/lib/live-offer-routes';
 import { usePrototype } from '@/state/prototype-context';
+import { pageMetadata } from '@/data/page-metadata';
 import { colors, fonts, spacing } from '@/theme';
+import type { GenerateMetadataFunction } from 'expo-router/server';
 
 type SortKey = 'unit' | 'total' | 'distance' | 'chain';
 
+export const generateMetadata: GenerateMetadataFunction = (_request, params) => {
+  const routeCategory = Array.isArray(params.category) ? params.category[0] : params.category;
+  const label = routeCategory ? categoryInfo(routeCategory).label : 'Chicken';
+  return pageMetadata(`${label} prices nearby`, `Compare recent ${label.toLocaleLowerCase()} menu prices and source records by store.`);
+};
+
 export default function CategoryResultsScreen() {
   const params = useLocalSearchParams<{ category?: string | string[] }>();
-  const router = useRouter();
   const { locationLabel, radiusMiles } = usePrototype();
   const category = normalizeCategory(params.category);
   const details = categoryInfo(category);
@@ -63,16 +73,16 @@ export default function CategoryResultsScreen() {
   return (
     <AppFrame compact showDataNotice={false}>
       <View style={styles.hero}>
-        <Pressable
-          accessibilityRole="button"
+        <LinkPressable
+          href="/"
+          replace
           accessibilityLabel="Back to Compare"
-          onPress={() => router.back()}
           style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
           <Text style={styles.backArrow}>‹</Text>
           <Text style={styles.backText}>Compare</Text>
-        </Pressable>
+        </LinkPressable>
         <Text style={styles.eyebrow}>LIVE CONVEX BOARD · {origin.toUpperCase()}</Text>
-        <Text accessibilityRole="header" style={styles.title}>Cheapest {details.label} near you</Text>
+          <HeadingText level={1} style={styles.title}>{details.label} prices nearby</HeadingText>
         <Text style={styles.description}>
           Current scrape offers within {radiusMiles} miles, ranked by comparable pickup price.
         </Text>
@@ -81,17 +91,16 @@ export default function CategoryResultsScreen() {
       <View style={styles.content}>
         <View style={styles.searchBox}>
           <Text style={styles.searchIcon} accessibilityElementsHidden>⌕</Text>
-          <TextInput
-            accessibilityLabel={`Search ${details.label} offers`}
+          <FormField
+            label={`Search ${details.label} offers`}
             placeholder={`Search ${details.label.toLocaleLowerCase()}, stores, or sources`}
-            placeholderTextColor={colors.muted}
             value={search}
             onChangeText={setSearch}
-            returnKeyType="search"
-            style={styles.searchInput}
+            submitLabel="search"
+            appearance="search"
           />
           {search.length > 0 ? (
-            <Pressable accessibilityRole="button" accessibilityLabel="Clear search" onPress={() => setSearch('')} hitSlop={8}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Clear search" onPress={() => setSearch('')} style={styles.clearSearchButton}>
               <Text style={styles.clearSearch}>×</Text>
             </Pressable>
           ) : null}
@@ -99,7 +108,7 @@ export default function CategoryResultsScreen() {
 
         <View style={styles.titleRow}>
           <View style={styles.titleCopy}>
-            <Text style={styles.sectionEyebrow}>CHEAPEST FIRST</Text>
+            <Text style={styles.sectionEyebrow}>{sortHeading(sortBy, details.unit)}</Text>
             <Text style={styles.sectionTitle}>{query.status === 'success' ? `${comparable.length} comparable offers` : 'Nearby offers'}</Text>
             <Text style={styles.subtitle}>
               {origin} · {radiusMiles} mi · {chainOptions.length} {chainOptions.length === 1 ? 'chain' : 'chains'}
@@ -108,6 +117,7 @@ export default function CategoryResultsScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityState={{ expanded: filtersOpen }}
+            aria-expanded={filtersOpen}
             onPress={() => setFiltersOpen((open) => !open)}
             style={({ pressed }) => [styles.filterButton, pressed && styles.pressed]}>
             <Text style={styles.filterIcon}>☷</Text>
@@ -155,7 +165,7 @@ export default function CategoryResultsScreen() {
           <NoticeBand title="Loading nearby menu records">Reading the current category board from Convex…</NoticeBand>
         ) : null}
         {query.status === 'error' ? (
-          <NoticeBand title="Could not load nearby offers" tone="error">{query.error.message}</NoticeBand>
+          <NoticeBand title="Could not load nearby offers" tone="error">Menu data is temporarily unavailable. Try again in a moment.</NoticeBand>
         ) : null}
 
         {query.status === 'success' ? (
@@ -169,8 +179,8 @@ export default function CategoryResultsScreen() {
               <Text style={styles.snapshotCopy}>
                 {query.metadata.observed_at ? `Observed ${formatTime(query.metadata.observed_at)}` : 'Observation time unavailable'} · {query.metadata.offer_count} board offers
               </Text>
-              {query.metadata.job?.status === 'failed' && query.metadata.job.error ? (
-                <Text style={styles.snapshotError}>{query.metadata.job.error}</Text>
+              {query.metadata.job?.status === 'failed' ? (
+                <Text style={styles.snapshotError}>The latest menu check did not finish. These records may be from an earlier check.</Text>
               ) : null}
             </View>
 
@@ -184,7 +194,7 @@ export default function CategoryResultsScreen() {
               </NoticeBand>
             ) : null}
 
-            {nearbyRows.length > 0 && comparable.length === 0 ? (
+            {filteredRows.length > 0 && comparable.length === 0 ? (
               <NoticeBand title="Offers found, but no fair price ranking yet" tone="warning">
                 {unrankable.length} current offer{unrankable.length === 1 ? '' : 's'} match this category and distance, but none has all required verified pickup price and quantity fields.
               </NoticeBand>
@@ -199,7 +209,7 @@ export default function CategoryResultsScreen() {
             {sortedGroups.length > 0 ? sortedGroups.map((group) => (
               <View key={group.key} style={styles.resultGroup}>
                 <View style={styles.groupHeading}>
-                  <Text accessibilityRole="header" style={styles.groupTitle}>{group.label}</Text>
+                  <HeadingText level={2} style={styles.groupTitle}>{group.label}</HeadingText>
                   <Text style={styles.groupCount}>{group.records.length}</Text>
                 </View>
                 {group.records.map((record, index) => (
@@ -220,6 +230,7 @@ export default function CategoryResultsScreen() {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityState={{ expanded: showUnrankable }}
+                  aria-expanded={showUnrankable}
                   onPress={() => setShowUnrankable((open) => !open)}
                   style={({ pressed }) => [styles.unrankedToggle, pressed && styles.pressed]}>
                   <View style={styles.titleCopy}>
@@ -265,10 +276,10 @@ export default function CategoryResultsScreen() {
               </Text>
             )}
             <Text style={styles.historyNote}>These records are not included in the nearby ranking.</Text>
-            <Pressable accessibilityRole="link" onPress={() => router.push('/sources' as never)} style={({ pressed }) => [styles.sourcesLink, pressed && styles.pressed]}>
+            <LinkPressable href="/sources" style={({ pressed }) => [styles.sourcesLink, pressed && styles.pressed]}>
               <Text style={styles.sourcesLinkText}>Browse Sources</Text>
               <Text style={styles.sourcesArrow}>→</Text>
-            </Pressable>
+            </LinkPressable>
           </View>
         ) : null}
       </View>
@@ -324,11 +335,19 @@ function compareRecords(a: OfferRecord, b: OfferRecord, sortBy: SortKey) {
   return delta || a.chain.name.localeCompare(b.chain.name) || aTotal - bTotal;
 }
 
+function sortHeading(sortBy: SortKey, unit: string) {
+  if (sortBy === 'unit') return `LOWEST PRICE PER ${unit.toUpperCase()}`;
+  if (sortBy === 'total') return 'LOWEST TOTAL';
+  if (sortBy === 'distance') return 'CLOSEST FIRST';
+  return 'BY RESTAURANT CHAIN';
+}
+
 function FilterChip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected }}
+      aria-pressed={selected}
       onPress={onPress}
       style={({ pressed }) => [styles.chip, selected && styles.chipSelected, pressed && styles.pressed]}>
       <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label}</Text>
@@ -337,12 +356,10 @@ function FilterChip({ label, selected, onPress }: { label: string; selected: boo
 }
 
 function UnrankableRow({ record, jobId }: { record: OfferRecord; jobId?: string }) {
-  const router = useRouter();
   return (
-    <Pressable
-      accessibilityRole="link"
+    <LinkPressable
+      href={offerDetailRoute(record.offer.id, jobId) as never}
       accessibilityHint="Opens the current offer details."
-      onPress={() => router.push(offerDetailRoute(record.offer.id, jobId) as never)}
       style={({ pressed }) => [styles.unrankableRow, pressed && styles.pressed]}>
       <View style={styles.unrankableCopy}>
         <Text style={styles.unrankableChain}>{record.chain.name}</Text>
@@ -353,7 +370,7 @@ function UnrankableRow({ record, jobId }: { record: OfferRecord; jobId?: string 
         <Text style={styles.unrankableReason}>{exclusionText(record.offer)}</Text>
       </View>
       <Text style={styles.unrankableArrow}>›</Text>
-    </Pressable>
+    </LinkPressable>
   );
 }
 
@@ -379,7 +396,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.orange,
     borderRadius: 28,
   },
-  backButton: { minHeight: 40, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  backButton: { minHeight: 48, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   backArrow: { color: colors.black, fontFamily: fonts.regular, fontSize: 26, lineHeight: 29 },
   backText: { color: colors.black, fontFamily: fonts.bold, fontSize: 13 },
   eyebrow: { color: colors.black, fontFamily: fonts.monoBold, fontSize: 10, lineHeight: 15, letterSpacing: 0.55 },
@@ -389,19 +406,20 @@ const styles = StyleSheet.create({
   searchBox: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, backgroundColor: colors.white, borderWidth: 2, borderColor: colors.purple, borderRadius: 30 },
   searchIcon: { color: colors.purple, fontFamily: fonts.bold, fontSize: 23, lineHeight: 27 },
   searchInput: { flex: 1, minWidth: 0, color: colors.black, fontFamily: fonts.regular, fontSize: 14, paddingVertical: spacing.sm },
+  clearSearchButton: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
   clearSearch: { color: colors.purple, fontFamily: fonts.bold, fontSize: 22, paddingHorizontal: spacing.xs },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   titleCopy: { flex: 1, minWidth: 0, gap: 2 },
   sectionEyebrow: { color: colors.purple, fontFamily: fonts.monoBold, fontSize: 10, lineHeight: 15, letterSpacing: 0.55 },
   sectionTitle: { color: colors.black, fontFamily: fonts.bold, fontSize: 18, lineHeight: 23 },
   subtitle: { color: colors.muted, fontFamily: fonts.regular, fontSize: 12, lineHeight: 17 },
-  filterButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.md, borderWidth: 1.5, borderColor: colors.black, borderRadius: 24, backgroundColor: colors.white },
+  filterButton: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.md, borderWidth: 1.5, borderColor: colors.black, borderRadius: 24, backgroundColor: colors.white },
   filterIcon: { color: colors.black, fontSize: 17 },
   filterText: { color: colors.black, fontFamily: fonts.medium, fontSize: 13 },
   filterPanel: { gap: spacing.sm, padding: spacing.md, borderRadius: 18, backgroundColor: colors.sky },
   sortSection: { gap: spacing.sm },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  chip: { minHeight: 38, justifyContent: 'center', paddingHorizontal: spacing.md, borderWidth: 1, borderColor: colors.warmRule, borderRadius: 24, backgroundColor: colors.white },
+  chip: { minHeight: 48, justifyContent: 'center', paddingHorizontal: spacing.md, borderWidth: 1, borderColor: colors.warmRule, borderRadius: 24, backgroundColor: colors.white },
   chipSelected: { borderColor: colors.purple, backgroundColor: colors.purple },
   chipText: { color: colors.black, fontFamily: fonts.medium, fontSize: 12 },
   chipTextSelected: { color: colors.white, fontFamily: fonts.bold },
@@ -433,7 +451,7 @@ const styles = StyleSheet.create({
   historyEyebrow: { color: colors.purple, fontFamily: fonts.monoBold, fontSize: 10, lineHeight: 15, letterSpacing: 0.5 },
   historyCopy: { color: colors.black, fontFamily: fonts.medium, fontSize: 13, lineHeight: 19 },
   historyNote: { color: colors.muted, fontFamily: fonts.regular, fontSize: 11, lineHeight: 16 },
-  sourcesLink: { minHeight: 42, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, borderRadius: 24, backgroundColor: colors.purple },
+  sourcesLink: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, borderRadius: 24, backgroundColor: colors.purple },
   sourcesLinkText: { color: colors.white, fontFamily: fonts.bold, fontSize: 13 },
   sourcesArrow: { color: colors.white, fontSize: 17 },
   pressed: { opacity: 0.7 },

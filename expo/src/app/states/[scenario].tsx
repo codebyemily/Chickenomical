@@ -1,10 +1,13 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { AppFrame, NoticeBand, PageHeading } from '@/components/app-frame';
-import { ActionButton } from '@/components/ui/action-button';
+import { HeadingText } from '@/components/heading-text';
+import { LinkPressable } from '@/components/link-pressable';
 import { useLiveOffersQuery, useRecentOffersQuery, type OfferRecord } from '@/data/live-offers';
 import { colors, fonts, radii, spacing, tabular } from '@/theme';
+import { pageMetadata } from '@/data/page-metadata';
+import type { GenerateMetadataFunction } from 'expo-router/server';
 
 type Scenario = {
   title: string;
@@ -22,9 +25,9 @@ const SCENARIOS: Record<string, Scenario> = {
     actions: [{ label: 'Open live comparisons', href: '/' }, { label: 'Browse live records', href: '/sources' }],
   },
   'no-locations': {
-    title: 'No nearby offers yet.', intro: 'Empty results preview', stateTitle: 'Nothing in this search area',
-    message: 'This preview demonstrates the empty-results recovery path. Change the search area or radius to look for other locations; the current database coverage is shown below.', tone: 'warning',
-    actions: [{ label: 'Change search area', href: '/location' }, { label: 'Open live comparisons', href: '/' }],
+    title: 'No nearby offers yet.', intro: 'Empty results preview', stateTitle: 'Nothing in this saved distance',
+    message: 'This preview demonstrates the empty-results recovery path. Widen the saved distance to include more recorded locations; the current database coverage is shown below.', tone: 'warning',
+    actions: [{ label: 'Change saved distance', href: '/location' }, { label: 'Open live comparisons', href: '/' }],
   },
   'no-comparable': {
     title: 'Nothing to rank yet.', intro: 'Unrankable offers preview', stateTitle: 'No comparable offers to rank',
@@ -47,9 +50,9 @@ const SCENARIOS: Record<string, Scenario> = {
     actions: [{ label: 'Browse live records', href: '/sources' }, { label: 'Open live comparisons', href: '/' }],
   },
   'location-denied': {
-    title: 'Pick a search area.', intro: 'Location-permission preview', stateTitle: 'Location was not shared',
-    message: 'A user can enter an address or choose a search area instead. This preview does not request device location permission.', tone: 'neutral',
-    actions: [{ label: 'Choose a search area', href: '/location' }, { label: 'Browse live comparisons', href: '/' }],
+    title: 'Choose a saved distance.', intro: 'Location-permission preview', stateTitle: 'Device location is not used',
+    message: 'Chickenomical filters the distances already returned with each menu record. This preview does not request device location or accept a typed address.', tone: 'neutral',
+    actions: [{ label: 'Choose a distance', href: '/location' }, { label: 'Browse live comparisons', href: '/' }],
   },
   'refresh-failed': {
     title: 'The latest check did not finish.', intro: 'Refresh-failure preview', stateTitle: 'Keep the last good snapshot visible',
@@ -58,9 +61,14 @@ const SCENARIOS: Record<string, Scenario> = {
   },
 };
 
+export const generateMetadata: GenerateMetadataFunction = (_request, params) => {
+  const key = Array.isArray(params.scenario) ? params.scenario[0] : params.scenario;
+  const scenario = key ? SCENARIOS[key] : undefined;
+  return pageMetadata(scenario?.intro ?? 'Recovery preview', scenario?.message ?? 'Preview a Chickenomical recovery message for incomplete or unavailable menu data.');
+};
+
 export default function ScenarioScreen() {
   const { scenario } = useLocalSearchParams<{ scenario: string }>();
-  const router = useRouter();
   const state = SCENARIOS[scenario];
   const liveQuery = useLiveOffersQuery();
   const recentQuery = useRecentOffersQuery();
@@ -69,7 +77,9 @@ export default function ScenarioScreen() {
     return (
       <AppFrame active="Explore">
         <PageHeading tone="orange" title="This page flew the coop." description="That recovery preview is not available." />
-        <ActionButton kind="primary" onPress={() => router.replace('/states' as never)}>Back to recovery previews</ActionButton>
+        <LinkPressable href="/states" replace style={styles.primaryActionLink}>
+          <Text style={styles.primaryActionText}>Back to recovery previews</Text>
+        </LinkPressable>
       </AppFrame>
     );
   }
@@ -84,7 +94,7 @@ export default function ScenarioScreen() {
     <AppFrame active="Explore">
       <View style={styles.hero}>
         <Text style={styles.heroEyebrow}>CHICKENOMICAL / RECOVERY PREVIEW</Text>
-        <Text style={styles.heroTitle}>{state.title}</Text>
+        <HeadingText level={1} style={styles.heroTitle}>{state.title}</HeadingText>
         <Text style={styles.heroIntro}>{state.intro}</Text>
       </View>
 
@@ -106,7 +116,7 @@ export default function ScenarioScreen() {
         ) : null}
 
         {liveQuery.status === 'error' ? (
-          <NoticeBand title="Could not load the current snapshot" tone="error">{liveQuery.error.message}</NoticeBand>
+          <NoticeBand title="Could not load the current snapshot" tone="error">Live menu data is temporarily unavailable. Try again in a moment.</NoticeBand>
         ) : null}
 
         {liveQuery.status === 'success' && records.length === 0 ? (
@@ -140,7 +150,7 @@ export default function ScenarioScreen() {
           {recentQuery.status === 'loading' ? (
             <Text style={styles.recentText}>Loading recent database records…</Text>
           ) : recentQuery.status === 'error' ? (
-            <Text style={styles.recentError}>Recent records unavailable: {recentQuery.error.message}</Text>
+            <Text accessibilityRole="alert" accessibilityLiveRegion="assertive" style={styles.recentError}>Recent records are temporarily unavailable. Try again in a moment.</Text>
           ) : (
             <Text style={styles.recentText}>{recentRecords.length} recent records returned from Convex</Text>
           )}
@@ -155,11 +165,17 @@ export default function ScenarioScreen() {
       <View style={styles.actions}>
         {state.actions.map((action, index) => (
           <View key={action.label} style={styles.action}>
-            <ActionButton kind={index === 0 ? 'primary' : 'secondary'} onPress={() => router.push(action.href as never)}>{action.label}</ActionButton>
+            <LinkPressable
+              href={action.href as never}
+              style={({ pressed }) => [index === 0 ? styles.primaryActionLink : styles.secondaryActionLink, pressed && styles.pressed]}>
+              <Text style={index === 0 ? styles.primaryActionText : styles.secondaryActionText}>{action.label}</Text>
+            </LinkPressable>
           </View>
         ))}
       </View>
-      <ActionButton kind="text" onPress={() => router.push('/states' as never)}>Back to all recovery previews</ActionButton>
+      <LinkPressable href="/states" style={styles.allPreviewsLink}>
+        <Text style={styles.allPreviewsText}>Back to all recovery previews</Text>
+      </LinkPressable>
     </AppFrame>
   );
 }
@@ -221,4 +237,11 @@ const styles = StyleSheet.create({
   explainerBody: { color: colors.black, fontFamily: fonts.regular, fontSize: 13, lineHeight: 20 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   action: { minWidth: 200, flexGrow: 1 },
+  primaryActionLink: { minHeight: 48, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg, borderRadius: radii.pill, backgroundColor: colors.yellow },
+  secondaryActionLink: { minHeight: 48, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg, borderRadius: radii.pill, borderWidth: 1, borderColor: colors.black, backgroundColor: colors.white },
+  primaryActionText: { color: colors.black, fontFamily: fonts.bold, fontSize: 14, lineHeight: 20 },
+  secondaryActionText: { color: colors.black, fontFamily: fonts.medium, fontSize: 14, lineHeight: 20 },
+  allPreviewsLink: { minHeight: 48, justifyContent: 'center', alignSelf: 'flex-start' },
+  allPreviewsText: { color: colors.purple, fontFamily: fonts.medium, fontSize: 14, lineHeight: 20 },
+  pressed: { opacity: 0.72 },
 });

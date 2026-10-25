@@ -1,20 +1,27 @@
-import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { AppFrame } from '@/components/app-frame';
+import { HeadingText } from '@/components/heading-text';
+import { LinkPressable } from '@/components/link-pressable';
 import { QueryStatePanel } from '@/components/query-state-panel';
-import { ActionButton } from '@/components/ui/action-button';
 import { useLiveOffersQuery, useRecentOffersQuery, type OfferRecord } from '@/data/live-offers';
 import { colors, fonts, radii, spacing } from '@/theme';
+import { pageMetadata } from '@/data/page-metadata';
+import type { GenerateMetadataFunction } from 'expo-router/server';
+
+export const generateMetadata: GenerateMetadataFunction = () => pageMetadata(
+  'Comparison recovery previews',
+  'Preview how Chickenomical explains loading, missing, stale, and incomplete menu data.',
+);
 
 const SCENARIOS = [
   { id: 'loading', title: 'Loading the comparison', description: 'Preview a first visit while offers are still arriving.' },
-  { id: 'no-locations', title: 'No nearby locations', description: 'See how the app explains an empty search area.' },
+  { id: 'no-locations', title: 'No nearby locations', description: 'See how the app explains an empty saved distance.' },
   { id: 'no-comparable', title: 'Nothing comparable yet', description: 'Review what happens when records cannot be ranked.' },
   { id: 'stale-only', title: 'Offers need a recheck', description: 'Show the age of older source records before relying on them.' },
   { id: 'incomplete', title: 'Quantity is missing', description: 'Explain why a unit price cannot be calculated.' },
   { id: 'unavailable', title: 'Price is unavailable', description: 'Keep a source record visible when its price is missing.' },
-  { id: 'location-denied', title: 'Location is unavailable', description: 'Continue with a manually chosen search area.' },
+  { id: 'location-denied', title: 'Location is unavailable', description: 'Continue using recorded crawl distances.' },
   { id: 'refresh-failed', title: 'A refresh failed', description: 'Show a useful recovery path when a source check fails.' },
 ];
 
@@ -25,7 +32,6 @@ type ChainCoverage = {
 };
 
 export default function StateGalleryScreen() {
-  const router = useRouter();
   const boardQuery = useLiveOffersQuery();
   const recentQuery = useRecentOffersQuery();
 
@@ -40,7 +46,7 @@ export default function StateGalleryScreen() {
       <View style={styles.screen}>
         <View style={styles.hero}>
           <Text style={styles.heroEyebrow}>CHICKENOMICAL · RECOVERY GUIDE</Text>
-          <Text accessibilityRole="header" style={styles.heroTitle}>When a comparison hits a snag</Text>
+          <HeadingText level={1} style={styles.heroTitle}>When a comparison hits a snag</HeadingText>
           <Text style={styles.heroDescription}>
             These previews explain common recovery states. The coverage below comes from the connected Convex database.
           </Text>
@@ -57,7 +63,7 @@ export default function StateGalleryScreen() {
           <View style={styles.sectionHeading}>
             <View style={styles.sectionCopy}>
               <Text style={styles.eyebrow}>CONNECTED CONVEX DATA</Text>
-              <Text accessibilityRole="header" style={styles.sectionTitle}>The latest board</Text>
+              <HeadingText level={2} style={styles.sectionTitle}>The latest board</HeadingText>
             </View>
             <View style={styles.livePill}>
               <View style={[styles.liveDot, boardQuery.status === 'error' && styles.errorDot]} />
@@ -65,7 +71,7 @@ export default function StateGalleryScreen() {
             </View>
           </View>
 
-          <QueryStatePanel status={boardQuery.status} error={boardQuery.status === 'error' ? boardQuery.error : undefined} />
+          <QueryStatePanel status={boardQuery.status} />
           {boardQuery.status === 'success' ? (
             <View style={[styles.snapshotCard, boardQuery.metadata.job?.status === 'failed' && styles.snapshotFailed]}>
               <View style={styles.snapshotTop}>
@@ -82,8 +88,8 @@ export default function StateGalleryScreen() {
                 <Metric label="LOCATIONS" value={String(boardLocations)} tone="sky" />
                 <Metric label="OBSERVED" value={formatObservedAt(boardQuery.metadata.observed_at)} tone="plain" />
               </View>
-              {boardQuery.metadata.job?.status === 'failed' && boardQuery.metadata.job.error ? (
-                <Text style={styles.snapshotError}>{boardQuery.metadata.job.error}</Text>
+              {boardQuery.metadata.job?.status === 'failed' ? (
+                <Text style={styles.snapshotError}>The latest menu check did not finish. This snapshot may be from an earlier check.</Text>
               ) : null}
             </View>
           ) : null}
@@ -91,10 +97,10 @@ export default function StateGalleryScreen() {
           <View style={styles.coverageSection}>
             <View style={styles.sectionCopy}>
               <Text style={styles.eyebrow}>DATABASE DEFINES THE COVERAGE</Text>
-              <Text accessibilityRole="header" style={styles.sectionTitle}>Chains and categories</Text>
+              <HeadingText level={2} style={styles.sectionTitle}>Chains and categories</HeadingText>
             </View>
             <Text style={styles.coverageIntro}>Grouped from the latest 200-record query. Names and counts below are read from Convex.</Text>
-            <QueryStatePanel status={recentQuery.status} error={recentQuery.status === 'error' ? recentQuery.error : undefined} />
+            <QueryStatePanel status={recentQuery.status} />
             {recentQuery.status === 'success' && coverage.length === 0 ? (
               <View style={styles.emptyCard}>
                 <Text style={styles.emptyTitle}>No recent menu offers returned</Text>
@@ -134,26 +140,27 @@ export default function StateGalleryScreen() {
           <View style={styles.previewsHeading}>
             <View style={styles.sectionCopy}>
               <Text style={styles.eyebrow}>EXPLANATORY PREVIEWS</Text>
-              <Text accessibilityRole="header" style={styles.sectionTitle}>Try a recovery state</Text>
+              <HeadingText level={2} style={styles.sectionTitle}>Try a recovery state</HeadingText>
             </View>
             <Text style={styles.previewNote}>Local examples · not live DB states</Text>
           </View>
           <View style={styles.list}>
             {SCENARIOS.map((item, index) => (
-              <Pressable
+              <LinkPressable
                 key={item.id}
-                accessibilityRole="link"
-                onPress={() => router.push('/states/' + item.id as never)}
+                href={`/states/${item.id}` as never}
                 style={({ pressed }) => [styles.row, index % 3 === 1 && styles.blueRow, index % 3 === 2 && styles.limeRow, pressed && styles.pressed]}>
                 <View style={styles.copy}>
                   <Text style={styles.name}>{item.title}</Text>
                   <Text style={styles.description}>{item.description}</Text>
                 </View>
                 <Text style={styles.arrow}>Preview →</Text>
-              </Pressable>
+              </LinkPressable>
             ))}
           </View>
-          <ActionButton onPress={() => router.push('/' as never)}>Return to Compare</ActionButton>
+          <LinkPressable href="/" style={styles.compareLink}>
+            <Text style={styles.compareLinkText}>Return to Compare</Text>
+          </LinkPressable>
         </View>
       </View>
     </AppFrame>
@@ -211,7 +218,7 @@ const styles = StyleSheet.create({
   sectionHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
   sectionCopy: { flex: 1, gap: 2 },
   eyebrow: { color: colors.purple, fontFamily: fonts.bold, fontSize: 10, lineHeight: 14, letterSpacing: 0.8 },
-  sectionTitle: { color: colors.orange, fontFamily: fonts.bold, fontSize: 23, lineHeight: 29, letterSpacing: -0.5 },
+  sectionTitle: { color: colors.orangeInk, fontFamily: fonts.bold, fontSize: 23, lineHeight: 29, letterSpacing: -0.5 },
   livePill: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, borderRadius: radii.pill, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, backgroundColor: colors.purpleSoft },
   liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#36804B' },
   errorDot: { backgroundColor: colors.danger },
@@ -253,6 +260,8 @@ const styles = StyleSheet.create({
   previewNote: { color: colors.muted, fontFamily: fonts.medium, fontSize: 10, lineHeight: 16 },
   list: { gap: spacing.sm },
   row: { minHeight: 72, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, padding: spacing.md, borderWidth: 1, borderColor: colors.warmRule, borderRadius: radii.md, backgroundColor: colors.white },
+  compareLink: { minHeight: 48, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg, backgroundColor: colors.yellow, borderRadius: radii.pill },
+  compareLinkText: { color: colors.black, fontFamily: fonts.bold, fontSize: 14 },
   blueRow: { backgroundColor: colors.sky, borderColor: colors.blueStrong },
   limeRow: { backgroundColor: colors.lime, borderColor: colors.lime },
   pressed: { opacity: 0.62 },

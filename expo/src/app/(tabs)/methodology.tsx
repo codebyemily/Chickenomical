@@ -1,25 +1,31 @@
-import { useRouter } from 'expo-router';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { AppFrame } from '@/components/app-frame';
+import { HeadingText } from '@/components/heading-text';
+import { LinkPressable } from '@/components/link-pressable';
 import { QueryStatePanel } from '@/components/query-state-panel';
-import { ActionButton } from '@/components/ui/action-button';
 import { useLiveOffersQuery, type OfferRecord } from '@/data/live-offers';
 import { isRankable } from '@/lib/compare';
 import { colors, fonts, radii, spacing } from '@/theme';
+import { pageMetadata } from '@/data/page-metadata';
+import type { GenerateMetadataFunction } from 'expo-router/server';
+
+export const generateMetadata: GenerateMetadataFunction = () => pageMetadata(
+  'How chicken comparisons work',
+  'Learn how Chickenomical checks menu prices, pack sizes, source freshness, and comparable offers.',
+);
 
 const RULES = [
-  { title: 'Read the latest board snapshot', body: 'This screen subscribes to offers:board. The board uses the requested scrape job, or the newest job when no job ID is supplied. It scans up to 500 newest menuOffers rows; when a job has a requested_at time, it keeps rows whose observed_at is on or after that time. The backend groups returned rows by chain and store.' },
-  { title: 'Compare the fields each offer stores', body: 'Each menu offer can include category, offer kind, quantity, list price, channel, currency, prep, heat, build, cut mix, and protein details. Most are strings or nullable values, so the schema does not enforce a fixed category or variant vocabulary.' },
-  { title: 'Keep channels and prices explicit', body: 'Each menu offer stores its ordering channel, currency, and list price. The schema has no fee, tax, tip, or discount fields, so the app compares the stored list price and does not calculate an out-the-door total.' },
-  { title: 'Divide list price by quantity', body: 'Unit price is list_price_cents divided by a known quantity. The app rounds only the displayed result. Each row also carries its location, source provider, source item, source URL, and observed time for inspection.' },
-  { title: 'Treat distance as a saved estimate', body: 'distance_miles is stored with the menu offer or its store grouping. It is not a live distance calculation; a null value means distance is unavailable for that row.' },
-  { title: 'Use menu offers only', body: 'The connected schema has menuOffers, numbers, and scrapeJobs tables. It has no deals table or structured deal schedule and conditions, so this app compares offers returned from menuOffers.' },
-  { title: 'Leave uncertain records visible', body: 'Rows without a usable quantity or list price, or with comparable set to false, stay inspectable and out of unit-price comparison. observed_at records when an offer was seen; the timestamp alone does not guarantee that its price is still current.' },
+  { title: 'Start with the latest menu check', body: 'Each result includes the time it was observed and the location reported with the menu. A newer check can replace older prices as it arrives.' },
+  { title: 'Match offers with the same basics', body: 'Chicken type, pack size, ordering channel, and currency stay together. That keeps one piece or pack from being compared with a different kind of order.' },
+  { title: 'Compare the listed menu price', body: 'Totals use the listed price before tax, delivery, and other checkout fees. They are estimates from recent menus, not a live order quote.' },
+  { title: 'Divide the price by the stated quantity', body: 'Price per piece uses the listed total divided by the number of pieces in the pack. We keep the original pack and price visible so you can check the math.' },
+  { title: 'Use the distance saved with each record', body: 'Nearby results filter on the distance returned with a menu record. They do not use your current device location or calculate a new distance from an address.' },
+  { title: 'Keep the source close to the price', body: 'Open an offer to review its provider, source link, store, and observation time before relying on it.' },
+  { title: 'Show records that cannot be ranked', body: 'Offers with missing prices, quantities, or comparison details remain available to inspect. We leave them out of price-per-piece rankings until the missing information is present.' },
 ];
 
 export default function MethodologyScreen() {
-  const router = useRouter();
   const query = useLiveOffersQuery();
   const records = query.status === 'success' ? query.data : EMPTY_RECORDS;
   const chains = new Set(records.map(({ chain }) => chain.id)).size;
@@ -33,7 +39,7 @@ export default function MethodologyScreen() {
       <View style={styles.screen}>
         <View style={styles.hero}>
           <Text style={styles.heroEyebrow}>CHICKENOMICAL · THE METHOD</Text>
-          <Text accessibilityRole="header" style={styles.heroTitle}>How each comparison works</Text>
+          <HeadingText level={1} style={styles.heroTitle}>How each comparison works</HeadingText>
           <Text style={styles.heroDescription}>Live menu records, clear price math, and a source trail you can check before ordering.</Text>
           <View accessibilityElementsHidden style={styles.heroWave}>
             <View style={styles.waveDot} />
@@ -47,8 +53,8 @@ export default function MethodologyScreen() {
         <View style={styles.content}>
           <View style={styles.liveHeading}>
             <View style={styles.liveHeadingCopy}>
-              <Text style={styles.sectionEyebrow}>CONNECTED CONVEX DATA</Text>
-              <Text accessibilityRole="header" style={styles.sectionTitle}>This board right now</Text>
+              <Text style={styles.sectionEyebrow}>RECENT MENU DATA</Text>
+              <HeadingText level={2} style={styles.sectionTitle}>This board right now</HeadingText>
             </View>
             {query.status === 'loading' ? <ActivityIndicator color={colors.purple} /> : null}
           </View>
@@ -58,7 +64,7 @@ export default function MethodologyScreen() {
           ) : null}
 
           {query.status === 'error' ? (
-            <QueryStatePanel status="error" error={query.error} />
+            <QueryStatePanel status="error" />
           ) : null}
 
           {query.status === 'success' ? (
@@ -74,7 +80,7 @@ export default function MethodologyScreen() {
                 <Text style={styles.snapshotDescription}>
                   {query.metadata.job
                     ? `${query.metadata.query.address?.trim() || 'Location not recorded'}${query.metadata.query.radius_miles == null ? '' : ` · ${query.metadata.query.radius_miles} mi radius`}`
-                    : 'Showing the bounded recent menu-offer scan; no scrape job is attached to this board.'}
+                    : 'Showing recent menu records from the latest check.'}
                 </Text>
                 <View style={styles.snapshotDivider} />
                 <Text style={styles.snapshotMeta}>Board observed {formatObservedAt(query.metadata.observed_at)}</Text>
@@ -82,10 +88,10 @@ export default function MethodologyScreen() {
                   <Text style={styles.snapshotMeta}>Job completed {formatObservedAt(query.metadata.job.completed_at)}</Text>
                 ) : null}
                 {query.metadata.job?.status === 'running' ? (
-                  <Text style={styles.snapshotNote}>The Convex board subscription can update as records arrive.</Text>
+                  <Text style={styles.snapshotNote}>This snapshot can update as new menu records arrive.</Text>
                 ) : null}
-                {query.metadata.job?.status === 'failed' && query.metadata.job.error ? (
-                  <Text style={styles.snapshotError}>{query.metadata.job.error}</Text>
+                {query.metadata.job?.status === 'failed' ? (
+                  <Text style={styles.snapshotError}>The latest menu check did not finish. Any records shown here may be from an earlier check.</Text>
                 ) : null}
               </View>
 
@@ -96,13 +102,13 @@ export default function MethodologyScreen() {
                 <MetricCard label="SOURCE PROVIDERS" value={String(providers)} tone="plain" />
               </View>
               <Text style={styles.coverageNote}>
-                {comparable} rankable · {priced} with a list price · counts describe this returned board, not every row stored in Convex.
+                {comparable} ready for comparison · {priced} with a listed price · counts cover this snapshot only.
               </Text>
 
               {records.length === 0 ? (
                 <View style={styles.emptyState}>
                   <Text style={styles.emptyTitle}>No offers in this board yet</Text>
-                  <Text style={styles.emptyCopy}>The connection is working, but offers:board returned no menu offers for its current job or recent scan.</Text>
+                  <Text style={styles.emptyCopy}>No menu records were included in this check. Try again after another menu update.</Text>
                 </View>
               ) : null}
             </>
@@ -110,13 +116,13 @@ export default function MethodologyScreen() {
 
           <View style={styles.rulesHeading}>
             <Text style={styles.sectionEyebrow}>PRICE RULES</Text>
-            <Text accessibilityRole="header" style={styles.sectionTitle}>What each result means</Text>
+            <HeadingText level={2} style={styles.sectionTitle}>What each result means</HeadingText>
           </View>
           {RULES.map((rule, index) => (
             <View key={rule.title} style={styles.ruleCard}>
               <View style={styles.ruleTop}>
                 <View style={styles.ruleNumber}><Text style={styles.ruleNumberText}>{String(index + 1).padStart(2, '0')}</Text></View>
-                <Text accessibilityRole="header" style={styles.ruleTitle}>{rule.title}</Text>
+                <HeadingText level={3} style={styles.ruleTitle}>{rule.title}</HeadingText>
               </View>
               <Text style={styles.ruleBody}>{rule.body}</Text>
             </View>
@@ -124,14 +130,14 @@ export default function MethodologyScreen() {
 
           <View style={styles.mathBlock}>
             <Text style={styles.mathLabel}>PRICE PER CATEGORY UNIT</Text>
-            <Text style={styles.mathFormula}>list_price_cents ÷ quantity</Text>
+            <Text style={styles.mathFormula}>listed price ÷ pieces in the pack</Text>
             <Text style={styles.mathLabel}>QUANTITY GOAL</Text>
             <Text style={styles.mathFormula}>lowest comparable total at one location</Text>
           </View>
 
-          <ActionButton kind="secondary" onPress={() => router.push('/states' as never)}>
-            Preview every fowl-up
-          </ActionButton>
+          <LinkPressable href="/states" style={styles.previewLink}>
+            <Text style={styles.previewLinkText}>Preview recovery states</Text>
+          </LinkPressable>
         </View>
       </View>
     </AppFrame>
@@ -185,7 +191,7 @@ const styles = StyleSheet.create({
   liveHeading: { minHeight: 46, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
   liveHeadingCopy: { gap: 2 },
   sectionEyebrow: { color: colors.purple, fontFamily: fonts.bold, fontSize: 10, lineHeight: 14, letterSpacing: 0.8 },
-  sectionTitle: { color: colors.orange, fontFamily: fonts.bold, fontSize: 23, lineHeight: 29, letterSpacing: -0.5 },
+  sectionTitle: { color: colors.orangeInk, fontFamily: fonts.bold, fontSize: 23, lineHeight: 29, letterSpacing: -0.5 },
   snapshotCard: { padding: spacing.lg, borderRadius: radii.lg, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.warmRule, gap: spacing.sm },
   snapshotCardFailed: { borderColor: colors.danger, backgroundColor: colors.paleDanger },
   snapshotTop: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
@@ -202,6 +208,8 @@ const styles = StyleSheet.create({
   snapshotMeta: { color: colors.muted, fontFamily: fonts.regular, fontSize: 11, lineHeight: 16 },
   snapshotNote: { color: colors.black, fontFamily: fonts.regular, fontSize: 12, lineHeight: 17 },
   snapshotError: { color: colors.danger, fontFamily: fonts.medium, fontSize: 12, lineHeight: 17 },
+  previewLink: { minHeight: 48, alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start', paddingHorizontal: spacing.lg, borderRadius: radii.pill, backgroundColor: colors.yellow },
+  previewLinkText: { color: colors.black, fontFamily: fonts.bold, fontSize: 14 },
   metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   metricCard: { flexBasis: '48%', flexGrow: 1, minWidth: 125, minHeight: 74, borderRadius: radii.md, padding: spacing.md, justifyContent: 'space-between' },
   metricLime: { backgroundColor: colors.lime },

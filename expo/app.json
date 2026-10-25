@@ -25,7 +25,9 @@
     },
     "web": {
       "output": "server",
-      "bundler": "metro"
+      "bundler": "metro",
+      "name": "Chickenomical",
+      "shortName": "Chickenomical"
     },
     "plugins": [
       "expo-router",

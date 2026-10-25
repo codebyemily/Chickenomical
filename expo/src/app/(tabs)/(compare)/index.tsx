@@ -1,29 +1,42 @@
-import { Button as ExpoButton, Collapsible, Column as ExpoColumn, Host, Row as ExpoRow, Text as ExpoText } from '@expo/ui';
-import { useRouter } from 'expo-router';
+import { Collapsible, Column as ExpoColumn, Host, Row as ExpoRow, Text as ExpoText } from '@expo/ui';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppFrame, NoticeBand, PageHeading } from '@/components/app-frame';
+import { AppFrame, NoticeBand } from '@/components/app-frame';
+import { HeadingText } from '@/components/heading-text';
 import { CompareOfferCard, FeaturedOfferCard } from '@/components/compare-offer-card';
 import { CategoryPicker } from '@/components/category-picker';
+import { FormField } from '@/components/form-field';
+import { LinkPressable } from '@/components/link-pressable';
 import { QueryStatePanel } from '@/components/query-state-panel';
 import { useLiveOffersQuery, useRecentOffersQuery, type OfferRecord } from '@/data/live-offers';
 import { categoryInfo } from '@/data/menu-schema';
 import { comparisonMatrixGroups, exclusionText, isRankable, unitPrice } from '@/lib/compare';
 import { offerDetailRoute } from '@/lib/live-offer-routes';
 import { usePrototype } from '@/state/prototype-context';
+import { pageMetadata } from '@/data/page-metadata';
 import { colors, fonts, spacing, tabular } from '@/theme';
+import type { GenerateMetadataFunction } from 'expo-router/server';
 
 type Screen = 'home' | 'all';
 type SortKey = 'unit' | 'total' | 'distance' | 'chain';
+const COMPARISON_PAGE_SIZE = 24;
+
+export const generateMetadata: GenerateMetadataFunction = () => pageMetadata(
+  'Compare chicken menu prices',
+  'Compare recent chicken menu prices, pack sizes, nearby locations, and the source records behind each offer.',
+);
 
 export default function CompareScreen() {
-  const router = useRouter();
+  const params = useLocalSearchParams<{ view?: string | string[] }>();
   const { category, setCategory, locationLabel, radiusMiles } = usePrototype();
-  const [screen, setScreen] = useState<Screen>('home');
+  const viewParam = Array.isArray(params.view) ? params.view[0] : params.view;
+  const screen: Screen = viewParam === 'all' ? 'all' : 'home';
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<SortKey>('total');
   const [selectedChainId, setSelectedChainId] = useState('all');
+  const [visiblePage, setVisiblePage] = useState({ key: '', count: COMPARISON_PAGE_SIZE });
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [showExcluded, setShowExcluded] = useState(false);
   const query = useLiveOffersQuery();
@@ -55,6 +68,8 @@ export default function CompareScreen() {
   )
     .sort((a, b) => a.name.localeCompare(b.name));
   const normalizedSearch = search.trim().toLocaleLowerCase();
+  const comparisonPageKey = JSON.stringify([activeCategory, normalizedSearch, radiusMiles, selectedChainId, sortBy]);
+  const visibleComparisonCount = visiblePage.key === comparisonPageKey ? visiblePage.count : COMPARISON_PAGE_SIZE;
   const categoryRecords = activeCategory
     ? inRadius.filter(({ offer }) => offer.category === activeCategory)
     : [];
@@ -84,6 +99,18 @@ export default function CompareScreen() {
   const displayGroups = groups
     .map((group) => ({ ...group, records: sortRecords(group.records, sortBy) }))
     .sort((a, b) => compareRecords(a.records[0], b.records[0], sortBy) || a.label.localeCompare(b.label));
+  let remainingVisibleCount = visibleComparisonCount;
+  const visibleGroups: typeof displayGroups = [];
+  for (const group of displayGroups) {
+    if (remainingVisibleCount <= 0) break;
+    const records = group.records.slice(0, remainingVisibleCount);
+    visibleGroups.push({ ...group, records });
+    remainingVisibleCount -= records.length;
+  }
+  const visibleOfferCount = visibleComparisonCount - remainingVisibleCount;
+  const totalDisplayOfferCount = displayGroups.reduce((count, group) => count + group.records.length, 0);
+  const remainingOfferCount = totalDisplayOfferCount - visibleOfferCount;
+  const nextPageSize = Math.min(COMPARISON_PAGE_SIZE, remainingOfferCount);
   const featuredGroup = [...groups].sort((a, b) =>
     new Set(b.records.map(({ chain }) => chain.id)).size - new Set(a.records.map(({ chain }) => chain.id)).size ||
     b.records.length - a.records.length ||
@@ -118,11 +145,10 @@ export default function CompareScreen() {
   return (
     <AppFrame active="Compare" compact surface="compare">
       <View style={styles.screen}>
-        <PageHeading title="Chickenomical" compact navOnly />
         {screen === 'home' ? (
           <View style={styles.hero}>
             <Text style={styles.brand}>Chickenomical</Text>
-            <Text accessibilityRole="header" style={styles.heroTitle}>What are you in the mood for?</Text>
+            <HeadingText level={1} style={styles.heroTitle}>What are you in the mood for?</HeadingText>
             <Text style={styles.heroDescription}>Compare nearby pickup prices for chicken favorites.</Text>
           </View>
         ) : null}
@@ -130,17 +156,17 @@ export default function CompareScreen() {
         <View style={styles.inner}>
           {screen === 'all' ? (
             <View style={styles.allHeader}>
-              <Pressable
-                accessibilityRole="button"
+              <LinkPressable
+                href="/"
+                replace
                 accessibilityLabel="Back to Compare"
-                onPress={() => setScreen('home')}
                 style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
                 <Text style={styles.backArrow}>‹</Text>
                 <Text style={styles.backText}>Compare</Text>
-              </Pressable>
+              </LinkPressable>
               <View style={styles.allTitleRow}>
                 <View style={styles.allTitleCopy}>
-                  <Text accessibilityRole="header" style={styles.allTitle}>All comparisons</Text>
+                  <HeadingText level={1} style={styles.allTitle}>All comparisons</HeadingText>
                   <Text style={styles.allSubtitle}>
                     {comparable.length} matches · {categoryDetails.label} · {origin}
                   </Text>
@@ -148,6 +174,7 @@ export default function CompareScreen() {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityState={{ expanded: filtersOpen }}
+                  aria-expanded={filtersOpen}
                   onPress={() => setFiltersOpen((value) => !value)}
                   style={({ pressed }) => [styles.filterButton, pressed && styles.pressed]}>
                   <FilterMark />
@@ -163,7 +190,7 @@ export default function CompareScreen() {
             <View style={styles.homeControls}>
               <View style={styles.categoryGridHeading}>
                 <Text style={styles.eyebrow}>PRODUCT SELECTION</Text>
-                <Text accessibilityRole="header" style={styles.categoryGridTitle}>Choose a chicken category</Text>
+                <HeadingText level={2} style={styles.categoryGridTitle}>Choose a chicken category</HeadingText>
                 <Text style={styles.categoryGridNote}>Categories and counts come from the current board and up to 200 latest stored records.</Text>
               </View>
               <View style={styles.categoryGrid}>
@@ -173,12 +200,13 @@ export default function CompareScreen() {
                   return (
                   <Pressable
                     key={option}
-                    accessibilityRole="button"
+                    accessibilityRole="link"
                     accessibilityLabel={`${categoryInfo(option).label}, ${coverage?.rows ?? 0} returned offers across ${coverage?.chains ?? 0} ${coverage?.chains === 1 ? 'chain' : 'chains'}`}
                     accessibilityState={{ selected }}
+                    aria-pressed={selected}
                     onPress={() => {
                       setCategory(option);
-                      router.push({ pathname: '/category/[category]', params: { category: option } } as never);
+                      router.push(`/category/${encodeURIComponent(option)}` as never);
                     }}
                     style={({ pressed }) => [
                       styles.categoryCard,
@@ -205,7 +233,7 @@ export default function CompareScreen() {
             </View>
           ) : null}
 
-          <LocationBand origin={origin} radiusMiles={radiusMiles} onPress={() => router.push('/location' as never)} />
+          <LocationBand origin={origin} radiusMiles={radiusMiles} />
 
           {screen === 'all' ? (
             <>
@@ -223,6 +251,7 @@ export default function CompareScreen() {
                       accessibilityRole="button"
                       accessibilityLabel={option.id === 'chain' ? 'Sort by chain name, A to Z' : undefined}
                       accessibilityState={{ selected: sortBy === option.id }}
+                      aria-pressed={sortBy === option.id}
                       onPress={() => setSortBy(option.id)}
                       style={({ pressed }) => [styles.sortChip, sortBy === option.id && styles.sortChipSelected, pressed && styles.pressed]}>
                       <Text style={[styles.sortChipText, sortBy === option.id && styles.sortChipTextSelected]}>{option.label}</Text>
@@ -239,6 +268,7 @@ export default function CompareScreen() {
                     <Pressable
                       accessibilityRole="button"
                       accessibilityState={{ selected: selectedChainId === 'all' }}
+                      aria-pressed={selectedChainId === 'all'}
                       onPress={() => setSelectedChainId('all')}
                       style={({ pressed }) => [styles.categoryChip, selectedChainId === 'all' && styles.categoryChipSelected, pressed && styles.pressed]}>
                       <Text style={[styles.categoryChipText, selectedChainId === 'all' && styles.categoryChipTextSelected]}>All chains</Text>
@@ -248,13 +278,14 @@ export default function CompareScreen() {
                         key={chain.id}
                         accessibilityRole="button"
                         accessibilityState={{ selected: selectedChainId === chain.id }}
+                        aria-pressed={selectedChainId === chain.id}
                         onPress={() => setSelectedChainId(chain.id)}
                         style={({ pressed }) => [styles.categoryChip, selectedChainId === chain.id && styles.categoryChipSelected, pressed && styles.pressed]}>
                         <Text style={[styles.categoryChipText, selectedChainId === chain.id && styles.categoryChipTextSelected]}>{chain.name}</Text>
                       </Pressable>
                     ))}
                   </View>
-                  <LocationBand origin={origin} radiusMiles={radiusMiles} compact onPress={() => router.push('/location' as never)} />
+                  <LocationBand origin={origin} radiusMiles={radiusMiles} compact />
                 </View>
               ) : null}
             </>
@@ -269,13 +300,9 @@ export default function CompareScreen() {
               compact={screen === 'all'}
             />
           ) : null}
-          <QueryStatePanel status={query.status} error={query.status === 'error' ? query.error : undefined} />
+          <QueryStatePanel status={query.status} />
           {screen === 'home' && query.status !== 'success' ? (
-            <RecentCoverage
-              records={recentQuery.status === 'success' ? recentQuery.data : []}
-              status={recentQuery.status}
-              onPress={() => router.push('/sources' as never)}
-            />
+            <RecentCoverage records={recentQuery.status === 'success' ? recentQuery.data : []} status={recentQuery.status} />
           ) : null}
 
           {query.status === 'success' && screen === 'home' ? (
@@ -285,7 +312,7 @@ export default function CompareScreen() {
                   <View style={styles.sectionHeading}>
                     <View>
                       <Text style={styles.sectionEyebrow}>COMPARABLE PICKS</Text>
-                      <Text accessibilityRole="header" style={styles.sectionTitle}>Best nearby value</Text>
+                      <HeadingText level={2} style={styles.sectionTitle}>Best nearby value</HeadingText>
                     </View>
                     <Text style={styles.offerCount}>{featuredGroup.records.length} offers</Text>
                   </View>
@@ -305,21 +332,16 @@ export default function CompareScreen() {
                 </NoticeBand>
               )}
 
-              <Pressable
-                accessibilityRole="button"
+              <LinkPressable
                 accessibilityLabel={'See all comparisons, ' + comparable.length + ' offers'}
-                onPress={() => setScreen('all')}
+                href="/?view=all"
                 style={({ pressed }) => [styles.seeAllButton, pressed && styles.pressed]}>
                 <Text style={styles.seeAllText}>See all comparisons ({comparable.length})</Text>
                 <Text accessibilityElementsHidden style={styles.seeAllArrow}>→</Text>
-              </Pressable>
+              </LinkPressable>
 
               {nearbyStores.length > 0 ? <NearbyStores records={nearbyStores} /> : null}
-              <RecentCoverage
-                records={recentQuery.status === 'success' ? recentQuery.data : []}
-                status={recentQuery.status}
-                onPress={() => router.push('/sources' as never)}
-              />
+              <RecentCoverage records={recentQuery.status === 'success' ? recentQuery.data : []} status={recentQuery.status} />
               {excluded.length > 0 ? (
                 <Text style={styles.exclusionHint}>{excluded.length} additional offers are outside the comparable-price rules. Review them in All comparisons.</Text>
               ) : null}
@@ -329,10 +351,10 @@ export default function CompareScreen() {
           {query.status === 'success' && screen === 'all' ? (
             <>
               <Text style={styles.listGuide}>Offers stay grouped by menu variant, currency, and pickup channel. Pack size and total remain visible.</Text>
-              {displayGroups.length > 0 ? displayGroups.map((group) => (
+              {displayGroups.length > 0 ? visibleGroups.map((group) => (
                 <View key={group.key} style={styles.resultsGroup}>
                   <View style={styles.groupHeading}>
-                    <Text accessibilityRole="header" style={styles.groupTitle}>{group.label}</Text>
+                    <HeadingText level={3} style={styles.groupTitle}>{group.label}</HeadingText>
                     <Text style={styles.groupCount}>{group.records.length}</Text>
                   </View>
                   {group.records.map((record, index) => (
@@ -356,6 +378,17 @@ export default function CompareScreen() {
                 </NoticeBand>
               )}
 
+              {remainingOfferCount > 0 ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Show ${nextPageSize} more offers. ${remainingOfferCount} remaining.`}
+                  onPress={() => setVisiblePage({ key: comparisonPageKey, count: visibleComparisonCount + COMPARISON_PAGE_SIZE })}
+                  style={({ pressed }) => [styles.loadMoreButton, pressed && styles.pressed]}>
+                  <Text style={styles.loadMoreText}>Show {nextPageSize} more {nextPageSize === 1 ? 'offer' : 'offers'}</Text>
+                  <Text style={styles.loadMoreCount}>{remainingOfferCount} remaining</Text>
+                </Pressable>
+              ) : null}
+
               {excluded.length > 0 ? (
                 <Host matchContents style={styles.excludedHost}>
                   <Collapsible
@@ -370,9 +403,9 @@ export default function CompareScreen() {
                             <ExpoText numberOfLines={1} textStyle={styles.excludedName}>{record.chain.name + ' · ' + record.offer.original_name}</ExpoText>
                             <ExpoText numberOfLines={2} textStyle={styles.excludedMeta}>{exclusionText(record.offer)}</ExpoText>
                           </ExpoColumn>
-                          <ExpoButton variant="text" onPress={() => router.push(offerDetailRoute(record.offer.id, query.metadata.job?._id) as never)}>
-                            <ExpoText textStyle={styles.inspectText}>View</ExpoText>
-                          </ExpoButton>
+                          <LinkPressable href={offerDetailRoute(record.offer.id, query.metadata.job?._id) as never} style={styles.inspectLink}>
+                            <Text style={styles.inspectText}>View offer</Text>
+                          </LinkPressable>
                         </ExpoRow>
                       ))}
                     </ExpoColumn>
@@ -394,16 +427,13 @@ function SearchField({ value, onChangeText }: { value: string; onChangeText: (va
         <View style={styles.searchLens} />
         <View style={styles.searchHandle} />
       </View>
-      <TextInput
-        accessibilityLabel="Search menu offers"
+      <FormField
+        label="Search menu offers"
         value={value}
         onChangeText={onChangeText}
         placeholder="Crispy chicken nuggets"
-        placeholderTextColor={colors.muted}
-        autoCapitalize="none"
-        autoCorrect={false}
-        returnKeyType="search"
-        style={styles.searchInput}
+        submitLabel="search"
+        appearance="search"
       />
       {value.length > 0 ? (
         <Pressable accessibilityRole="button" accessibilityLabel="Clear search" onPress={() => onChangeText('')} style={styles.clearSearch}>
@@ -414,12 +444,11 @@ function SearchField({ value, onChangeText }: { value: string; onChangeText: (va
   );
 }
 
-function LocationBand({ origin, radiusMiles, onPress, compact = false }: { origin: string; radiusMiles: number; onPress: () => void; compact?: boolean }) {
+function LocationBand({ origin, radiusMiles, compact = false }: { origin: string; radiusMiles: number; compact?: boolean }) {
   return (
-    <Pressable
-      accessibilityRole="link"
+    <LinkPressable
+      href="/location"
       accessibilityLabel={'Search area: ' + origin + '. Saved distance: ' + radiusMiles + ' miles. Change area and distance.'}
-      onPress={onPress}
       style={({ pressed }) => [styles.locationBand, compact && styles.locationBandCompact, pressed && styles.pressed]}>
       <View style={styles.pinMark} accessibilityElementsHidden><View style={styles.pinCenter} /></View>
       <View style={styles.locationCopy}>
@@ -427,7 +456,7 @@ function LocationBand({ origin, radiusMiles, onPress, compact = false }: { origi
         <Text style={styles.locationHint}>Saved distance · {radiusMiles} mi</Text>
       </View>
       <Text style={styles.changeLink}>Change</Text>
-    </Pressable>
+    </LinkPressable>
   );
 }
 
@@ -460,7 +489,7 @@ function SnapshotSummary({
       {metadata.job?.status === 'succeeded' ? (
         <Text style={styles.snapshotLine}>Scrape-reported offers: {metadata.job.offer_count}</Text>
       ) : null}
-      {failed && metadata.job?.error ? <Text style={styles.snapshotError}>{metadata.job.error}</Text> : null}
+      {failed ? <Text style={styles.snapshotError}>The latest menu check did not finish. These records may be from an earlier check.</Text> : null}
     </View>
   );
 }
@@ -468,11 +497,9 @@ function SnapshotSummary({
 function RecentCoverage({
   records,
   status,
-  onPress,
 }: {
   records: OfferRecord[];
   status: 'loading' | 'success' | 'error';
-  onPress: () => void;
 }) {
   const chainNames = [...new Map(records.map(({ chain }) => [chain.id, chain.name] as const)).values()]
     .sort((a, b) => a.localeCompare(b));
@@ -484,7 +511,7 @@ function RecentCoverage({
     <View style={styles.recentCoverage}>
       <View style={styles.recentCoverageCopy}>
         <Text style={styles.sectionEyebrow}>RECENT DATABASE COVERAGE</Text>
-        <Text accessibilityRole="header" style={styles.recentCoverageTitle}>Saved source records</Text>
+        <HeadingText level={2} style={styles.recentCoverageTitle}>Saved source records</HeadingText>
         {status === 'loading' ? (
           <Text style={styles.snapshotLine}>Loading recent Convex records…</Text>
         ) : status === 'error' ? (
@@ -502,14 +529,13 @@ function RecentCoverage({
         )}
         <Text style={styles.coverageFootnote}>Earlier crawls help with source review; nearby comparisons use only the current crawl.</Text>
       </View>
-      <Pressable
-        accessibilityRole="link"
+      <LinkPressable
+        href="/sources"
         accessibilityLabel="Browse recent source records"
-        onPress={onPress}
         style={({ pressed }) => [styles.coverageLink, pressed && styles.pressed]}>
         <Text style={styles.coverageLinkText}>Browse sources</Text>
         <Text accessibilityElementsHidden style={styles.coverageLinkArrow}>→</Text>
-      </Pressable>
+      </LinkPressable>
     </View>
   );
 }
@@ -520,7 +546,7 @@ function NearbyStores({ records }: { records: OfferRecord[] }) {
       <View style={styles.sectionHeading}>
         <View>
           <Text style={styles.sectionEyebrow}>LIVE BOARD COVERAGE</Text>
-          <Text accessibilityRole="header" style={styles.nearbyTitle}>Nearby stores</Text>
+          <HeadingText level={2} style={styles.nearbyTitle}>Nearby stores</HeadingText>
         </View>
         <Text style={styles.offerCount}>{records.length} {records.length === 1 ? 'location' : 'locations'}</Text>
       </View>
@@ -626,7 +652,7 @@ const styles = StyleSheet.create({
   searchLens: { width: 14, height: 14, borderWidth: 2, borderColor: colors.purple, borderRadius: 8 },
   searchHandle: { position: 'absolute', width: 8, height: 2, right: 0, bottom: 2, backgroundColor: colors.purple, transform: [{ rotate: '48deg' }] },
   searchInput: { flex: 1, minWidth: 0, minHeight: 48, paddingVertical: spacing.sm, color: colors.black, fontFamily: fonts.regular, fontSize: 16, lineHeight: 22 },
-  clearSearch: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
+  clearSearch: { width: 48, height: 48, justifyContent: 'center', alignItems: 'center' },
   clearSearchText: { color: colors.muted, fontFamily: fonts.regular, fontSize: 26, lineHeight: 30 },
   homeControls: { gap: spacing.sm },
   categoryGridHeading: { gap: spacing.xs },
@@ -643,7 +669,7 @@ const styles = StyleSheet.create({
   categoryCardMetaSelected: { color: colors.white },
   eyebrow: { color: colors.muted, fontFamily: fonts.bold, fontSize: 11, lineHeight: 16, letterSpacing: 0.7 },
   quickCategories: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  categoryChip: { minHeight: 44, justifyContent: 'center', paddingHorizontal: spacing.lg, borderWidth: 1, borderColor: colors.warmRule, borderRadius: 24, backgroundColor: colors.white },
+  categoryChip: { minHeight: 48, justifyContent: 'center', paddingHorizontal: spacing.lg, borderWidth: 1, borderColor: colors.warmRule, borderRadius: 24, backgroundColor: colors.white },
   categoryChipSelected: { borderColor: colors.purple, backgroundColor: colors.purple },
   categoryChipText: { color: colors.black, fontFamily: fonts.bold, fontSize: 14 },
   categoryChipTextSelected: { color: colors.white, fontFamily: fonts.bold, fontSize: 14 },
@@ -657,14 +683,14 @@ const styles = StyleSheet.create({
   locationHint: { color: colors.muted, fontFamily: fonts.regular, fontSize: 12, lineHeight: 16 },
   changeLink: { color: colors.purple, fontFamily: fonts.bold, fontSize: 13, lineHeight: 18 },
   allHeader: { gap: spacing.sm },
-  backButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: spacing.xs },
+  backButton: { minHeight: 48, flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: spacing.xs },
   backArrow: { color: colors.purple, fontFamily: fonts.regular, fontSize: 30, lineHeight: 34 },
   backText: { color: colors.purple, fontFamily: fonts.bold, fontSize: 13 },
   allTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
   allTitleCopy: { flex: 1, minWidth: 0, gap: 3 },
-  allTitle: { color: colors.orange, fontFamily: fonts.bold, fontStyle: 'italic', fontSize: 29, lineHeight: 34 },
+  allTitle: { color: colors.orangeInk, fontFamily: fonts.bold, fontStyle: 'italic', fontSize: 29, lineHeight: 34 },
   allSubtitle: { color: colors.muted, fontFamily: fonts.medium, fontSize: 13, lineHeight: 18 },
-  filterButton: { minHeight: 46, minWidth: 94, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, borderWidth: 1.5, borderColor: colors.black, borderRadius: 24, backgroundColor: colors.white },
+  filterButton: { minHeight: 48, minWidth: 94, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, borderWidth: 1.5, borderColor: colors.black, borderRadius: 24, backgroundColor: colors.white },
   filterLabel: { color: colors.black, fontFamily: fonts.bold, fontSize: 14 },
   filterMark: { width: 16, height: 14, justifyContent: 'space-between', alignItems: 'flex-start' },
   filterLineLong: { width: 15, height: 1.5, backgroundColor: colors.black },
@@ -672,7 +698,7 @@ const styles = StyleSheet.create({
   filterLineShort: { width: 5, height: 1.5, backgroundColor: colors.black },
   sortSection: { gap: spacing.sm },
   sortOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  sortChip: { minHeight: 44, flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: spacing.sm, borderWidth: 1, borderColor: colors.warmRule, borderRadius: 24, backgroundColor: colors.white },
+  sortChip: { minHeight: 48, flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: spacing.sm, borderWidth: 1, borderColor: colors.warmRule, borderRadius: 24, backgroundColor: colors.white },
   sortChipSelected: { borderColor: colors.purple, backgroundColor: colors.purple },
   sortChipText: { color: colors.black, fontFamily: fonts.bold, fontSize: 13 },
   sortChipTextSelected: { color: colors.white },
@@ -692,19 +718,19 @@ const styles = StyleSheet.create({
   recentCoverageCopy: { flex: 1, minWidth: 0, gap: spacing.xs },
   recentCoverageTitle: { color: colors.black, fontFamily: fonts.bold, fontSize: 17, lineHeight: 22 },
   coverageFootnote: { color: colors.muted, fontFamily: fonts.regular, fontSize: 10, lineHeight: 14 },
-  coverageLink: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.sm },
+  coverageLink: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.sm },
   coverageLinkText: { color: colors.purple, fontFamily: fonts.bold, fontSize: 12, lineHeight: 16 },
   coverageLinkArrow: { color: colors.purple, fontFamily: fonts.bold, fontSize: 17, lineHeight: 20 },
   featureSection: { gap: spacing.sm },
   sectionHeading: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: spacing.md },
   sectionEyebrow: { color: colors.purple, fontFamily: fonts.bold, fontSize: 11, lineHeight: 16, letterSpacing: 0.55 },
-  sectionTitle: { color: colors.orange, fontFamily: fonts.bold, fontStyle: 'italic', fontSize: 25, lineHeight: 31 },
+  sectionTitle: { color: colors.orangeInk, fontFamily: fonts.bold, fontStyle: 'italic', fontSize: 25, lineHeight: 31 },
   offerCount: { color: colors.muted, fontFamily: fonts.medium, fontSize: 11, lineHeight: 15 },
   variantCaption: { color: colors.black, fontFamily: fonts.medium, fontSize: 11, lineHeight: 16 },
   featureCards: { flexDirection: 'row', alignItems: 'stretch', gap: spacing.sm },
-  seeAllButton: { minHeight: 58, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, borderRadius: 30, backgroundColor: colors.coral },
-  seeAllText: { color: colors.white, fontFamily: fonts.bold, fontStyle: 'italic', fontSize: 18, lineHeight: 24 },
-  seeAllArrow: { color: colors.white, fontFamily: fonts.bold, fontSize: 22, lineHeight: 27 },
+  seeAllButton: { minHeight: 58, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, borderRadius: 30, backgroundColor: colors.yellow },
+  seeAllText: { color: colors.black, fontFamily: fonts.bold, fontStyle: 'italic', fontSize: 18, lineHeight: 24 },
+  seeAllArrow: { color: colors.black, fontFamily: fonts.bold, fontSize: 22, lineHeight: 27 },
   nearbySection: { gap: spacing.sm },
   nearbyTitle: { color: colors.black, fontFamily: fonts.bold, fontSize: 20, lineHeight: 25 },
   nearbyList: { paddingHorizontal: spacing.md, borderRadius: 18, borderWidth: 1, borderColor: colors.warmRule, backgroundColor: colors.white },
@@ -721,10 +747,14 @@ const styles = StyleSheet.create({
   groupHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm, paddingBottom: spacing.xs, borderBottomWidth: 1, borderBottomColor: colors.warmRule },
   groupTitle: { flex: 1, color: colors.black, fontFamily: fonts.bold, fontSize: 13, lineHeight: 18 },
   groupCount: { color: colors.muted, fontFamily: fonts.mono, fontSize: 11 },
+  loadMoreButton: { minHeight: 48, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.lg, borderWidth: 1, borderColor: colors.warmRule, borderRadius: 24, backgroundColor: colors.white },
+  loadMoreText: { color: colors.purple, fontFamily: fonts.bold, fontSize: 13 },
+  loadMoreCount: { color: colors.muted, fontFamily: fonts.regular, fontSize: 12 },
   excludedHost: { width: '100%' },
   excludedSummaryText: { color: colors.muted, fontSize: 12, fontWeight: '600' },
   excludedName: { color: colors.black, fontFamily: fonts.medium, fontSize: 12, lineHeight: 16 },
   excludedMeta: { color: colors.muted, fontFamily: fonts.medium, fontSize: 10, lineHeight: 14 },
+  inspectLink: { minHeight: 48, justifyContent: 'center', paddingHorizontal: spacing.sm },
   inspectText: { color: colors.purple, fontFamily: fonts.bold, fontSize: 12 },
   pressed: { opacity: 0.72 },
 });

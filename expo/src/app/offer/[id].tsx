@@ -1,25 +1,44 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import type { PropsWithChildren } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { AppFrame, NoticeBand, PageHeading } from '@/components/app-frame';
-import { useLiveOffersQuery, type OfferRecord } from '@/data/live-offers';
+import { HeadingText } from '@/components/heading-text';
+import { LinkPressable } from '@/components/link-pressable';
+import { useLiveOffersQuery, useRecentOffersQuery, type OfferRecord } from '@/data/live-offers';
 import { categoryLabel, categoryUnit, quantityText } from '@/data/menu-schema';
 import { freshnessText, isRankable, money, unitMoney } from '@/lib/compare';
 import { sourceRecordRoute } from '@/lib/live-offer-routes';
 import { colors, fonts, radii, spacing, tabular } from '@/theme';
+import { pageMetadata } from '@/data/page-metadata';
+import type { GenerateMetadataFunction } from 'expo-router/server';
 
 const EMPTY_RECORDS: OfferRecord[] = [];
 
+export const generateMetadata: GenerateMetadataFunction = () => pageMetadata(
+  'Chicken menu offer details',
+  'Review the stored menu name, price, location, comparison fields, and source history for one offer.',
+);
+
 export default function OfferDetailScreen() {
   const { id: routeId, jobId: routeJobId } = useLocalSearchParams<{ id?: string | string[]; jobId?: string | string[] }>();
-  const router = useRouter();
   const normalizedId = normalizeRouteId(routeId);
   const requestedJobId = normalizeRouteId(routeJobId) || undefined;
   const query = useLiveOffersQuery(requestedJobId);
-  const boardJobId = requestedJobId ?? (query.status === 'success' ? query.metadata.job?._id : undefined);
-  const records = query.status === 'success' ? query.data : EMPTY_RECORDS;
-  const record = records.find(({ offer }) => String(offer.id) === normalizedId);
+  const recentQuery = useRecentOffersQuery();
+  const boardRecords = query.status === 'success' ? query.data : EMPTY_RECORDS;
+  const recentRecords = recentQuery.status === 'success' ? recentQuery.data : EMPTY_RECORDS;
+  const boardRecord = boardRecords.find(({ offer }) => String(offer.id) === normalizedId);
+  const recentRecord = requestedJobId
+    ? undefined
+    : recentRecords.find(({ offer }) => String(offer.id) === normalizedId);
+  const record = boardRecord ?? recentRecord;
+  const boardJobId = boardRecord
+    ? requestedJobId ?? (query.status === 'success' ? query.metadata.job?._id : undefined)
+    : undefined;
+  const recordStillLoading = !record && (
+    query.status === 'loading' || (!requestedJobId && recentQuery.status === 'loading')
+  );
   const offer = record?.offer;
   const rankable = offer ? isRankable(offer) : false;
   const sourceId = offer?.source_item_id?.trim() || offer?.id || '';
@@ -35,22 +54,29 @@ export default function OfferDetailScreen() {
         description="The live menu record, its price checks, and its source trail stay together."
       />
 
-      {query.status === 'loading' ? <LoadingState /> : null}
+      {recordStillLoading ? <LoadingState /> : null}
       {query.status === 'error' ? (
         <NoticeBand title="Could not load offer records" tone="error">
-          {query.error.message}
+          {recentQuery.status === 'success' && recentRecord
+            ? 'The current comparison board is unavailable. This older stored menu record is still shown below.'
+            : 'The current comparison board could not be reached.'}
         </NoticeBand>
       ) : null}
-      {query.status === 'success' && !record ? (
+      {!requestedJobId && recentQuery.status === 'error' && !boardRecord ? (
+        <NoticeBand title="Could not check stored offers" tone="warning">
+          The recent stored-record lookup is unavailable. Try again later or return to Compare.
+        </NoticeBand>
+      ) : null}
+      {query.status !== 'loading' && (requestedJobId || recentQuery.status !== 'loading') && !record ? (
         <>
           <NoticeBand title="This offer was not found" tone="warning">
             {normalizedId
               ? `No live menu offer matches document ID ${normalizedId}.`
               : 'This route does not include a menu offer ID.'}
           </NoticeBand>
-          <Pressable accessibilityRole="button" onPress={() => router.replace('/' as never)} style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}>
+          <LinkPressable href="/" replace style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}>
             <Text style={styles.secondaryButtonText}>Back to comparison</Text>
-          </Pressable>
+          </LinkPressable>
         </>
       ) : null}
 
@@ -62,7 +88,7 @@ export default function OfferDetailScreen() {
               <Text style={styles.statusBadge}>{rankable ? 'COMPARABLE PICKUP' : offer.validation_status.replaceAll('_', ' ').toUpperCase()}</Text>
             </View>
             <Text style={styles.chainName}>{chainName}</Text>
-            <Text accessibilityRole="header" style={styles.itemName}>{offer.original_name}</Text>
+            <HeadingText level={2} style={styles.itemName}>{offer.original_name}</HeadingText>
             <Text style={styles.storeLine}>
               {storeName}{record.distance_miles == null ? '' : ` · ${record.distance_miles.toFixed(1)} mi`}
             </Text>
@@ -86,12 +112,17 @@ export default function OfferDetailScreen() {
             </View>
           </View>
 
-          {query.status === 'success' ? (
+          {boardRecord && query.status === 'success' ? (
             <SnapshotCard
               observedAt={offer.observed_at}
               boardObservedAt={query.metadata.observed_at}
               job={query.metadata.job}
             />
+          ) : null}
+          {recentRecord && !boardRecord ? (
+            <NoticeBand title="Older stored menu record" tone="warning">
+              This offer is in the recent stored records. Its price may come from an earlier scrape than the current comparison board.
+            </NoticeBand>
           ) : null}
 
           <SectionTitle title="Offer details" />
@@ -131,33 +162,32 @@ export default function OfferDetailScreen() {
           <SectionTitle title="Source and validation" />
           <FactCard>
             <Fact label="Source provider" value={offer.source_provider} />
-            <Fact label="Source item ID" value={offer.source_item_id?.trim() || 'Not provided'} selectable />
-            <Fact label="Source URL" value={offer.source_url || 'Not provided'} selectable />
+            <Fact label="Source item ID" value={offer.source_item_id?.trim() || 'Not provided'} />
+            <Fact label="Source URL" value={offer.source_url || 'Not provided'} />
             <Fact label="Validation" value={offer.validation_status} />
             <Fact label="Comparable" value={offer.comparable ? 'Yes' : 'No'} />
             <Fact label="Observed at" value={formatDate(offer.observed_at)} />
-            <Fact label="Product key" value={offer.product_key} selectable />
-            <Fact label="Offer key" value={offer.offer_key} selectable />
+            <Fact label="Product key" value={offer.product_key} />
+            <Fact label="Offer key" value={offer.offer_key} />
           </FactCard>
 
           <NoticeBand title={rankable ? 'Eligible for unit-price comparison' : 'Not in unit-price ranking'} tone={rankable ? 'neutral' : 'warning'}>
             {freshnessText(offer)}. Check the original source before ordering.
           </NoticeBand>
 
-          <Pressable
-            accessibilityRole="link"
+          <LinkPressable
+            href={sourceRecordRoute(sourceId, boardJobId) as never}
             accessibilityHint="Opens this offer’s source record from the live Convex board."
-            onPress={() => router.push(sourceRecordRoute(sourceId, boardJobId) as never)}
             style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
             <Text style={styles.primaryButtonText}>Open source record</Text>
             <Text accessibilityElementsHidden style={styles.buttonArrow}>›</Text>
-          </Pressable>
-          <Pressable accessibilityRole="button" onPress={() => router.back()} style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}>
-            <Text style={styles.secondaryButtonText}>Back to results</Text>
-          </Pressable>
-          <Pressable accessibilityRole="link" onPress={() => router.push('/methodology' as never)} style={({ pressed }) => [styles.methodLink, pressed && styles.pressed]}>
+          </LinkPressable>
+          <LinkPressable href="/" replace style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}>
+            <Text style={styles.secondaryButtonText}>Back to Compare</Text>
+          </LinkPressable>
+          <LinkPressable href="/methodology" style={({ pressed }) => [styles.methodLink, pressed && styles.pressed]}>
             <Text style={styles.methodLinkText}>How comparisons work</Text>
-          </Pressable>
+          </LinkPressable>
         </>
       ) : null}
     </AppFrame>
@@ -205,7 +235,7 @@ function SnapshotCard({
         </Text>
       ) : null}
       {job?.status === 'running' ? <Text style={styles.snapshotLine}>Scrape requested {formatDate(job.requested_at)}</Text> : null}
-      {failed ? <Text style={styles.snapshotError}>{job.error?.trim() || 'The latest scrape failed without an error message.'}</Text> : null}
+      {failed ? <Text style={styles.snapshotError}>The latest menu check did not finish. This record may be from an earlier check.</Text> : null}
     </View>
   );
 }
@@ -214,7 +244,7 @@ function SectionTitle({ title }: { title: string }) {
   return (
     <View style={styles.sectionTitleRow}>
       <View style={styles.sectionAccent} />
-      <Text accessibilityRole="header" style={styles.sectionTitle}>{title}</Text>
+      <HeadingText level={2} style={styles.sectionTitle}>{title}</HeadingText>
     </View>
   );
 }
@@ -223,11 +253,11 @@ function FactCard({ children }: PropsWithChildren) {
   return <View style={styles.factCard}>{children}</View>;
 }
 
-function Fact({ label, value, numeric = false, selectable = false }: { label: string; value: string; numeric?: boolean; selectable?: boolean }) {
+function Fact({ label, value, numeric = false }: { label: string; value: string; numeric?: boolean }) {
   return (
     <View style={styles.fact}>
       <Text style={styles.factLabel}>{label}</Text>
-      <Text selectable={selectable} style={[styles.factValue, numeric && tabular]}>{value}</Text>
+      <Text selectable style={[styles.factValue, numeric && tabular]}>{value}</Text>
     </View>
   );
 }
@@ -286,7 +316,7 @@ const styles = StyleSheet.create({
   buttonArrow: { color: colors.white, fontFamily: fonts.regular, fontSize: 24, lineHeight: 28 },
   secondaryButton: { minHeight: 48, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.warmRule, borderRadius: radii.pill },
   secondaryButtonText: { color: colors.black, fontFamily: fonts.bold, fontSize: 14 },
-  methodLink: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  methodLink: { minHeight: 48, alignItems: 'center', justifyContent: 'center' },
   methodLinkText: { color: colors.purple, fontFamily: fonts.bold, fontSize: 13 },
   pressed: { opacity: 0.72 },
 });

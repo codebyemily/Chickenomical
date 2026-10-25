@@ -1,6 +1,6 @@
-import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
+import { LinkPressable } from '@/components/link-pressable';
 import type { OfferRecord } from '@/data/live-offers';
 import { categoryLabel, categoryUnit, quantityText } from '@/data/menu-schema';
 import { freshnessText, money, unitMoney } from '@/lib/compare';
@@ -16,7 +16,6 @@ type CompareOfferCardProps = {
 };
 
 export function FeaturedOfferCard({ record, jobId, kind }: { record: OfferRecord; jobId?: string; kind: 'unit' | 'total' }) {
-  const router = useRouter();
   const { offer, chain, location, distance_miles: distance } = record;
   const itemCount = quantityText(offer.category, offer.quantity);
   const sourceLine = `${providerLabel(offer.source_provider)} · ${checkedLabel(offer.observed_at)}`;
@@ -27,25 +26,24 @@ export function FeaturedOfferCard({ record, jobId, kind }: { record: OfferRecord
     : `${unitMoney(offer)} per ${categoryUnit(offer.category, 1)}`;
 
   return (
-    <Pressable
-      accessibilityRole="link"
+    <LinkPressable
+      href={offerDetailRoute(offer.id, jobId) as never}
       accessibilityLabel={`${kind === 'unit' ? 'Best price per unit' : 'Lowest menu total'} within this comparable group: ${headline} ${headlineLabel}, ${itemCount} at ${chain.name}, ${storeName(location.store_name, location.address)}, ${distanceText(distance)}. ${sourceLine}.`}
       accessibilityHint="Opens the offer details and source."
-      onPress={() => router.push(offerDetailRoute(offer.id, jobId) as never)}
       style={({ pressed }) => [styles.featuredCard, kind === 'unit' ? styles.limeCard : styles.skyCard, pressed && styles.pressed]}>
       <Text style={styles.featuredLabel}>{kind === 'unit' ? 'BEST VALUE' : 'LOWEST TOTAL'}</Text>
       <Text style={styles.featuredSubheading}>{kind === 'unit' ? `per ${categoryUnit(offer.category, 1)}` : 'for this listed pack'}</Text>
       <Text style={styles.featuredQuantity}>{itemCount}</Text>
-      <Text numberOfLines={1} style={styles.featuredRestaurant}>{chain.name}</Text>
-      <Text numberOfLines={2} style={styles.featuredLocation}>{storeName(location.store_name, location.address)} · {distanceText(distance)}</Text>
+      <Text style={styles.featuredRestaurant}>{chain.name}</Text>
+      <Text style={styles.featuredLocation}>{storeName(location.store_name, location.address)} · {distanceText(distance)}</Text>
       <Text style={[styles.featuredPrice, tabular]}>{headline}</Text>
       <Text style={styles.featuredPriceDetail}>{supportingPrice}</Text>
-      <Text numberOfLines={1} style={styles.featuredSource}>{sourceLine}</Text>
+      <Text style={styles.featuredSource}>{sourceLine}</Text>
       <View style={styles.featuredAction}>
         <Text style={styles.featuredActionText}>View source details</Text>
         <Text accessibilityElementsHidden style={styles.arrow}>›</Text>
       </View>
-    </Pressable>
+    </LinkPressable>
   );
 }
 
@@ -56,7 +54,6 @@ export function CompareOfferCard({
   tone = 'plain',
   primaryMetric = 'unit',
 }: CompareOfferCardProps) {
-  const router = useRouter();
   const { offer, chain, location, distance_miles: distance } = record;
   const itemCount = quantityText(offer.category, offer.quantity);
   const freshness = freshnessText(offer);
@@ -93,11 +90,10 @@ export function CompareOfferCard({
   }
 
   return (
-    <Pressable
-      accessibilityRole="link"
+    <LinkPressable
+      href={offerDetailRoute(offer.id, jobId) as never}
       accessibilityLabel={accessibilityLabel}
       accessibilityHint="Opens the offer details and source."
-      onPress={() => router.push(offerDetailRoute(offer.id, jobId) as never)}
       style={({ pressed }) => [
         styles.resultCard,
         tone === 'lime' && styles.limeCard,
@@ -109,10 +105,10 @@ export function CompareOfferCard({
         <Text numberOfLines={2} style={styles.resultCategory}>{categoryLabel(offer.category)}</Text>
       </View>
       <View style={styles.resultDetails}>
-        <Text numberOfLines={1} style={styles.resultChain}>{chain.name}</Text>
-        <Text numberOfLines={1} style={styles.resultName}>{offer.original_name}</Text>
-        <Text numberOfLines={1} style={styles.resultLocation}>{storeName(location.store_name, location.address)} · {distanceText(distance)}</Text>
-        <Text numberOfLines={1} style={[styles.resultSource, stale && styles.stale]}>
+        <Text style={styles.resultChain}>{chain.name}</Text>
+        <Text style={styles.resultName}>{offer.original_name}</Text>
+        <Text style={styles.resultLocation}>{storeName(location.store_name, location.address)} · {distanceText(distance)}</Text>
+        <Text style={[styles.resultSource, stale && styles.stale]}>
           {providerLabel(offer.source_provider)} · {stale ? 'stale' : 'verified'} · {checkedLabel(offer.observed_at)}
         </Text>
       </View>
@@ -122,7 +118,7 @@ export function CompareOfferCard({
         <Text style={styles.resultPriceLabel}>{primaryLabel}</Text>
         <Text numberOfLines={1} style={[styles.resultSecondary, tabular]}>{secondaryValue}</Text>
       </View>
-    </Pressable>
+    </LinkPressable>
   );
 }
 
@@ -161,19 +157,19 @@ const styles = StyleSheet.create({
   featuredLocation: { color: colors.black, fontFamily: fonts.regular, fontSize: 12, lineHeight: 16 },
   featuredPrice: { color: colors.black, fontFamily: fonts.bold, fontSize: 25, lineHeight: 31, marginTop: spacing.xs },
   featuredPriceDetail: { color: colors.black, fontFamily: fonts.medium, fontSize: 12, lineHeight: 16 },
-  featuredSource: { color: colors.black, fontFamily: fonts.medium, fontSize: 10, lineHeight: 14, marginTop: spacing.sm },
+  featuredSource: { color: colors.black, fontFamily: fonts.medium, fontSize: 12, lineHeight: 17, marginTop: spacing.sm },
   featuredAction: { minHeight: 44, borderTopWidth: 1, borderTopColor: 'rgba(16,16,16,0.2)', marginTop: spacing.xs, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   featuredActionText: { color: colors.black, fontFamily: fonts.bold, fontSize: 12 },
   arrow: { color: colors.black, fontFamily: fonts.regular, fontSize: 22, lineHeight: 26 },
-  resultCard: { minHeight: 116, width: '100%', flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.warmRule, borderRadius: 22, borderCurve: 'continuous' },
+  resultCard: { minHeight: 116, width: '100%', flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm, padding: spacing.md, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.warmRule, borderRadius: 22, borderCurve: 'continuous' },
   resultSize: { width: 56, flexShrink: 0, gap: 2 },
   resultQuantity: { color: colors.black, fontFamily: fonts.bold, fontSize: 15, lineHeight: 19 },
   resultCategory: { color: colors.black, fontFamily: fonts.medium, fontSize: 11, lineHeight: 14 },
   resultDetails: { flex: 1, minWidth: 0, gap: 1 },
   resultChain: { color: colors.black, fontFamily: fonts.bold, fontSize: 15, lineHeight: 20 },
-  resultName: { color: colors.black, fontFamily: fonts.medium, fontSize: 11, lineHeight: 15 },
-  resultLocation: { color: colors.muted, fontFamily: fonts.regular, fontSize: 11, lineHeight: 15 },
-  resultSource: { color: colors.muted, fontFamily: fonts.medium, fontSize: 10, lineHeight: 14 },
+  resultName: { color: colors.black, fontFamily: fonts.medium, fontSize: 13, lineHeight: 19 },
+  resultLocation: { color: colors.muted, fontFamily: fonts.regular, fontSize: 12, lineHeight: 18 },
+  resultSource: { color: colors.muted, fontFamily: fonts.medium, fontSize: 12, lineHeight: 18 },
   stale: { color: colors.warning },
   resultPrice: { minWidth: 84, alignItems: 'flex-end', gap: 1 },
   resultRank: { color: colors.muted, fontFamily: fonts.bold, fontSize: 10, lineHeight: 13 },

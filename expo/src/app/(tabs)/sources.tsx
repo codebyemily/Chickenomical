@@ -1,14 +1,19 @@
-import { useRouter } from 'expo-router';
 import { useMemo, useState, type PropsWithChildren } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { AppFrame, NoticeBand, SectionHeading } from '@/components/app-frame';
+import { AppFrame, NoticeBand } from '@/components/app-frame';
+import { HeadingText } from '@/components/heading-text';
+import { FormField } from '@/components/form-field';
+import { LinkPressable } from '@/components/link-pressable';
 import { QueryStatePanel } from '@/components/query-state-panel';
+import { ActionButton } from '@/components/ui/action-button';
 import { useLiveOffersQuery, useRecentOffersQuery, type OfferRecord } from '@/data/live-offers';
 import { categoryInfo, categoryLabel, categoryUnit, type MenuCategory } from '@/data/menu-schema';
 import { isRankable, money, unitPrice } from '@/lib/compare';
 import { sourceRecordRoute } from '@/lib/live-offer-routes';
 import { colors, fonts, spacing } from '@/theme';
+import { pageMetadata } from '@/data/page-metadata';
+import type { GenerateMetadataFunction } from 'expo-router/server';
 
 type CategoryFilter = { kind: 'all' } | { kind: 'unclassified' } | { kind: 'category'; value: MenuCategory };
 type ReviewFilter = 'all' | 'comparable' | 'review';
@@ -21,12 +26,15 @@ const REVIEW_FILTERS: { id: ReviewFilter; label: string }[] = [
   { id: 'review', label: 'Needs review' },
 ];
 
+export const generateMetadata: GenerateMetadataFunction = () => pageMetadata(
+  'Chicken menu sources',
+  'Browse recent chicken menu records with their providers, locations, prices, and validation details.',
+);
+
 export default function SourcesScreen() {
-  const router = useRouter();
   const boardQuery = useLiveOffersQuery();
   const recentQuery = useRecentOffersQuery();
   const recentStatus = recentQuery.status;
-  const recentError = recentQuery.status === 'error' ? recentQuery.error : undefined;
   const records = recentQuery.status === 'success' ? recentQuery.data : EMPTY_RECORDS;
   const job = boardQuery.status === 'success' ? boardQuery.metadata.job : null;
   const [search, setSearch] = useState('');
@@ -34,6 +42,7 @@ export default function SourcesScreen() {
   const [category, setCategory] = useState<CategoryFilter>({ kind: 'all' });
   const [reviewFilter, setReviewFilter] = useState<ReviewFilter>('all');
   const [sortBy, setSortBy] = useState<SortKey>('recent');
+  const [visibleLimit, setVisibleLimit] = useState(24);
 
   const chains = useMemo(() => {
     const byId = new Map(records.map(({ chain }) => [chain.id, chain]));
@@ -101,7 +110,7 @@ export default function SourcesScreen() {
       <View style={styles.screen}>
         <View style={styles.hero}>
           <Text style={styles.heroEyebrow}>CHICKENOMICAL · SOURCE CHECK</Text>
-          <Text accessibilityRole="header" style={styles.heroTitle}>Follow each offer to its source.</Text>
+          <HeadingText level={1} style={styles.heroTitle}>Follow each offer to its source.</HeadingText>
           <Text style={styles.heroDescription}>Browse the latest stored Convex menu offers across chains and categories. Search an item, provider, or source ID, then inspect its provenance.</Text>
           <View style={styles.heroWave}>
             <View style={styles.waveDot} />
@@ -122,15 +131,13 @@ export default function SourcesScreen() {
 
         <View style={styles.searchField}>
           <Text accessibilityElementsHidden style={styles.searchGlyph}>⌕</Text>
-          <TextInput
-            accessibilityLabel="Search menu offers and their sources"
-            clearButtonMode="while-editing"
+          <FormField
+            label="Search menu offers and their sources"
             onChangeText={setSearch}
             placeholder="Item, chain, provider, or source ID"
-            placeholderTextColor={colors.muted}
-            returnKeyType="search"
-            style={styles.searchInput}
             value={search}
+            submitLabel="search"
+            appearance="search"
           />
         </View>
 
@@ -170,19 +177,19 @@ export default function SourcesScreen() {
         ) : null}
         {job?.status === 'failed' ? (
           <NoticeBand title="Latest board scrape failed" tone="error">
-            {job.error?.trim() || `The latest scrape failed without an error message. ${job.offer_count} offers were reported.`}
+            `The latest menu check did not finish. ${job.offer_count} offers were reported.`
           </NoticeBand>
         ) : null}
         {boardQuery.status === 'error' ? (
           <NoticeBand title="Latest board metadata is unavailable" tone="warning">
-            {boardQuery.error.message} Stored records remain available from the separate recent-offers query below.
+            The current board metadata is temporarily unavailable. Stored records remain available from the separate recent-offers query below.
           </NoticeBand>
         ) : null}
 
         <View style={styles.resultsHeading}>
           <View style={styles.resultsTitleBlock}>
             <Text style={styles.sectionEyebrow}>RECENT STORED MENU OFFERS</Text>
-            <Text accessibilityRole="header" style={styles.sectionTitle}>Source trail</Text>
+            <HeadingText level={2} style={styles.sectionTitle}>Source trail</HeadingText>
           </View>
           <Text style={styles.resultsCount}>{recentStatus === 'success' ? `${visibleRecords.length} found` : '—'}</Text>
         </View>
@@ -199,6 +206,7 @@ export default function SourcesScreen() {
               key={option.id}
               accessibilityRole="button"
               accessibilityState={{ selected: sortBy === option.id }}
+              aria-pressed={sortBy === option.id}
               onPress={() => setSortBy(option.id)}
               style={({ pressed }) => [styles.sortChip, sortBy === option.id && styles.sortChipSelected, pressed && styles.pressed]}>
               <Text style={[styles.sortChipText, sortBy === option.id && styles.sortChipTextSelected]}>{option.label}</Text>
@@ -206,17 +214,24 @@ export default function SourcesScreen() {
           ))}
         </View>
 
-        <QueryStatePanel status={recentStatus} error={recentError} />
+        <QueryStatePanel status={recentStatus} />
         {recentStatus === 'success' && visibleRecords.length > 0 ? (
           <View style={styles.recordList}>
-            {visibleRecords.map((record, index) => (
+            {visibleRecords.slice(0, visibleLimit).map((record, index) => (
               <SourceOfferCard
                 key={record.offer.id}
                 record={record}
                 tone={index % 3 === 0 ? 'lime' : index % 3 === 1 ? 'sky' : 'plain'}
-                onPress={() => router.push(sourceRecordRoute(String(record.offer.id)) as never)}
               />
             ))}
+          </View>
+        ) : null}
+        {recentStatus === 'success' && visibleLimit < visibleRecords.length ? (
+          <View style={styles.moreResults}>
+            <Text style={styles.moreResultsNote}>Showing {Math.min(visibleLimit, visibleRecords.length)} of {visibleRecords.length} matching records.</Text>
+            <ActionButton kind="secondary" onPress={() => setVisibleLimit((current) => Math.min(current + 24, visibleRecords.length))}>
+              Show more source records
+            </ActionButton>
           </View>
         ) : null}
         {recentStatus === 'success' && visibleRecords.length === 0 ? (
@@ -224,15 +239,11 @@ export default function SourcesScreen() {
             <Text style={styles.emptyTitle}>{records.length === 0 ? 'No stored menu offers were returned.' : 'No offers match these filters.'}</Text>
             <Text style={styles.emptyCopy}>{records.length === 0 ? 'This list reads the latest stored rows from the Convex menuOffers table.' : 'Clear the search or reset the filters to see more source records.'}</Text>
             {records.length > 0 ? (
-              <Pressable accessibilityRole="button" onPress={clearFilters} style={({ pressed }) => [styles.clearButton, pressed && styles.pressed]}>
-                <Text style={styles.clearButtonText}>Reset search and filters</Text>
-              </Pressable>
+              <ActionButton kind="primary" onPress={clearFilters}>Reset search and filters</ActionButton>
             ) : null}
           </View>
         ) : null}
 
-        <SectionHeading title="Deals" trailing="NOT IN SCHEMA" />
-        <Text style={styles.dealsNote}>This Convex deployment stores menu offers, numeric values, and scrape jobs. It has no deals table, so this screen only lists menuOffers records.</Text>
       </View>
     </AppFrame>
   );
@@ -265,6 +276,7 @@ function FilterChip({ label, selected, onPress }: { label: string; selected: boo
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected }}
+      aria-pressed={selected}
       onPress={onPress}
       style={({ pressed }) => [styles.filterChip, selected && styles.filterChipSelected, pressed && styles.pressed]}>
       <Text style={[styles.filterChipText, selected && styles.filterChipTextSelected]}>{label}</Text>
@@ -275,11 +287,9 @@ function FilterChip({ label, selected, onPress }: { label: string; selected: boo
 function SourceOfferCard({
   record,
   tone,
-  onPress,
 }: {
   record: OfferRecord;
   tone: 'lime' | 'sky' | 'plain';
-  onPress: () => void;
 }) {
   const { offer, chain, location } = record;
   const sourceId = offer.source_item_id?.trim() || String(offer.id);
@@ -288,15 +298,14 @@ function SourceOfferCard({
   const unitLabel = offer.category ? categoryUnit(offer.category, 1) : 'unit';
 
   return (
-    <Pressable
-      accessibilityRole="link"
+    <LinkPressable
+      href={sourceRecordRoute(String(offer.id)) as never}
       accessibilityLabel={`Open source record for ${offer.original_name} from ${chain.name}`}
-      onPress={onPress}
       style={({ pressed }) => [styles.recordCard, tone === 'lime' ? styles.recordLime : tone === 'sky' ? styles.recordSky : styles.recordPlain, pressed && styles.pressed]}>
       <View style={styles.recordTop}>
         <View style={styles.recordMain}>
           <Text numberOfLines={2} style={styles.recordName}>{offer.original_name}</Text>
-          <Text numberOfLines={1} style={styles.recordChain}>{chain.name} · {location.store_name?.trim() || location.id}</Text>
+          <Text style={styles.recordChain}>{chain.name} · {location.store_name?.trim() || location.id}</Text>
         </View>
         <View style={styles.recordPriceBlock}>
           <Text style={styles.recordPrice}>{safeMoney(offer.list_price_cents, offer.currency)}</Text>
@@ -312,7 +321,7 @@ function SourceOfferCard({
       <View style={styles.sourceDetail}>
         <View style={styles.sourceLine}>
           <Text style={styles.sourceLabel}>PROVIDER</Text>
-          <Text numberOfLines={1} style={styles.sourceValue}>{offer.source_provider || 'Not stated'}{providerHost ? ` · ${providerHost}` : ''}</Text>
+          <Text style={styles.sourceValue}>{offer.source_provider || 'Not stated'}{providerHost ? ` · ${providerHost}` : ''}</Text>
         </View>
         <View style={styles.sourceLine}>
           <Text style={styles.sourceLabel}>SOURCE ITEM</Text>
@@ -321,11 +330,11 @@ function SourceOfferCard({
       </View>
 
       <View style={styles.recordFooter}>
-        <Text numberOfLines={1} style={styles.recordMeta}>{offer.validation_status} · {formatObservedAt(offer.observed_at)}</Text>
+        <Text style={styles.recordMeta}>{offer.validation_status} · {formatObservedAt(offer.observed_at)}</Text>
         <Text style={styles.unitPrice}>{rankable ? `${safeMoney(unitPrice(offer), offer.currency)} / ${unitLabel}` : 'Not rankable'}</Text>
       </View>
       <Text style={styles.openTrail}>Inspect source trail →</Text>
-    </Pressable>
+    </LinkPressable>
   );
 }
 
@@ -380,26 +389,25 @@ const styles = StyleSheet.create({
   summaryLime: { backgroundColor: colors.lime },
   summarySky: { backgroundColor: colors.sky },
   summaryWhite: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.warmRule },
-  summaryLabel: { color: colors.black, fontFamily: fonts.bold, fontSize: 8, lineHeight: 11, letterSpacing: 0.5 },
+  summaryLabel: { color: colors.black, fontFamily: fonts.bold, fontSize: 10, lineHeight: 14, letterSpacing: 0.45 },
   summaryValue: { color: colors.black, fontFamily: fonts.bold, fontSize: 23, lineHeight: 26 },
   searchField: { minHeight: 54, flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 2, borderColor: colors.purple, borderRadius: 30, paddingHorizontal: 17, backgroundColor: colors.white },
   searchGlyph: { color: colors.purple, fontFamily: fonts.bold, fontSize: 28, lineHeight: 30, transform: [{ rotate: '-20deg' }] },
-  searchInput: { flex: 1, minWidth: 0, paddingVertical: 11, color: colors.black, fontFamily: fonts.regular, fontSize: 15 },
   filterSection: { gap: 8 },
   filterLabel: { color: colors.muted, fontFamily: fonts.bold, fontSize: 10, letterSpacing: 0.9 },
   chipRow: { gap: 8, paddingRight: 4 },
-  filterChip: { minHeight: 38, justifyContent: 'center', paddingHorizontal: 14, borderRadius: 22, borderWidth: 1, borderColor: colors.warmRule, backgroundColor: colors.white },
+  filterChip: { minHeight: 48, justifyContent: 'center', paddingHorizontal: 14, borderRadius: 24, borderWidth: 1, borderColor: colors.warmRule, backgroundColor: colors.white },
   filterChipSelected: { backgroundColor: colors.purple, borderColor: colors.purple },
   filterChipText: { color: colors.black, fontFamily: fonts.medium, fontSize: 12 },
   filterChipTextSelected: { color: colors.white, fontFamily: fonts.bold },
   resultsHeading: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, paddingTop: 3 },
   resultsTitleBlock: { gap: 1 },
   sectionEyebrow: { color: colors.purple, fontFamily: fonts.bold, fontSize: 10, letterSpacing: 0.8 },
-  sectionTitle: { color: colors.orange, fontFamily: fonts.bold, fontSize: 25, lineHeight: 31 },
+  sectionTitle: { color: colors.orangeInk, fontFamily: fonts.bold, fontSize: 25, lineHeight: 31 },
   resultsCount: { color: colors.muted, fontFamily: fonts.medium, fontSize: 12, paddingBottom: 4 },
   sortRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 7 },
   sortLabel: { color: colors.muted, fontFamily: fonts.bold, fontSize: 9, letterSpacing: 0.7, marginRight: 2 },
-  sortChip: { minHeight: 34, justifyContent: 'center', paddingHorizontal: 12, borderRadius: 18, borderWidth: 1, borderColor: colors.warmRule, backgroundColor: colors.white },
+  sortChip: { minHeight: 48, justifyContent: 'center', paddingHorizontal: 13, borderRadius: 24, borderWidth: 1, borderColor: colors.warmRule, backgroundColor: colors.white },
   sortChipSelected: { backgroundColor: colors.purple, borderColor: colors.purple },
   sortChipText: { color: colors.black, fontFamily: fonts.medium, fontSize: 11 },
   sortChipTextSelected: { color: colors.white, fontFamily: fonts.bold },
@@ -411,7 +419,7 @@ const styles = StyleSheet.create({
   recordTop: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
   recordMain: { flex: 1, minWidth: 0, gap: 4 },
   recordName: { color: colors.black, fontFamily: fonts.bold, fontSize: 16, lineHeight: 20 },
-  recordChain: { color: colors.black, fontFamily: fonts.medium, fontSize: 12, lineHeight: 17 },
+  recordChain: { color: colors.black, fontFamily: fonts.medium, fontSize: 13, lineHeight: 19 },
   recordPriceBlock: { alignItems: 'flex-end', paddingTop: 1 },
   recordPrice: { color: colors.black, fontFamily: fonts.bold, fontSize: 19, lineHeight: 23 },
   recordPriceLabel: { color: colors.muted, fontFamily: fonts.medium, fontSize: 10 },
@@ -421,17 +429,17 @@ const styles = StyleSheet.create({
   statusBadgeComparable: { backgroundColor: colors.white },
   sourceDetail: { paddingTop: 8, borderTopWidth: 1, borderTopColor: 'rgba(16,16,16,0.12)', gap: 5 },
   sourceLine: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  sourceLabel: { width: 78, color: colors.muted, fontFamily: fonts.bold, fontSize: 8, letterSpacing: 0.6 },
-  sourceValue: { flex: 1, color: colors.black, fontFamily: fonts.medium, fontSize: 10, lineHeight: 14 },
-  recordFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
-  recordMeta: { flex: 1, color: colors.muted, fontFamily: fonts.medium, fontSize: 9, lineHeight: 13 },
-  unitPrice: { color: colors.black, fontFamily: fonts.bold, fontSize: 10, textAlign: 'right' },
+  sourceLabel: { width: 80, color: colors.muted, fontFamily: fonts.bold, fontSize: 10, lineHeight: 15, letterSpacing: 0.5 },
+  sourceValue: { flex: 1, minWidth: 0, color: colors.black, fontFamily: fonts.medium, fontSize: 12, lineHeight: 17 },
+  recordFooter: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+  recordMeta: { flex: 1, minWidth: 180, color: colors.muted, fontFamily: fonts.medium, fontSize: 11, lineHeight: 16 },
+  unitPrice: { color: colors.black, fontFamily: fonts.bold, fontSize: 12, lineHeight: 18, textAlign: 'right' },
   openTrail: { alignSelf: 'flex-end', color: colors.purple, fontFamily: fonts.bold, fontSize: 11 },
   emptyState: { padding: 20, borderRadius: 20, backgroundColor: colors.sky, gap: 8 },
   emptyTitle: { color: colors.black, fontFamily: fonts.bold, fontSize: 18, lineHeight: 22 },
   emptyCopy: { color: colors.black, fontFamily: fonts.regular, fontSize: 13, lineHeight: 19 },
-  clearButton: { alignSelf: 'flex-start', minHeight: 40, justifyContent: 'center', borderRadius: 20, paddingHorizontal: 15, backgroundColor: colors.coral, marginTop: 4 },
-  clearButtonText: { color: colors.white, fontFamily: fonts.bold, fontSize: 12 },
+  moreResults: { alignItems: 'center', gap: spacing.sm, paddingTop: spacing.sm },
+  moreResultsNote: { color: colors.muted, fontFamily: fonts.regular, fontSize: 12, lineHeight: 18, textAlign: 'center' },
   dealsNote: { color: colors.muted, fontFamily: fonts.regular, fontSize: 12, lineHeight: 18 },
   pressed: { opacity: 0.72 },
 });

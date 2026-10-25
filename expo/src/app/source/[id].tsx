@@ -1,19 +1,27 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useMemo } from 'react';
-import { ActivityIndicator, Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { AppFrame, NoticeBand, SectionHeading } from '@/components/app-frame';
+import { HeadingText } from '@/components/heading-text';
+import { LinkPressable } from '@/components/link-pressable';
 import { useLiveOffersQuery, useRecentOffersQuery, type OfferRecord } from '@/data/live-offers';
 import { categoryUnit } from '@/data/menu-schema';
 import { isRankable, money, unitMoney } from '@/lib/compare';
 import { offerDetailRoute } from '@/lib/live-offer-routes';
 import { colors, fonts, radii, spacing, tabular } from '@/theme';
+import { pageMetadata } from '@/data/page-metadata';
+import type { GenerateMetadataFunction } from 'expo-router/server';
 
 const EMPTY_RECORDS: OfferRecord[] = [];
 
+export const generateMetadata: GenerateMetadataFunction = () => pageMetadata(
+  'Chicken menu source record',
+  'Trace a stored chicken menu offer to its original provider, location, observation time, and validation fields.',
+);
+
 export default function SourceDetailScreen() {
   const { id: routeId, jobId: routeJobId } = useLocalSearchParams<{ id?: string | string[]; jobId?: string | string[] }>();
-  const router = useRouter();
   const normalizedId = normalizeRouteId(routeId);
   const requestedJobId = normalizeRouteId(routeJobId) || undefined;
   const boardQuery = useLiveOffersQuery(requestedJobId);
@@ -47,21 +55,12 @@ export default function SourceDetailScreen() {
         ? `No row matched ${normalizedId} in the current board. The recent stored-record lookup failed.`
         : `No row matched ${normalizedId} in the current board or the 200 most recently stored menu offers.`;
 
-  async function openSourceUrl() {
-    if (!offer?.source_url) return;
-    try {
-      await Linking.openURL(offer.source_url);
-    } catch {
-      Alert.alert('Could not open source', 'The stored source URL could not be opened on this device.');
-    }
-  }
-
   return (
     <AppFrame active="Explore">
       <View style={styles.screen}>
         <View style={styles.hero}>
           <Text style={styles.heroEyebrow}>CHICKENOMICAL · SOURCE CHECK</Text>
-          <Text accessibilityRole="header" style={styles.heroTitle}>Follow the record to its source.</Text>
+          <HeadingText level={1} style={styles.heroTitle}>Follow the record to its source.</HeadingText>
           <Text style={styles.heroDescription}>Review the menu row, stored chain and location IDs, and the provider link used to capture it.</Text>
           <View style={styles.heroWave}>
             <View style={styles.waveDot} />
@@ -76,12 +75,12 @@ export default function SourceDetailScreen() {
 
         {boardQuery.status === 'error' ? (
           <NoticeBand title="Latest board data is unavailable" tone="warning">
-            {boardQuery.error.message}{recentQuery.status === 'success' ? ' The stored record lookup below can still resolve older menu rows.' : ''}
+            {recentQuery.status === 'success' ? 'The current board is temporarily unavailable. The stored-record lookup below can still resolve older menu rows.' : 'The current board is temporarily unavailable. Try again in a moment.'}
           </NoticeBand>
         ) : null}
         {recentFallbackEnabled && recentQuery.status === 'error' && !boardRecord ? (
           <NoticeBand title="Stored record lookup failed" tone="error">
-            {recentQuery.error.message}
+            The recent stored-record lookup is temporarily unavailable. Try again in a moment.
           </NoticeBand>
         ) : null}
         {notFound ? (
@@ -90,9 +89,9 @@ export default function SourceDetailScreen() {
             <Text style={styles.emptyCopy}>
               {normalizedId ? lookupScope : 'This route does not include a source record ID.'}
             </Text>
-            <Pressable accessibilityRole="button" onPress={() => router.replace('/sources' as never)} style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
+            <LinkPressable href="/sources" replace style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
               <Text style={styles.primaryButtonText}>Back to source records</Text>
-            </Pressable>
+            </LinkPressable>
           </View>
         ) : null}
 
@@ -148,7 +147,7 @@ export default function SourceDetailScreen() {
               <FieldRow label="Document ID" value={offer.id} />
               <FieldRow label="Offer key" value={offer.offer_key} />
               <FieldRow label="Product key" value={offer.product_key} />
-              <FieldRow label="Source URL" value={offer.source_url} link onPress={openSourceUrl} />
+              <FieldRow label="Source URL" value={offer.source_url} href={offer.source_url || undefined} />
             </View>
 
             <View style={[styles.fieldGroup, styles.fieldGroupSky]}>
@@ -187,12 +186,11 @@ export default function SourceDetailScreen() {
               <FieldRow label="Comparable" value={offer.comparable} />
             </View>
 
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push(offerDetailRoute(String(offer.id), boardJobId) as never)}
+            <LinkPressable
+              href={offerDetailRoute(String(offer.id), boardJobId) as never}
               style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
               <Text style={styles.primaryButtonText}>Open menu offer →</Text>
-            </Pressable>
+            </LinkPressable>
           </>
         ) : null}
       </View>
@@ -224,23 +222,21 @@ function FieldRow({
   label,
   value,
   date = false,
-  link = false,
-  onPress,
+  href,
 }: {
   label: string;
   value: unknown;
   date?: boolean;
-  link?: boolean;
-  onPress?: () => void;
+  href?: string;
 }) {
   const display = formatValue(value, date);
   return (
     <View style={styles.fieldRow}>
       <Text style={styles.fieldLabel}>{label}</Text>
-      {link && onPress && value ? (
-        <Pressable accessibilityRole="link" accessibilityLabel={`Open source URL ${display}`} onPress={onPress} style={({ pressed }) => [styles.fieldValueLink, pressed && styles.pressed]}>
+      {href && value ? (
+        <LinkPressable href={href as never} accessibilityLabel={`Open source URL ${display}`} style={({ pressed }) => [styles.fieldValueLink, pressed && styles.pressed]}>
           <Text selectable style={styles.fieldValueLinkText}>{display}</Text>
-        </Pressable>
+        </LinkPressable>
       ) : (
         <Text selectable style={styles.fieldValue}>{display}</Text>
       )}
@@ -299,8 +295,8 @@ const styles = StyleSheet.create({
   fieldValue: { color: colors.black, fontFamily: fonts.medium, fontSize: 14, lineHeight: 20 },
   fieldValueLink: { alignSelf: 'flex-start', maxWidth: '100%' },
   fieldValueLinkText: { color: colors.purple, fontFamily: fonts.bold, fontSize: 14, lineHeight: 20, textDecorationLine: 'underline' },
-  primaryButton: { minHeight: 56, justifyContent: 'center', alignItems: 'center', paddingHorizontal: spacing.xl, backgroundColor: colors.coral, borderRadius: radii.pill },
-  primaryButtonText: { color: colors.white, fontFamily: fonts.bold, fontSize: 17 },
+  primaryButton: { minHeight: 56, justifyContent: 'center', alignItems: 'center', paddingHorizontal: spacing.xl, backgroundColor: colors.yellow, borderRadius: radii.pill },
+  primaryButtonText: { color: colors.black, fontFamily: fonts.bold, fontSize: 17 },
   emptyCard: { padding: spacing.lg, backgroundColor: colors.sky, borderRadius: radii.lg, gap: spacing.md },
   emptyTitle: { color: colors.black, fontFamily: fonts.bold, fontSize: 19, lineHeight: 24 },
   emptyCopy: { color: colors.black, fontFamily: fonts.regular, fontSize: 14, lineHeight: 21 },

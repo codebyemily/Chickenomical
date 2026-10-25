@@ -1,14 +1,21 @@
-import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { AppFrame, PageHeading } from '@/components/app-frame';
+import { HeadingText } from '@/components/heading-text';
+import { LinkPressable } from '@/components/link-pressable';
 import { QueryStatePanel } from '@/components/query-state-panel';
 import { useLiveOffersQuery, useRecentOffersQuery } from '@/data/live-offers';
 import { categoryInfo } from '@/data/menu-schema';
 import { colors, fonts, radii, spacing, tabular } from '@/theme';
+import { pageMetadata } from '@/data/page-metadata';
+import type { GenerateMetadataFunction } from 'expo-router/server';
+
+export const generateMetadata: GenerateMetadataFunction = () => pageMetadata(
+  'Page not found',
+  'This Chickenomical page could not be found. Return to nearby comparisons or browse saved source records.',
+);
 
 export default function NotFoundScreen() {
-  const router = useRouter();
   const recentQuery = useRecentOffersQuery();
   const boardQuery = useLiveOffersQuery();
   const records = recentQuery.status === 'success' ? recentQuery.data : [];
@@ -29,16 +36,16 @@ export default function NotFoundScreen() {
 
       <View style={styles.hero}>
         <Text style={styles.eyebrow}>404 · WRONG TURN</Text>
-        <Text accessibilityRole="header" style={styles.heroTitle}>Let’s get you back to the good stuff.</Text>
+        <HeadingText level={2} style={styles.heroTitle}>Let’s get you back to the good stuff.</HeadingText>
         <Text style={styles.heroDescription}>Compare nearby chicken offers or follow an offer back to its source.</Text>
         <View style={styles.actions}>
-          <Pressable accessibilityRole="button" onPress={() => router.replace('/' as never)} style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
+          <LinkPressable href="/" replace style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
             <Text style={styles.primaryButtonText}>Back to Compare</Text>
             <Text accessibilityElementsHidden style={styles.buttonArrow}>→</Text>
-          </Pressable>
-          <Pressable accessibilityRole="button" onPress={() => router.push('/sources' as never)} style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}>
+          </LinkPressable>
+          <LinkPressable href="/sources" style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}>
             <Text style={styles.secondaryButtonText}>Browse sources</Text>
-          </Pressable>
+          </LinkPressable>
         </View>
       </View>
 
@@ -56,7 +63,7 @@ export default function NotFoundScreen() {
         <Text style={styles.dataTitle}>What’s in the database</Text>
         <Text style={styles.dataDescription}>Counts below come from the most recent stored menu offer records returned by Convex. They may span different scrape times and locations.</Text>
 
-        <QueryStatePanel status={recentQuery.status} error={recentQuery.status === 'error' ? recentQuery.error : undefined} />
+        <QueryStatePanel status={recentQuery.status} />
 
         {recentQuery.status === 'success' ? (
           records.length > 0 ? (
@@ -130,9 +137,9 @@ const styles = StyleSheet.create({
   heroTitle: { color: colors.black, fontFamily: fonts.bold, fontSize: 30, letterSpacing: -0.8, lineHeight: 36 },
   heroDescription: { color: colors.black, fontFamily: fonts.medium, fontSize: 15, lineHeight: 22, maxWidth: 560 },
   actions: { alignItems: 'flex-start', flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.xs },
-  primaryButton: { alignItems: 'center', backgroundColor: colors.coral, borderRadius: radii.pill, flexDirection: 'row', gap: spacing.md, justifyContent: 'center', minHeight: 48, paddingHorizontal: spacing.lg },
-  primaryButtonText: { color: colors.white, fontFamily: fonts.bold, fontSize: 14 },
-  buttonArrow: { color: colors.white, fontFamily: fonts.bold, fontSize: 20, lineHeight: 22 },
+  primaryButton: { alignItems: 'center', backgroundColor: colors.yellow, borderRadius: radii.pill, flexDirection: 'row', gap: spacing.md, justifyContent: 'center', minHeight: 48, paddingHorizontal: spacing.lg },
+  primaryButtonText: { color: colors.black, fontFamily: fonts.bold, fontSize: 14 },
+  buttonArrow: { color: colors.black, fontFamily: fonts.bold, fontSize: 20, lineHeight: 22 },
   secondaryButton: { alignItems: 'center', backgroundColor: colors.cream, borderColor: colors.purple, borderRadius: radii.pill, borderWidth: 1.5, justifyContent: 'center', minHeight: 48, paddingHorizontal: spacing.lg },
   secondaryButtonText: { color: colors.purple, fontFamily: fonts.bold, fontSize: 14 },
   pressed: { opacity: 0.7 },

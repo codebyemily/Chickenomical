@@ -5,7 +5,7 @@ description: A clear field report for nearby chicken prices.
 
 # Design System: Chickenomical
 
-The visual reference is `visualizer/index.html` and `visualizer/styles.css`. The Expo app recreates that presentation through the existing React Native shared components, Expo Router routes, native tabs, and Expo UI controls. Expo Web uses the existing HeroUI field and button variants.
+The visual reference is `visualizer/index.html` and `visualizer/styles.css`. The Expo app recreates that presentation through shared React Native components, Expo Router routes, native tabs, and `@expo/ui` controls. Prefer Expo UI's universal Button, Picker, Slider, TextInput, and layout/text components when they fit; keep platform-specific modifiers in native files. Expo Web uses the universal Expo UI Button and controls, with an accessible React Native Web TextInput implementation for fields.
 
 ## Visual language
 
