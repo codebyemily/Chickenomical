@@ -22,7 +22,28 @@ export const colors = {
   paleDanger: '#F3E4E4',
   paleYellow: '#FFFBE0',
   heroMuted: '#3E3C00',
+  mapLand: '#D7E7C9',
+  mapWater: '#D6F6FC',
+  mapStore: '#2F7D32',
+  statusGreen: '#36804B',
+  statusOlive: '#5A8C2C',
+  badgePeach: '#F7E6DD',
+  limeInk: '#485439',
+  whiteWash: '#FFFFFFA8',
+  oliveRule: '#66784A',
+  titleLime: '#688B20',
+  titleBlue: '#27899F',
+  footerInk: '#2E252C',
+  inkSoft: '#353535',
+  factRule: '#F1E8DF',
+  bestWash: '#FFF4BC',
+  bestInk: '#704000',
+  orderDoorDash: '#C41200',
+  orderUber: '#06C167',
 };
+
+/** iOS continuous corners. Android ignores the value. */
+export const curve = 'continuous' as const;
 
 export const fonts = {
   regular: 'DMSans_400Regular',
@@ -50,3 +71,6 @@ export const radii = {
 };
 
 export const tabular = { fontVariant: ['tabular-nums'] as const };
+
+/** Android touch feedback. iOS and web keep the opacity press state. */
+export const ripple = { color: 'rgba(16, 16, 16, 0.12)' } as const;

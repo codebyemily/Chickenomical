@@ -1,7 +1,7 @@
 import { useMemo, useState, type PropsWithChildren } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { AppFrame, NoticeBand } from '@/components/app-frame';
+import { AppFrame, BackLink, NoticeBand } from '@/components/app-frame';
 import { HeadingText } from '@/components/heading-text';
 import { FormField } from '@/components/form-field';
 import { LinkPressable } from '@/components/link-pressable';
@@ -10,6 +10,7 @@ import { ActionButton } from '@/components/ui/action-button';
 import { useLiveOffersQuery, useRecentOffersQuery, type OfferRecord } from '@/data/live-offers';
 import { categoryInfo, categoryLabel, categoryUnit, type MenuCategory } from '@/data/menu-schema';
 import { isRankable, money, unitPrice } from '@/lib/compare';
+import { decorative } from '@/lib/a11y';
 import { sourceRecordRoute } from '@/lib/live-offer-routes';
 import { colors, fonts, spacing } from '@/theme';
 import { pageMetadata } from '@/data/page-metadata';
@@ -22,13 +23,13 @@ type SortKey = 'recent' | 'total' | 'unit' | 'chain';
 const EMPTY_RECORDS: OfferRecord[] = [];
 const REVIEW_FILTERS: { id: ReviewFilter; label: string }[] = [
   { id: 'all', label: 'All offers' },
-  { id: 'comparable', label: 'Comparable flag on' },
+  { id: 'comparable', label: 'Priced offers' },
   { id: 'review', label: 'Needs review' },
 ];
 
 export const generateMetadata: GenerateMetadataFunction = () => pageMetadata(
   'Chicken menu sources',
-  'Browse recent chicken menu records with their providers, locations, prices, and validation details.',
+  'Browse recent chicken menu offers with their sources, locations, prices, and comparison details.',
 );
 
 export default function SourcesScreen() {
@@ -106,12 +107,12 @@ export default function SourcesScreen() {
   }
 
   return (
-    <AppFrame active="Explore">
+    <AppFrame active="Explore" edgeToEdgeTop nativeSurface="compare" surface="compare" showDataNotice={false}>
       <View style={styles.screen}>
-        <View style={styles.hero}>
-          <Text style={styles.heroEyebrow}>CHICKENOMICAL · SOURCE CHECK</Text>
-          <HeadingText level={1} style={styles.heroTitle}>Follow each offer to its source.</HeadingText>
-          <Text style={styles.heroDescription}>Browse the latest stored Convex menu offers across chains and categories. Search an item, provider, or source ID, then inspect its provenance.</Text>
+        <View style={[styles.hero, Platform.OS !== 'web' && styles.heroNative, Platform.OS === 'web' && styles.heroWeb]}>
+          <BackLink label="Back to Compare" tone="orange" />
+          <HeadingText level={1} style={styles.heroTitle}>Find an offer and its source.</HeadingText>
+          <Text style={styles.heroDescription}>Browse menu offers across restaurants and categories. Search by item or source, then view where the price came from.</Text>
           <View style={styles.heroWave}>
             <View style={styles.waveDot} />
             <View style={styles.waveLine} />
@@ -122,19 +123,19 @@ export default function SourcesScreen() {
         </View>
 
         <View style={styles.summaryRow}>
-          <SummaryCard label="LATEST STORED ROWS" value={recentQuery.status === 'success' ? String(records.length) : '—'} tone="lime" />
+          <SummaryCard label="LATEST OFFERS" value={recentQuery.status === 'success' ? String(records.length) : '—'} tone="lime" />
           <SummaryCard label="SOURCE PROVIDERS" value={recentQuery.status === 'success' ? String(providerCount) : '—'} tone="sky" />
           <SummaryCard label="WITH A LIST PRICE" value={recentQuery.status === 'success' ? String(pricedCount) : '—'} tone="white" />
         </View>
 
-        <Text style={styles.scopeNote}>Showing up to 200 most recently stored menuOffers. Records can span multiple chains, locations, and scrape times; this is not a single nearby search.</Text>
+        <Text style={styles.scopeNote}>Showing recent offers from many restaurants and locations.</Text>
 
         <View style={styles.searchField}>
-          <Text accessibilityElementsHidden style={styles.searchGlyph}>⌕</Text>
+          <Text {...decorative} style={styles.searchGlyph}>⌕</Text>
           <FormField
-            label="Search menu offers and their sources"
+            label="Search menu offers"
             onChangeText={setSearch}
-            placeholder="Item, chain, provider, or source ID"
+            placeholder="Search menu offers"
             value={search}
             submitLabel="search"
             appearance="search"
@@ -162,7 +163,7 @@ export default function SourcesScreen() {
           </ChipRow>
         </FilterSection>
 
-        <FilterSection label="RECORD STATUS">
+        <FilterSection label="OFFER STATUS">
           <ChipRow>
             {REVIEW_FILTERS.map((filter) => (
               <FilterChip key={filter.id} label={filter.label} selected={reviewFilter === filter.id} onPress={() => setReviewFilter(filter.id)} />
@@ -171,31 +172,30 @@ export default function SourcesScreen() {
         </FilterSection>
 
         {job?.status === 'running' ? (
-          <NoticeBand title="Latest board scrape is running">
-            Convex currently reports {job.offer_count} offers for this job. Explorer rows below still come from the latest stored records across jobs.
+          <NoticeBand title="Updating nearby offers">
+            {job.offer_count} offers are available now. New results will appear when this update finishes.
           </NoticeBand>
         ) : null}
         {job?.status === 'failed' ? (
-          <NoticeBand title="Latest board scrape failed" tone="error">
-            `The latest menu check did not finish. ${job.offer_count} offers were reported.`
+          <NoticeBand title="The latest update did not finish" tone="error">
+            {job.offer_count} offers were available from the last completed update.
           </NoticeBand>
         ) : null}
         {boardQuery.status === 'error' ? (
-          <NoticeBand title="Latest board metadata is unavailable" tone="warning">
-            The current board metadata is temporarily unavailable. Stored records remain available from the separate recent-offers query below.
+          <NoticeBand title="Latest comparison is unavailable" tone="warning">
+            Saved offers remain available below. Try again in a moment for the newest comparison.
           </NoticeBand>
         ) : null}
 
         <View style={styles.resultsHeading}>
           <View style={styles.resultsTitleBlock}>
-            <Text style={styles.sectionEyebrow}>RECENT STORED MENU OFFERS</Text>
-            <HeadingText level={2} style={styles.sectionTitle}>Source trail</HeadingText>
+            <HeadingText level={2} style={styles.sectionTitle}>Menu offers</HeadingText>
           </View>
-          <Text style={styles.resultsCount}>{recentStatus === 'success' ? `${visibleRecords.length} found` : '—'}</Text>
+          <Text style={styles.resultsCount}>{recentStatus === 'success' ? `${visibleRecords.length} offers` : '—'}</Text>
         </View>
 
         <View style={styles.sortRow}>
-          <Text style={styles.sortLabel}>SORT</Text>
+          <Text style={styles.sortLabel}>Sort by</Text>
           {([
             { id: 'recent', label: 'Recent' },
             { id: 'total', label: 'Total' },
@@ -205,6 +205,7 @@ export default function SourcesScreen() {
             <Pressable
               key={option.id}
               accessibilityRole="button"
+              accessibilityLabel={`Sort by ${option.label}`}
               accessibilityState={{ selected: sortBy === option.id }}
               aria-pressed={sortBy === option.id}
               onPress={() => setSortBy(option.id)}
@@ -228,16 +229,16 @@ export default function SourcesScreen() {
         ) : null}
         {recentStatus === 'success' && visibleLimit < visibleRecords.length ? (
           <View style={styles.moreResults}>
-            <Text style={styles.moreResultsNote}>Showing {Math.min(visibleLimit, visibleRecords.length)} of {visibleRecords.length} matching records.</Text>
+            <Text style={styles.moreResultsNote}>Showing {Math.min(visibleLimit, visibleRecords.length)} of {visibleRecords.length} matching offers.</Text>
             <ActionButton kind="secondary" onPress={() => setVisibleLimit((current) => Math.min(current + 24, visibleRecords.length))}>
-              Show more source records
+              Show more offers
             </ActionButton>
           </View>
         ) : null}
         {recentStatus === 'success' && visibleRecords.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>{records.length === 0 ? 'No stored menu offers were returned.' : 'No offers match these filters.'}</Text>
-            <Text style={styles.emptyCopy}>{records.length === 0 ? 'This list reads the latest stored rows from the Convex menuOffers table.' : 'Clear the search or reset the filters to see more source records.'}</Text>
+            <Text style={styles.emptyTitle}>{records.length === 0 ? 'No menu offers found.' : 'No offers match these filters.'}</Text>
+            <Text style={styles.emptyCopy}>{records.length === 0 ? 'Try again later to see the latest offers.' : 'Clear the search or reset the filters to see more offers.'}</Text>
             {records.length > 0 ? (
               <ActionButton kind="primary" onPress={clearFilters}>Reset search and filters</ActionButton>
             ) : null}
@@ -275,6 +276,7 @@ function FilterChip({ label, selected, onPress }: { label: string; selected: boo
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={label}
       accessibilityState={{ selected }}
       aria-pressed={selected}
       onPress={onPress}
@@ -292,20 +294,20 @@ function SourceOfferCard({
   tone: 'lime' | 'sky' | 'plain';
 }) {
   const { offer, chain, location } = record;
-  const sourceId = offer.source_item_id?.trim() || String(offer.id);
   const providerHost = sourceHost(offer.source_url);
   const rankable = isRankable(offer);
   const unitLabel = offer.category ? categoryUnit(offer.category, 1) : 'unit';
+  const locationLine = location.address?.trim() || location.store_name?.trim() || 'Location unavailable';
 
   return (
     <LinkPressable
       href={sourceRecordRoute(String(offer.id)) as never}
-      accessibilityLabel={`Open source record for ${offer.original_name} from ${chain.name}`}
+      accessibilityLabel={`Open source details for ${offer.original_name} from ${chain.name}`}
       style={({ pressed }) => [styles.recordCard, tone === 'lime' ? styles.recordLime : tone === 'sky' ? styles.recordSky : styles.recordPlain, pressed && styles.pressed]}>
       <View style={styles.recordTop}>
         <View style={styles.recordMain}>
           <Text numberOfLines={2} style={styles.recordName}>{offer.original_name}</Text>
-          <Text style={styles.recordChain}>{chain.name} · {location.store_name?.trim() || location.id}</Text>
+          <Text numberOfLines={2} style={styles.recordChain}>{chain.name} - {locationLine}</Text>
         </View>
         <View style={styles.recordPriceBlock}>
           <Text style={styles.recordPrice}>{safeMoney(offer.list_price_cents, offer.currency)}</Text>
@@ -313,27 +315,17 @@ function SourceOfferCard({
         </View>
       </View>
 
-      <View style={styles.recordBadges}>
-        <Text style={styles.categoryBadge}>{categoryLabel(offer.category)}</Text>
-        <Text style={[styles.statusBadge, offer.comparable && styles.statusBadgeComparable]}>{offer.comparable ? 'Comparable flag on' : 'Not marked comparable'}</Text>
-      </View>
-
       <View style={styles.sourceDetail}>
         <View style={styles.sourceLine}>
-          <Text style={styles.sourceLabel}>PROVIDER</Text>
-          <Text style={styles.sourceValue}>{offer.source_provider || 'Not stated'}{providerHost ? ` · ${providerHost}` : ''}</Text>
-        </View>
-        <View style={styles.sourceLine}>
-          <Text style={styles.sourceLabel}>SOURCE ITEM</Text>
-          <Text numberOfLines={1} selectable style={styles.sourceValue}>{sourceId}</Text>
+          <Text numberOfLines={1} style={styles.sourceValue}>{offer.ordering_channel.replaceAll('_', ' ')} - {providerHost || offer.source_provider || 'Source unavailable'}</Text>
         </View>
       </View>
 
       <View style={styles.recordFooter}>
-        <Text style={styles.recordMeta}>{offer.validation_status} · {formatObservedAt(offer.observed_at)}</Text>
-        <Text style={styles.unitPrice}>{rankable ? `${safeMoney(unitPrice(offer), offer.currency)} / ${unitLabel}` : 'Not rankable'}</Text>
+        <Text style={styles.recordMeta}>{formatObservedAt(offer.observed_at)}</Text>
+        {rankable ? <Text style={styles.unitPrice}>{safeMoney(unitPrice(offer), offer.currency)} / {unitLabel}</Text> : null}
       </View>
-      <Text style={styles.openTrail}>Inspect source trail →</Text>
+      <Text style={styles.openTrail}>View source →</Text>
     </LinkPressable>
   );
 }
@@ -370,13 +362,14 @@ function sourceHost(value: string) {
 function formatObservedAt(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return 'time not stated';
-  return `observed ${new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(date)}`;
+  return `Updated ${new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(date)}`;
 }
 
 const styles = StyleSheet.create({
   screen: { width: '100%', gap: 20, paddingBottom: spacing.sm, backgroundColor: colors.cream },
   hero: { position: 'relative', overflow: 'hidden', backgroundColor: colors.orange, borderRadius: 26, paddingHorizontal: 20, paddingTop: 22, paddingBottom: 34, gap: 9 },
-  heroEyebrow: { color: colors.black, fontFamily: fonts.bold, fontSize: 10, letterSpacing: 1.1 },
+  heroNative: { marginHorizontal: -spacing.lg, borderTopLeftRadius: 0, borderTopRightRadius: 0 },
+  heroWeb: { marginHorizontal: 0, borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 34, borderBottomRightRadius: 34 },
   heroTitle: { color: colors.black, fontFamily: fonts.bold, fontSize: 28, lineHeight: 32, letterSpacing: -0.7 },
   heroDescription: { color: colors.black, fontFamily: fonts.regular, fontSize: 14, lineHeight: 20, maxWidth: 620 },
   scopeNote: { color: colors.muted, fontFamily: fonts.regular, fontSize: 11, lineHeight: 16, marginTop: -12 },
@@ -402,7 +395,6 @@ const styles = StyleSheet.create({
   filterChipTextSelected: { color: colors.white, fontFamily: fonts.bold },
   resultsHeading: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, paddingTop: 3 },
   resultsTitleBlock: { gap: 1 },
-  sectionEyebrow: { color: colors.purple, fontFamily: fonts.bold, fontSize: 10, letterSpacing: 0.8 },
   sectionTitle: { color: colors.orangeInk, fontFamily: fonts.bold, fontSize: 25, lineHeight: 31 },
   resultsCount: { color: colors.muted, fontFamily: fonts.medium, fontSize: 12, paddingBottom: 4 },
   sortRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 7 },
@@ -423,13 +415,8 @@ const styles = StyleSheet.create({
   recordPriceBlock: { alignItems: 'flex-end', paddingTop: 1 },
   recordPrice: { color: colors.black, fontFamily: fonts.bold, fontSize: 19, lineHeight: 23 },
   recordPriceLabel: { color: colors.muted, fontFamily: fonts.medium, fontSize: 10 },
-  recordBadges: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
-  categoryBadge: { color: colors.black, fontFamily: fonts.bold, fontSize: 10, backgroundColor: colors.cream, borderRadius: 12, paddingHorizontal: 9, paddingVertical: 5, overflow: 'hidden' },
-  statusBadge: { color: colors.black, fontFamily: fonts.bold, fontSize: 10, backgroundColor: '#F7E6DD', borderRadius: 12, paddingHorizontal: 9, paddingVertical: 5, overflow: 'hidden' },
-  statusBadgeComparable: { backgroundColor: colors.white },
   sourceDetail: { paddingTop: 8, borderTopWidth: 1, borderTopColor: 'rgba(16,16,16,0.12)', gap: 5 },
   sourceLine: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  sourceLabel: { width: 80, color: colors.muted, fontFamily: fonts.bold, fontSize: 10, lineHeight: 15, letterSpacing: 0.5 },
   sourceValue: { flex: 1, minWidth: 0, color: colors.black, fontFamily: fonts.medium, fontSize: 12, lineHeight: 17 },
   recordFooter: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
   recordMeta: { flex: 1, minWidth: 180, color: colors.muted, fontFamily: fonts.medium, fontSize: 11, lineHeight: 16 },

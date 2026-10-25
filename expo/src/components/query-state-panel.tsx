@@ -18,7 +18,7 @@ export function QueryStatePanel({
     return (
       <View accessibilityRole="progressbar" style={styles.loading}>
         <ActivityIndicator color={colors.black} />
-        <Text style={styles.loadingText}>Loading menu offers from Convex…</Text>
+        <Text style={styles.loadingText}>Loading menu offers…</Text>
       </View>
     );
   }

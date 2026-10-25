@@ -4,6 +4,18 @@ import type { Category, DemoArea } from '@/data/menu-schema';
 
 export type RefreshStatus = 'idle' | 'running' | 'complete' | 'failed';
 
+export type SearchSession = {
+  key: string;
+  mood: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  originType: 'device' | 'place';
+  radiusMiles: number;
+  cached: boolean;
+  browseAll: boolean;
+};
+
 type PrototypeState = {
   category: Category;
   setCategory: (value: Category) => void;
@@ -17,6 +29,8 @@ type PrototypeState = {
   refreshStatus: RefreshStatus;
   refreshMessage: string;
   runMockRefresh: (result?: 'complete' | 'failed') => void;
+  searchSession: SearchSession | null;
+  setSearchSession: (value: SearchSession | null) => void;
 };
 
 const PrototypeContext = createContext<PrototypeState | null>(null);
@@ -29,6 +43,7 @@ export function PrototypeProvider({ children }: PropsWithChildren) {
   const [locationLabel, setLocationLabel] = useState('Saved crawl distances');
   const [refreshStatus, setRefreshStatus] = useState<RefreshStatus>('idle');
   const [refreshMessage, setRefreshMessage] = useState('No sample refresh has run yet.');
+  const [searchSession, setSearchSession] = useState<SearchSession | null>(null);
 
   const setDemoArea = useCallback((nextArea: DemoArea, nextLabel: string) => {
     setArea(nextArea);
@@ -62,8 +77,10 @@ export function PrototypeProvider({ children }: PropsWithChildren) {
       refreshStatus,
       refreshMessage,
       runMockRefresh,
+      searchSession,
+      setSearchSession,
     }),
-    [category, radiusMiles, groupSize, area, locationLabel, setDemoArea, refreshStatus, refreshMessage, runMockRefresh],
+    [category, radiusMiles, groupSize, area, locationLabel, setDemoArea, refreshStatus, refreshMessage, runMockRefresh, searchSession],
   );
 
   return <PrototypeContext.Provider value={value}>{children}</PrototypeContext.Provider>;

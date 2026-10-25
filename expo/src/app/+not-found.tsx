@@ -1,10 +1,11 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 
-import { AppFrame, PageHeading } from '@/components/app-frame';
+import { AppFrame, BackLink } from '@/components/app-frame';
 import { HeadingText } from '@/components/heading-text';
 import { LinkPressable } from '@/components/link-pressable';
 import { QueryStatePanel } from '@/components/query-state-panel';
 import { useLiveOffersQuery, useRecentOffersQuery } from '@/data/live-offers';
+import { decorative } from '@/lib/a11y';
 import { categoryInfo } from '@/data/menu-schema';
 import { colors, fonts, radii, spacing, tabular } from '@/theme';
 import { pageMetadata } from '@/data/page-metadata';
@@ -12,7 +13,7 @@ import type { GenerateMetadataFunction } from 'expo-router/server';
 
 export const generateMetadata: GenerateMetadataFunction = () => pageMetadata(
   'Page not found',
-  'This Chickenomical page could not be found. Return to nearby comparisons or browse saved source records.',
+  'This Chickenomical page could not be found. Return to nearby comparisons or browse saved sources.',
 );
 
 export default function NotFoundScreen() {
@@ -28,40 +29,41 @@ export default function NotFoundScreen() {
   }, null);
 
   return (
-    <AppFrame active="Compare">
-      <PageHeading
-        title="This address is off the menu."
-        description="The screen you opened does not exist. Head back to Compare, or browse the offers currently stored in Chickenomical."
-      />
-
-      <View style={styles.hero}>
-        <Text style={styles.eyebrow}>404 · WRONG TURN</Text>
-        <HeadingText level={2} style={styles.heroTitle}>Let’s get you back to the good stuff.</HeadingText>
-        <Text style={styles.heroDescription}>Compare nearby chicken offers or follow an offer back to its source.</Text>
+    <AppFrame active="Compare" edgeToEdgeTop nativeSurface="compare" surface="compare" showDataNotice={false}>
+      <View style={[styles.hero, styles.heroNative, Platform.OS === 'web' && styles.heroWeb]}>
+        <BackLink label="Back" tone="orange" />
+        <HeadingText level={1} style={styles.heroTitle}>Let’s get you back to the good stuff.</HeadingText>
+        <Text style={styles.heroDescription}>That page isn’t here. Compare nearby chicken offers or browse the latest offers.</Text>
         <View style={styles.actions}>
           <LinkPressable href="/" replace style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
             <Text style={styles.primaryButtonText}>Back to Compare</Text>
-            <Text accessibilityElementsHidden style={styles.buttonArrow}>→</Text>
+            <Text {...decorative} style={styles.buttonArrow}>→</Text>
           </LinkPressable>
           <LinkPressable href="/sources" style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}>
             <Text style={styles.secondaryButtonText}>Browse sources</Text>
           </LinkPressable>
         </View>
+        <View {...decorative} style={styles.heroWave}>
+          <View style={styles.waveDot} />
+          <View style={styles.waveLine} />
+          <View style={styles.waveDotSmall} />
+          <View style={styles.waveLine} />
+          <View style={styles.waveDot} />
+        </View>
       </View>
 
       <View style={styles.stats}>
-        <StatCard label="RECENT STORED OFFERS" value={recentQuery.status === 'success' ? String(records.length) : '—'} tone="lime" />
-        <StatCard label="CHAINS IN THESE ROWS" value={recentQuery.status === 'success' ? String(chainNames.length) : '—'} tone="sky" />
-        <StatCard label="CATEGORIES IN THESE ROWS" value={recentQuery.status === 'success' ? String(categories.length) : '—'} tone="purple" />
+        <StatCard label="RECENT OFFERS" value={recentQuery.status === 'success' ? String(records.length) : '—'} tone="lime" />
+        <StatCard label="RESTAURANTS" value={recentQuery.status === 'success' ? String(chainNames.length) : '—'} tone="sky" />
+        <StatCard label="CATEGORIES" value={recentQuery.status === 'success' ? String(categories.length) : '—'} tone="purple" />
       </View>
 
       <View style={styles.dataPanel}>
         <View style={styles.dataHeading}>
-          <Text style={styles.dataEyebrow}>LIVE CONVEX READ</Text>
-          <Text style={styles.updatedAt}>{latestObservedAt ? `OBSERVED ${formatObservedAt(latestObservedAt)}` : 'DATABASE COVERAGE'}</Text>
+          <Text style={styles.updatedAt}>{latestObservedAt ? `Updated ${formatObservedAt(latestObservedAt)}` : 'Coverage unavailable'}</Text>
         </View>
-        <Text style={styles.dataTitle}>What’s in the database</Text>
-        <Text style={styles.dataDescription}>Counts below come from the most recent stored menu offer records returned by Convex. They may span different scrape times and locations.</Text>
+        <Text style={styles.dataTitle}>What’s available now</Text>
+        <Text style={styles.dataDescription}>Counts below come from the latest available menu offers. They may cover different update times and locations.</Text>
 
         <QueryStatePanel status={recentQuery.status} />
 
@@ -83,16 +85,16 @@ export default function NotFoundScreen() {
               </View>
             </View>
           ) : (
-            <Text style={styles.emptyCopy}>Convex returned no recent menu offer records.</Text>
+            <Text style={styles.emptyCopy}>No recent menu offers were found.</Text>
           )
         ) : null}
 
         <View style={styles.boardSummary}>
-          <Text style={styles.coverageLabel}>CURRENT COMPARISON BOARD</Text>
+          <Text style={styles.coverageLabel}>LATEST COMPARISON</Text>
           {boardQuery.status === 'success' ? (
             <Text style={styles.boardCopy}>
-              {boardQuery.data.length} {boardQuery.data.length === 1 ? 'offer' : 'offers'} on the latest board
-              {boardQuery.metadata.job?.status ? ` · scrape ${boardQuery.metadata.job.status}` : ''}.
+              {boardQuery.data.length} {boardQuery.data.length === 1 ? 'offer' : 'offers'} in the latest comparison
+              {boardQuery.metadata.job?.status ? `. Status: ${boardQuery.metadata.job.status}` : ''}.
             </Text>
           ) : (
             <Text style={styles.boardCopy}>{boardQuery.status === 'loading' ? 'Checking the latest board…' : 'The latest board is temporarily unavailable.'}</Text>
@@ -127,13 +129,17 @@ function formatObservedAt(value: string) {
 
 const styles = StyleSheet.create({
   hero: {
+    position: 'relative',
     backgroundColor: colors.orange,
     borderRadius: radii.lg,
     gap: spacing.md,
     overflow: 'hidden',
-    padding: spacing.xl,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.xxl,
   },
-  eyebrow: { color: colors.purple, fontFamily: fonts.monoBold, fontSize: 11, letterSpacing: 1, lineHeight: 16 },
+  heroNative: { marginHorizontal: -spacing.lg, marginBottom: spacing.lg, borderTopLeftRadius: 0, borderTopRightRadius: 0 },
+  heroWeb: { marginHorizontal: 0, borderTopLeftRadius: 0, borderTopRightRadius: 0 },
   heroTitle: { color: colors.black, fontFamily: fonts.bold, fontSize: 30, letterSpacing: -0.8, lineHeight: 36 },
   heroDescription: { color: colors.black, fontFamily: fonts.medium, fontSize: 15, lineHeight: 22, maxWidth: 560 },
   actions: { alignItems: 'flex-start', flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.xs },
@@ -142,6 +148,10 @@ const styles = StyleSheet.create({
   buttonArrow: { color: colors.black, fontFamily: fonts.bold, fontSize: 20, lineHeight: 22 },
   secondaryButton: { alignItems: 'center', backgroundColor: colors.cream, borderColor: colors.purple, borderRadius: radii.pill, borderWidth: 1.5, justifyContent: 'center', minHeight: 48, paddingHorizontal: spacing.lg },
   secondaryButtonText: { color: colors.purple, fontFamily: fonts.bold, fontSize: 14 },
+  heroWave: { position: 'absolute', bottom: 10, left: 20, right: 20, flexDirection: 'row', alignItems: 'center', gap: 5, height: 9, opacity: 0.62 },
+  waveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.cream },
+  waveDotSmall: { width: 5, height: 5, borderRadius: 3, backgroundColor: colors.cream },
+  waveLine: { height: 2, flex: 1, borderRadius: 2, backgroundColor: colors.cream },
   pressed: { opacity: 0.7 },
   stats: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   statCard: { borderRadius: radii.md, flexGrow: 1, flexBasis: 105, gap: spacing.xs, minHeight: 92, padding: spacing.md },
@@ -152,7 +162,6 @@ const styles = StyleSheet.create({
   statValue: { color: colors.black, fontFamily: fonts.bold, fontSize: 28, lineHeight: 32, ...tabular },
   dataPanel: { backgroundColor: colors.white, borderColor: colors.warmRule, borderRadius: radii.lg, borderWidth: 1, gap: spacing.md, padding: spacing.lg },
   dataHeading: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, justifyContent: 'space-between' },
-  dataEyebrow: { color: colors.purple, fontFamily: fonts.monoBold, fontSize: 11, letterSpacing: 0.8, lineHeight: 16 },
   updatedAt: { color: colors.muted, fontFamily: fonts.mono, fontSize: 10, lineHeight: 15 },
   dataTitle: { color: colors.black, fontFamily: fonts.bold, fontSize: 21, letterSpacing: -0.4, lineHeight: 26 },
   dataDescription: { color: colors.muted, fontFamily: fonts.regular, fontSize: 14, lineHeight: 21 },

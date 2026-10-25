@@ -1,17 +1,18 @@
 import { Host, Slider } from '@expo/ui';
 import * as Haptics from 'expo-haptics';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
-import { AppFrame, NoticeBand } from '@/components/app-frame';
+import { AppFrame, BackLink, NoticeBand } from '@/components/app-frame';
 import { QueryStatePanel } from '@/components/query-state-panel';
 import { ActionButton } from '@/components/ui/action-button';
 import { FormField } from '@/components/form-field';
 import { HeadingText } from '@/components/heading-text';
 import { LinkPressable } from '@/components/link-pressable';
-import { useLiveOffersQuery, useRecentOffersQuery, type OfferRecord } from '@/data/live-offers';
+import { useRecentOffersQuery, useStoredOffersQuery, type OfferRecord } from '@/data/live-offers';
 import { categoryInfo, categoryUnit, quantityText } from '@/data/menu-schema';
 import { isRankable, money, solveAllLocations } from '@/lib/compare';
+import { withStraightLineDistance } from '@/lib/distance';
 import { offerDetailRoute } from '@/lib/live-offer-routes';
 import { usePrototype } from '@/state/prototype-context';
 import { pageMetadata } from '@/data/page-metadata';
@@ -26,13 +27,14 @@ export const generateMetadata: GenerateMetadataFunction = () => pageMetadata(
 );
 
 export default function QuantityScreen() {
-  const { category, setCategory, radiusMiles, groupSize, setGroupSize } = usePrototype();
+  const { width } = useWindowDimensions();
+  const { category, setCategory, radiusMiles, groupSize, setGroupSize, searchSession } = usePrototype();
   const [goalDraft, setGoalDraft] = useState<string | null>(null);
   const [goalError, setGoalError] = useState<string | null>(null);
   const goal = goalDraft ?? String(groupSize);
-  const query = useLiveOffersQuery();
+  const query = useStoredOffersQuery();
   const recentQuery = useRecentOffersQuery();
-  const boardRows = query.status === 'success' ? query.data : EMPTY_RECORDS;
+  const boardRows = query.status === 'success' ? withStraightLineDistance(query.data, searchSession) : EMPTY_RECORDS;
   const boardCategories = useMemo(() => [...new Set(
     boardRows.flatMap(({ offer }) => offer.category ? [offer.category] : []),
   )].sort((a, b) => categoryInfo(a).label.localeCompare(categoryInfo(b).label)), [boardRows]);
@@ -40,9 +42,7 @@ export default function QuantityScreen() {
   const recentRows = recentQuery.status === 'success' ? recentQuery.data : EMPTY_RECORDS;
   const recentChainCount = new Set(recentRows.map(({ chain }) => chain.id)).size;
   const recentCategoryCount = new Set(recentRows.flatMap(({ offer }) => offer.category ? [offer.category] : [])).size;
-  const records = query.status === 'success'
-    ? query.data.filter(({ distance_miles }) => distance_miles != null && distance_miles <= radiusMiles)
-    : EMPTY_RECORDS;
+  const records = boardRows.filter(({ distance_miles }) => distance_miles != null && distance_miles <= radiusMiles);
   const boardChainCount = query.status === 'success'
     ? new Set(query.data.map(({ chain }) => chain.id)).size
     : 0;
@@ -69,6 +69,7 @@ export default function QuantityScreen() {
     : 'no-solution';
   const previousPlan = useRef(bestPlanKey);
   const lastHapticAt = useRef(0);
+  const stackExactEntry = width < 520;
 
   useEffect(() => {
     if (query.status !== 'success' || boardCategories.length === 0 || boardCategories.includes(category)) return;
@@ -118,9 +119,10 @@ export default function QuantityScreen() {
   }
 
   return (
-    <AppFrame active="Group" compact surface="compare">
+    <AppFrame active="Group" compact edgeToEdgeTop surface="compare">
       <View style={styles.screen}>
         <View style={styles.hero}>
+          <BackLink label="Back to Compare" tone="orange" />
           <Text style={styles.brand}>Chickenomical</Text>
           <HeadingText level={1} style={styles.heroTitle}>How many are we feeding?</HeadingText>
           <Text style={styles.heroDescription}>Build a chicken order from recent pickup prices nearby.</Text>
@@ -138,6 +140,7 @@ export default function QuantityScreen() {
                       <Pressable
                         key={option}
                         accessibilityRole="button"
+                        accessibilityLabel={categoryInfo(option).label}
                         accessibilityState={{ selected }}
                         aria-pressed={selected}
                         onPress={() => setCategory(option)}
@@ -150,9 +153,9 @@ export default function QuantityScreen() {
               ) : (
                 <Text style={styles.noCategories}>
                   {query.status === 'loading'
-                    ? 'Loading categories from Convex…'
+                    ? 'Loading categories…'
                     : query.status === 'error'
-                      ? 'Categories are unavailable while Convex is offline.'
+                      ? 'Categories are unavailable right now.'
                       : 'This board has no classified categories yet.'}
                 </Text>
               )}
@@ -189,20 +192,24 @@ export default function QuantityScreen() {
             </View>
 
             <View style={styles.exactEntry}>
-              <Text style={styles.controlLabel}>OR SET AN EXACT SIZE</Text>
-              <View style={styles.exactEntryRow}>
-              <FormField
-                label={`${selectedCategoryInfo.unit} goal`}
-                value={goal}
-                onChangeText={changeFromText}
-                keyboardType="numeric"
-                submitLabel="done"
-                onSubmitEditing={() => commitGoal(goal)}
-                onBlur={() => commitGoal(goal)}
-                help="Enter a whole number from 1 to 100."
-                error={goalError ?? undefined}
-              />
-              <ActionButton kind="primary" onPress={() => commitGoal(goal)}>Apply size</ActionButton>
+              <View style={[styles.exactEntryRow, stackExactEntry && styles.exactEntryRowStacked]}>
+                <View style={[styles.exactEntryField, stackExactEntry && styles.exactEntryFieldStacked]}>
+                  <FormField
+                    label={`${selectedCategoryInfo.unit} goal`}
+                    labelHidden
+                    value={goal}
+                    onChangeText={changeFromText}
+                    keyboardType="numeric"
+                    submitLabel="done"
+                    onSubmitEditing={() => commitGoal(goal)}
+                    onBlur={() => commitGoal(goal)}
+                    help="Enter a whole number from 1 to 100."
+                    error={goalError ?? undefined}
+                  />
+                </View>
+                <View style={[styles.exactEntryAction, !stackExactEntry && styles.exactEntryActionInline]}>
+                  <ActionButton width={stackExactEntry ? '100%' : undefined} kind="primary" onPress={() => commitGoal(goal)}>Apply size</ActionButton>
+                </View>
               </View>
               {hasUnappliedGoal && !goalError ? (
                 <Text style={styles.inputHelp}>Results still show the last valid size of {groupSize} until this entry is applied.</Text>
@@ -211,12 +218,11 @@ export default function QuantityScreen() {
           </View>
 
           <View style={styles.resultsHeader}>
-            <Text style={styles.sectionEyebrow}>GROUP ORDER IDEAS</Text>
             <HeadingText level={2} style={styles.resultTitle}>At least {quantityText(selectedCategory, groupSize)}</HeadingText>
             <Text style={styles.resultIntro}>
               {query.status === 'success'
                 ? `${solutionGroups.length} matching menu variant${solutionGroups.length === 1 ? '' : 's'} across ${solutionLocationCount} location${solutionLocationCount === 1 ? '' : 's'} within ${radiusMiles} miles.`
-                : 'Finding repeatable menu sizes in the Convex snapshot.'}
+                : 'Finding repeatable menu sizes in the latest menu data.'}
             </Text>
           </View>
 
@@ -224,7 +230,7 @@ export default function QuantityScreen() {
             <View style={styles.snapshotBand}>
               <View style={styles.snapshotDot} />
               <Text style={styles.snapshotText}>
-                {query.data.length} current-board offers · {boardChainCount} {boardChainCount === 1 ? 'chain' : 'chains'} · checked {dateLabel(query.metadata.observed_at)}
+                {query.data.length} available offers - {boardChainCount} {boardChainCount === 1 ? 'restaurant' : 'restaurants'} - Updated {dateLabel(query.metadata.observed_at)}
               </Text>
             </View>
           ) : null}
@@ -232,9 +238,8 @@ export default function QuantityScreen() {
           {recentQuery.status === 'success' && recentRows.length > 0 ? (
             <LinkPressable href="/sources" style={({ pressed }) => [styles.recentInventory, pressed && styles.pressed]}>
               <View style={styles.recentInventoryCopy}>
-                <Text style={styles.recentInventoryLabel}>MORE RECENT DATABASE RECORDS</Text>
-                <Text style={styles.recentInventoryText}>{recentRows.length} recent offers · {recentChainCount} {recentChainCount === 1 ? 'chain' : 'chains'} · {recentCategoryCount} {recentCategoryCount === 1 ? 'category' : 'categories'}</Text>
-                <Text style={styles.recentInventoryNote}>May include other crawl locations; kept out of these totals.</Text>
+                <Text style={styles.recentInventoryText}>{recentRows.length} more saved offers - {recentChainCount} {recentChainCount === 1 ? 'restaurant' : 'restaurants'} - {recentCategoryCount} {recentCategoryCount === 1 ? 'category' : 'categories'}</Text>
+                <Text style={styles.recentInventoryNote}>Other saved locations are included when their coordinates are within this distance.</Text>
               </View>
               <Text style={styles.recentInventoryLink}>Sources →</Text>
             </LinkPressable>
@@ -247,7 +252,6 @@ export default function QuantityScreen() {
               {solutionGroups.map((group) => (
                 <View key={group.key} style={styles.solutionGroup}>
                   <View style={styles.groupHeader}>
-                    <Text style={styles.groupEyebrow}>SAME MENU VARIANT</Text>
                     <Text style={styles.currencyBadge}>{group.rows[0].currency}</Text>
                   </View>
                   <Text style={styles.groupVariant}>{group.variant}</Text>
@@ -256,29 +260,25 @@ export default function QuantityScreen() {
                       <View key={solution.location.id} style={[styles.solution, index === 0 && styles.bestSolution, index === 1 && styles.secondSolution]}>
                         <View style={styles.solutionTop}>
                           <View style={styles.solutionNameBlock}>
-                            <Text style={[styles.rankLabel, index === 0 && styles.bestInk]}>
-                              {index === 0 ? 'LOWEST TOTAL IN THIS VARIANT' : `LOCATION ${String(index + 1).padStart(2, '0')}`}
-                            </Text>
                             <Text style={[styles.restaurant, index === 0 && styles.bestInk]}>{solution.chain.name}</Text>
                             <Text style={[styles.subtle, index === 0 && styles.bestInk]}>{solution.location.store_name}</Text>
                           </View>
                           <View style={styles.totalBlock}>
-                            <Text style={[styles.controlLabel, index === 0 && styles.bestInk]}>ORDER TOTAL</Text>
                             <Text style={[styles.total, index === 0 && styles.bestInk, tabular]}>{money(solution.totalCents, solution.currency)}</Text>
                           </View>
                         </View>
                         <View style={[styles.rule, index === 0 && styles.bestRule]} />
                         {solution.orders.map(({ offer, quantity }) => (
                           <Text key={offer.id} style={[styles.orderLine, index === 0 && styles.bestInk]}>
-                            {quantity} × {offer.original_name} · {money(offer.list_price_cents, offer.currency)} each
+                            {quantity} × {offer.original_name} - {money(offer.list_price_cents, offer.currency)} each
                           </Text>
                         ))}
                         <View style={styles.solutionFooter}>
                           <Text style={[styles.solutionFacts, index === 0 && styles.bestInk, tabular]}>
-                            {quantityText(selectedCategory, solution.units)} · {solution.extraUnits} extra · {solution.distance_miles == null ? 'distance unavailable' : `${solution.distance_miles.toFixed(1)} mi away`}
+                            {quantityText(selectedCategory, solution.units)} - {solution.extraUnits} extra - {solution.distance_miles == null ? 'distance unavailable' : `${solution.distance_miles.toFixed(1)} mi away`}
                           </Text>
                           <Text style={[styles.solutionStatus, index === 0 && styles.bestInk]}>
-                            Recent menu prices · not a live order quote
+                            Recent menu prices - not a live order quote
                           </Text>
                         </View>
                         <View style={styles.inspectButton}>
@@ -301,7 +301,7 @@ export default function QuantityScreen() {
           ) : null)}
 
           <NoticeBand title="How the total is built">
-            The solver repeats comparable à la carte pickup packs to meet your goal at one location. It keeps each menu variant and currency separate, then shows any extra pieces. Prices come from scraped menus and can change before checkout.
+            The solver repeats comparable pickup packs to meet your goal at one location. It keeps each menu variant and currency separate, then shows any extra pieces. Prices come from recent menus and can change before checkout.
           </NoticeBand>
         </View>
       </View>
@@ -318,8 +318,8 @@ function dateLabel(value: string | null | undefined) {
 }
 
 function emptyTitle(boardCount: number, inRadiusCount: number, boardCategoryCount: number, categoryCount: number, eligibleCount: number) {
-  if (boardCount === 0) return 'No menu records yet';
-  if (inRadiusCount === 0) return 'No nearby records';
+  if (boardCount === 0) return 'No menu offers yet';
+  if (inRadiusCount === 0) return 'No nearby offers';
   if (boardCategoryCount === 0) return 'No classified categories yet';
   if (categoryCount === 0) return 'No matching chicken category';
   if (eligibleCount === 0) return 'No comparable packs yet';
@@ -327,10 +327,10 @@ function emptyTitle(boardCount: number, inRadiusCount: number, boardCategoryCoun
 }
 
 function emptyMessage(boardCount: number, inRadiusCount: number, boardCategoryCount: number, categoryCount: number, eligibleCount: number, categoryLabel: string, radiusMiles: number) {
-  if (boardCount === 0) return 'Convex has not returned any menu offers for this board yet. Check again after a scrape completes.';
-  if (inRadiusCount === 0) return `No records with a saved distance are within ${radiusMiles} miles. Try a wider distance in Compare settings.`;
-  if (boardCategoryCount === 0) return 'Nearby menu records are present, but Convex has no category labels for them yet, so they cannot be grouped into a quantity comparison.';
-  if (categoryCount === 0) return `Convex has records nearby, but none is classified as ${categoryLabel.toLowerCase()}. Choose a category with returned offers.`;
+  if (boardCount === 0) return 'No menu offers are available for this area yet. Check again after the next update.';
+  if (inRadiusCount === 0) return 'No nearby offers for this category yet.';
+  if (boardCategoryCount === 0) return 'Nearby menu offers are present, but their categories are not available yet.';
+  if (categoryCount === 0) return `Offers are nearby, but none is classified as ${categoryLabel.toLowerCase()}. Choose a category with available offers.`;
   if (eligibleCount === 0) return 'Nearby offers exist, but none has verified first-party pickup pricing and a whole pack quantity for this comparison.';
   return 'Try a smaller goal. The solver keeps menu variant, currency, and pickup channel matched.';
 }
@@ -349,24 +349,28 @@ const styles = StyleSheet.create({
   categoryChipSelected: { backgroundColor: colors.purple, borderColor: colors.purple },
   categoryChipText: { color: colors.black, fontFamily: fonts.bold, fontSize: 13 },
   categoryChipTextSelected: { color: colors.white },
-  noCategories: { color: '#485439', fontFamily: fonts.medium, fontSize: 12, lineHeight: 18 },
+  noCategories: { color: colors.limeInk, fontFamily: fonts.medium, fontSize: 12, lineHeight: 18 },
   pressed: { opacity: 0.72 },
   controlLabel: { color: colors.black, fontFamily: fonts.bold, fontSize: 10, letterSpacing: 0.7, lineHeight: 14 },
   goalReadout: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', gap: spacing.md },
   goalValueLine: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
   goalValue: { color: colors.purple, fontFamily: fonts.bold, fontSize: 58, lineHeight: 62 },
   goalUnit: { color: colors.black, fontFamily: fonts.medium, fontSize: 16 },
-  rangeBadge: { backgroundColor: '#FFFFFFA8', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7, marginBottom: 8 },
+  rangeBadge: { backgroundColor: colors.whiteWash, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7, marginBottom: 8 },
   rangeText: { color: colors.black, fontFamily: fonts.bold, fontSize: 11 },
   sliderBlock: { alignSelf: 'stretch', gap: spacing.xs },
   sliderHost: { width: '100%', height: 48, justifyContent: 'center' },
   sliderLabels: { flexDirection: 'row', justifyContent: 'space-between' },
-  sliderLabel: { color: '#485439', fontFamily: fonts.medium, fontSize: 11 },
+  sliderLabel: { color: colors.limeInk, fontFamily: fonts.medium, fontSize: 11 },
   exactEntry: { gap: spacing.xs },
-  exactEntryRow: { flexDirection: 'row', alignItems: 'flex-end', flexWrap: 'wrap', gap: spacing.md },
-  inputHelp: { color: '#485439', fontFamily: fonts.regular, fontSize: 12, lineHeight: 17 },
+  exactEntryRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
+  exactEntryRowStacked: { flexDirection: 'column', gap: spacing.sm },
+  exactEntryField: { flex: 1, minWidth: 0 },
+  exactEntryFieldStacked: { width: '100%' },
+  exactEntryAction: { alignItems: 'stretch' },
+  exactEntryActionInline: { marginTop: 23 },
+  inputHelp: { color: colors.limeInk, fontFamily: fonts.regular, fontSize: 12, lineHeight: 17 },
   resultsHeader: { gap: spacing.xs },
-  sectionEyebrow: { color: colors.purple, fontFamily: fonts.bold, fontSize: 11, letterSpacing: 0.7, lineHeight: 16 },
   resultTitle: { color: colors.orangeInk, fontFamily: fonts.bold, fontSize: 25, lineHeight: 30, letterSpacing: -0.4 },
   resultIntro: { color: colors.muted, fontFamily: fonts.regular, fontSize: 13, lineHeight: 20 },
   snapshotBand: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.cream, borderRadius: 16, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
@@ -374,14 +378,12 @@ const styles = StyleSheet.create({
   snapshotText: { flex: 1, color: colors.muted, fontFamily: fonts.medium, fontSize: 11, lineHeight: 16 },
   recentInventory: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md, backgroundColor: colors.sky, borderRadius: 20 },
   recentInventoryCopy: { flex: 1, gap: 3 },
-  recentInventoryLabel: { color: colors.purple, fontFamily: fonts.bold, fontSize: 10, letterSpacing: 0.5, lineHeight: 14 },
   recentInventoryText: { color: colors.black, fontFamily: fonts.bold, fontSize: 12, lineHeight: 17 },
   recentInventoryNote: { color: colors.muted, fontFamily: fonts.regular, fontSize: 11, lineHeight: 15 },
   recentInventoryLink: { color: colors.purple, fontFamily: fonts.bold, fontSize: 12 },
   solutionGroups: { gap: spacing.xl },
   solutionGroup: { gap: spacing.sm },
   groupHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm },
-  groupEyebrow: { color: colors.purple, fontFamily: fonts.bold, fontSize: 10, letterSpacing: 0.7 },
   currencyBadge: { color: colors.muted, fontFamily: fonts.bold, fontSize: 10, backgroundColor: colors.cream, borderRadius: 999, overflow: 'hidden', paddingHorizontal: 9, paddingVertical: 5 },
   groupVariant: { color: colors.black, fontFamily: fonts.medium, fontSize: 12, lineHeight: 18 },
   solutionList: { gap: spacing.sm },
@@ -390,13 +392,12 @@ const styles = StyleSheet.create({
   secondSolution: { backgroundColor: colors.sky, borderColor: colors.sky },
   solutionTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing.md },
   solutionNameBlock: { flex: 1, gap: 3 },
-  rankLabel: { color: colors.purple, fontFamily: fonts.bold, fontSize: 9, letterSpacing: 0.6, lineHeight: 13 },
   restaurant: { color: colors.black, fontFamily: fonts.bold, fontSize: 18, lineHeight: 23 },
   subtle: { color: colors.muted, fontFamily: fonts.regular, fontSize: 12, lineHeight: 17 },
   totalBlock: { alignItems: 'flex-end', minWidth: 86, gap: 3 },
   total: { color: colors.black, fontFamily: fonts.bold, fontSize: 28, lineHeight: 34, ...tabular },
   rule: { height: 1, backgroundColor: colors.warmRule },
-  bestRule: { backgroundColor: '#66784A' },
+  bestRule: { backgroundColor: colors.oliveRule },
   orderLine: { color: colors.black, fontFamily: fonts.medium, fontSize: 14, lineHeight: 20 },
   solutionFooter: { gap: spacing.xs },
   solutionFacts: { color: colors.black, fontFamily: fonts.bold, fontSize: 11, lineHeight: 17 },

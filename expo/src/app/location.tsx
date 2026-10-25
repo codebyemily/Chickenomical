@@ -1,9 +1,10 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppFrame } from '@/components/app-frame';
+import { AppFrame, BackLink } from '@/components/app-frame';
 import { HeadingText } from '@/components/heading-text';
 import { LinkPressable } from '@/components/link-pressable';
-import { useLiveOffersQuery, type OfferRecord } from '@/data/live-offers';
+import { useStoredOffersQuery, type OfferRecord } from '@/data/live-offers';
+import { withStraightLineDistance } from '@/lib/distance';
 import { usePrototype } from '@/state/prototype-context';
 import { colors, fonts, radii, spacing, tabular } from '@/theme';
 import { pageMetadata } from '@/data/page-metadata';
@@ -14,12 +15,12 @@ const VISIBLE_STORES = 5;
 
 export const generateMetadata: GenerateMetadataFunction = () => pageMetadata(
   'Choose a saved distance',
-  'Adjust how far away a menu record can be based on its stored crawl distance.',
+  'Choose how far away a menu offer can be from your location.',
 );
 
 type NearbyStore = {
   id: string;
-  name: string;
+  brand: string;
   address: string | null;
   distance: number | null;
   offers: number;
@@ -27,28 +28,24 @@ type NearbyStore = {
 };
 
 export default function LocationScreen() {
-  const { radiusMiles, setRadiusMiles } = usePrototype();
-  const query = useLiveOffersQuery();
-  const stores = query.status === 'success' ? groupStores(query.data) : [];
+  const { radiusMiles, setRadiusMiles, searchSession } = usePrototype();
+  const query = useStoredOffersQuery();
+  const records = query.status === 'success' ? withStraightLineDistance(query.data, searchSession) : [];
+  const stores = groupStores(records);
   const storesInRadius = stores.filter(({ distance }) => distance !== null && distance <= radiusMiles);
-  const offersInRadius = query.status === 'success'
-    ? query.data.filter(({ distance_miles }) => distance_miles !== null && distance_miles <= radiusMiles)
-    : [];
-  const pricedCount = query.status === 'success'
-    ? query.data.filter(({ offer }) => offer.list_price_cents !== null).length
-    : 0;
-  const origin = query.status === 'success'
-    ? query.metadata.query.address?.trim() || 'Origin not recorded'
-    : null;
+  const offersInRadius = records.filter(({ distance_miles }) => distance_miles !== null && distance_miles <= radiusMiles);
+  const pricedCount = records.filter(({ offer }) => offer.list_price_cents !== null).length;
+  const origin = searchSession?.address
+    ?? (query.status === 'success' ? query.metadata.query.address?.trim() || 'Location not selected' : null);
 
   return (
-    <AppFrame compact surface="compare">
+    <AppFrame compact edgeToEdgeTop surface="compare">
       <View style={styles.screen}>
         <View style={styles.hero}>
-          <Text style={styles.heroEyebrow}>NEARBY / LIVE CRAWL</Text>
+          <BackLink label="Back to Compare" tone="orange" />
           <HeadingText level={1} style={styles.heroTitle}>Set your distance.</HeadingText>
           <Text style={styles.heroDescription}>
-            Choose how far away a saved menu offer can be to appear in Compare.
+            Choose how far a restaurant can be from your location.
           </Text>
         </View>
 
@@ -56,15 +53,11 @@ export default function LocationScreen() {
           <View style={styles.radiusCard}>
             <View style={styles.radiusHeading}>
               <View style={styles.radiusTitleCopy}>
-                <Text style={styles.eyebrow}>COMPARE FILTER</Text>
-                <HeadingText level={2} style={styles.sectionTitle}>Maximum saved distance</HeadingText>
-              </View>
-              <View style={styles.currentBadge}>
-                <Text style={styles.currentBadgeText}>{radiusMiles} MI</Text>
+                <HeadingText level={2} style={styles.sectionTitle}>Distance from your location</HeadingText>
               </View>
             </View>
             <Text style={styles.bodyCopy}>
-              This updates Compare using each offer&apos;s recorded crawl distance. Offers without a saved distance stay out of nearby results.
+              Compare starts here, then expands automatically when it needs more nearby restaurants to make a useful comparison.
             </Text>
             <View style={styles.radiusButtons}>
               {RADII.map((radius) => {
@@ -73,6 +66,7 @@ export default function LocationScreen() {
                   <Pressable
                     key={radius}
                     accessibilityRole="button"
+                    accessibilityLabel={`${radius} miles`}
                     accessibilityState={{ selected }}
                     aria-pressed={selected}
                     onPress={() => setRadiusMiles(radius)}
@@ -86,11 +80,10 @@ export default function LocationScreen() {
 
           <View style={styles.sectionHeader}>
             <View style={styles.sectionHeadingCopy}>
-              <Text style={styles.eyebrow}>CONVEX / CURRENT BOARD</Text>
-              <HeadingText level={2} style={styles.sectionTitle}>Live locations</HeadingText>
+              <HeadingText level={2} style={styles.sectionTitle}>Nearby restaurants</HeadingText>
             </View>
             {query.status === 'success' ? (
-              <Text style={styles.sectionCount}>{stores.length} STORE{stores.length === 1 ? '' : 'S'}</Text>
+              <Text style={styles.sectionCount}>{stores.length} {stores.length === 1 ? 'store' : 'stores'}</Text>
             ) : null}
           </View>
 
@@ -98,8 +91,8 @@ export default function LocationScreen() {
             <View style={styles.stateCard}>
               <ActivityIndicator color={colors.purple} />
               <View style={styles.stateCopy}>
-                <Text style={styles.stateTitle}>Loading the latest crawl</Text>
-                <Text style={styles.bodyCopy}>Connecting to the Convex offers board.</Text>
+                <Text style={styles.stateTitle}>Loading nearby offers</Text>
+                <Text style={styles.bodyCopy}>Checking the latest menu data.</Text>
               </View>
             </View>
           ) : null}
@@ -115,53 +108,47 @@ export default function LocationScreen() {
           {query.status === 'success' ? (
             <>
               <View style={styles.snapshotCard}>
-                <View style={styles.snapshotHeader}>
-                  <Text style={styles.eyebrow}>SCRAPE ORIGIN</Text>
-                  <View style={[styles.jobBadge, query.metadata.job?.status === 'succeeded' && styles.jobBadgeComplete]}>
-                    <Text style={styles.jobBadgeText}>{query.metadata.job?.status ?? 'NO JOB'}</Text>
-                  </View>
-                </View>
                 <Text style={styles.origin}>{origin}</Text>
                 <Text style={styles.snapshotSubline}>
                   {query.metadata.query.radius_miles != null
-                    ? `${query.metadata.query.radius_miles} mi crawl`
-                    : 'Crawl radius not recorded'}
-                  {' · '}{channelLabel(query.metadata.query.ordering_channel)}
+                    ? `${query.metadata.query.radius_miles} mi search`
+                    : 'Distance not available'}
+                  {' - '}{channelLabel(query.metadata.query.ordering_channel)}
                 </Text>
 
                 <View style={styles.statsRow}>
                   <View style={[styles.statCard, styles.statLime]}>
                     <Text style={styles.statValue}>{storesInRadius.length}</Text>
-                    <Text style={styles.statLabel}>stores in filter</Text>
+                    <Text style={styles.statLabel}>nearby stores</Text>
                   </View>
                   <View style={[styles.statCard, styles.statSky]}>
                     <Text style={styles.statValue}>{offersInRadius.length}</Text>
-                    <Text style={styles.statLabel}>offers in filter</Text>
+                    <Text style={styles.statLabel}>nearby offers</Text>
                   </View>
                   <View style={[styles.statCard, styles.statWhite]}>
                     <Text style={styles.statValue}>{pricedCount}</Text>
-                    <Text style={styles.statLabel}>priced offers</Text>
+                    <Text style={styles.statLabel}>with prices</Text>
                   </View>
                 </View>
 
                 <Text style={styles.freshness}>
                   {query.metadata.observed_at
-                    ? `Latest offer observed ${dateTimeLabel(query.metadata.observed_at)}`
-                    : 'No offer timestamp returned'}
+                    ? `Updated ${dateTimeLabel(query.metadata.observed_at)}`
+                    : 'Update time unavailable'}
                 </Text>
               </View>
 
               {stores.length === 0 ? (
                 <View style={styles.stateCard}>
-                  <Text style={styles.stateTitle}>No stores in this Convex board yet</Text>
+                  <Text style={styles.stateTitle}>No nearby restaurants yet</Text>
                   <Text style={styles.bodyCopy}>
-                    The board returned {query.data.length} menu offer{query.data.length === 1 ? '' : 's'} and no location records. The location list will appear when a crawl includes stores.
+                    We found {query.data.length} menu offer{query.data.length === 1 ? '' : 's'}, but no restaurant locations. Try again after the next update.
                   </Text>
                 </View>
               ) : (
                 <View style={styles.storeList}>
                   <View style={styles.storeListHeading}>
-                    <Text style={styles.listTitle}>Stores in the crawl</Text>
+                    <Text style={styles.listTitle}>Nearby restaurants</Text>
                     <Text style={styles.listMeta}>{storesInRadius.length} within {radiusMiles} mi</Text>
                   </View>
                   {stores.slice(0, VISIBLE_STORES).map((store) => {
@@ -169,12 +156,12 @@ export default function LocationScreen() {
                     return (
                       <View key={store.id} style={styles.storeRow}>
                         <View style={[styles.storeMarker, inRadius && styles.storeMarkerActive]}>
-                          <Text style={[styles.storeMarkerText, inRadius && styles.storeMarkerTextActive]}>{store.name.slice(0, 1).toUpperCase()}</Text>
+                          <Text style={[styles.storeMarkerText, inRadius && styles.storeMarkerTextActive]}>{store.brand.slice(0, 1).toUpperCase()}</Text>
                         </View>
                         <View style={styles.storeCopy}>
-                          <Text numberOfLines={1} style={styles.storeName}>{store.name}</Text>
+                          <Text numberOfLines={1} style={styles.storeName}>{store.brand}</Text>
                           <Text numberOfLines={1} style={styles.storeAddress}>{store.address || 'Address not returned'}</Text>
-                          <Text style={styles.storeMeta}>{store.offers} offer{store.offers === 1 ? '' : 's'} · {store.pricedOffers} priced</Text>
+                          <Text style={styles.storeMeta}>{store.offers} offer{store.offers === 1 ? '' : 's'} - {store.pricedOffers} with prices</Text>
                         </View>
                         <Text style={[styles.distance, !inRadius && styles.distanceOutside]}>
                           {store.distance === null ? '—' : `${store.distance.toFixed(1)} mi`}
@@ -183,15 +170,15 @@ export default function LocationScreen() {
                     );
                   })}
                   {stores.length > VISIBLE_STORES ? (
-                    <Text style={styles.moreStores}>+ {stores.length - VISIBLE_STORES} more store{stores.length - VISIBLE_STORES === 1 ? '' : 's'} in the live board</Text>
+                    <Text style={styles.moreStores}>+ {stores.length - VISIBLE_STORES} more restaurant{stores.length - VISIBLE_STORES === 1 ? '' : 's'} in the comparison</Text>
                   ) : null}
                 </View>
               )}
 
               <View style={styles.noteCard}>
-                <Text style={styles.noteTitle}>Saved crawl distances</Text>
+                <Text style={styles.noteTitle}>Distance from your location</Text>
                 <Text style={styles.noteText}>
-                  The displayed radius filters existing Convex records. It does not request device location, recalculate distance from an address, or start a new scrape.
+                  Compare measures the distance from the place you enter, or from your current location, to each restaurant. This screen changes the distance used for that comparison.
                 </Text>
               </View>
             </>
@@ -206,7 +193,7 @@ export default function LocationScreen() {
 
 function groupStores(records: OfferRecord[]): NearbyStore[] {
   const stores = new Map<string, NearbyStore>();
-  for (const { offer, location, distance_miles } of records) {
+  for (const { offer, location, chain, distance_miles } of records) {
     const existing = stores.get(location.id);
     if (existing) {
       existing.offers += 1;
@@ -214,9 +201,10 @@ function groupStores(records: OfferRecord[]): NearbyStore[] {
       if (existing.distance === null && distance_miles !== null) existing.distance = distance_miles;
       continue;
     }
+    const brand = brandName(chain.id, chain.name);
     stores.set(location.id, {
       id: location.id,
-      name: location.store_name?.trim() || location.id,
+      brand,
       address: location.address,
       distance: distance_miles,
       offers: 1,
@@ -224,8 +212,24 @@ function groupStores(records: OfferRecord[]): NearbyStore[] {
     });
   }
   return [...stores.values()].sort((a, b) =>
-    (a.distance ?? Number.POSITIVE_INFINITY) - (b.distance ?? Number.POSITIVE_INFINITY) || a.name.localeCompare(b.name),
+    (a.distance ?? Number.POSITIVE_INFINITY) - (b.distance ?? Number.POSITIVE_INFINITY) || a.brand.localeCompare(b.brand),
   );
+}
+
+function brandName(chainId: string, fallback: string) {
+  const labels: Record<string, string> = {
+    'raising-canes': "Raising Cane's",
+    jollibee: 'Jollibee',
+    wingstop: 'Wingstop',
+    popeyes: 'Popeyes',
+    wendys: "Wendy's",
+    mcdonalds: "McDonald's",
+    'chick-fil-a': 'Chick-fil-A',
+    subway: 'Subway',
+    kfc: 'KFC',
+    'burger-king': 'Burger King',
+  };
+  return labels[chainId] ?? fallback;
 }
 
 function channelLabel(channel: string) {
@@ -239,6 +243,8 @@ function dateTimeLabel(value: string) {
 }
 
 function BackButton({ label }: { label: string }) {
+  if (Platform.OS !== 'web') return null;
+
   return (
     <LinkPressable href="/" replace style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
       <Text style={styles.backButtonText}>{label}</Text>
@@ -258,17 +264,13 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: radii.lg,
     borderBottomRightRadius: radii.lg,
   },
-  heroEyebrow: { color: colors.black, fontFamily: fonts.monoBold, fontSize: 11, lineHeight: 16, letterSpacing: 0.6 },
   heroTitle: { maxWidth: 440, color: colors.black, fontFamily: fonts.bold, fontSize: 34, lineHeight: 38, letterSpacing: -1.2 },
   heroDescription: { maxWidth: 520, color: colors.black, fontFamily: fonts.medium, fontSize: 15, lineHeight: 22 },
   content: { paddingHorizontal: spacing.lg, paddingTop: spacing.xl, gap: spacing.xl },
   radiusCard: { padding: spacing.lg, gap: spacing.md, backgroundColor: colors.white, borderColor: colors.warmRule, borderWidth: 1, borderRadius: radii.lg },
   radiusHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
   radiusTitleCopy: { flex: 1, gap: spacing.xs },
-  eyebrow: { color: colors.purple, fontFamily: fonts.monoBold, fontSize: 10, lineHeight: 15, letterSpacing: 0.5 },
   sectionTitle: { color: colors.black, fontFamily: fonts.bold, fontSize: 19, lineHeight: 24, letterSpacing: -0.35 },
-  currentBadge: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radii.pill, backgroundColor: colors.purpleSoft },
-  currentBadgeText: { color: colors.purple, fontFamily: fonts.monoBold, fontSize: 11, lineHeight: 16 },
   bodyCopy: { color: colors.muted, fontFamily: fonts.regular, fontSize: 13, lineHeight: 20 },
   radiusButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   radiusButton: { minHeight: 48, minWidth: 64, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.md, borderWidth: 1, borderColor: colors.warmRule, borderRadius: radii.pill, backgroundColor: colors.cream },
@@ -285,9 +287,6 @@ const styles = StyleSheet.create({
   errorHint: { color: colors.warning, fontFamily: fonts.medium, fontSize: 12, lineHeight: 18 },
   snapshotCard: { padding: spacing.lg, gap: spacing.sm, borderRadius: radii.lg, backgroundColor: colors.cream, borderWidth: 1, borderColor: colors.warmRule },
   snapshotHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
-  jobBadge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radii.pill, backgroundColor: colors.paleWarning },
-  jobBadgeComplete: { backgroundColor: colors.lime },
-  jobBadgeText: { color: colors.black, fontFamily: fonts.monoBold, fontSize: 9, lineHeight: 13, letterSpacing: 0.3, textTransform: 'uppercase' },
   origin: { color: colors.black, fontFamily: fonts.bold, fontSize: 21, lineHeight: 27, letterSpacing: -0.4 },
   snapshotSubline: { color: colors.muted, fontFamily: fonts.medium, fontSize: 12, lineHeight: 18, textTransform: 'capitalize' },
   statsRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },

@@ -34,11 +34,11 @@ function buildFixture(mode: Mode): Fixture {
     const locationId = 'stress-one-store';
     return {
       locations: [{
-        ...DEMO_LOCATIONS[0], id: locationId, chain: 'J', displayName: 'J', address: '1 A St · fictional sample',
+        ...DEMO_LOCATIONS[0], id: locationId, chain: 'J', displayName: 'J', address: '1 A St - fictional sample',
         distanceMiles: { market: 0.1, 'north-beach': 0.1 },
         offers: (['nuggets', 'tenders'] as const).map((category) => copyOffer(originalFor(category), {
           id: 'stress-one-' + category, locationId, itemName: '1 pc Chicken ' + (category === 'nuggets' ? 'Nugget' : 'Tender'),
-          pieceCount: 1, priceCents: 99, mockChecked: 'sample check · just now',
+          pieceCount: 1, priceCents: 99, mockChecked: 'sample check - just now',
         })),
       }],
       detailIds,
@@ -54,7 +54,7 @@ function buildFixture(mode: Mode): Fixture {
           id: locationId,
           chain: 'Sample Chicken ' + (storeIndex % 10 + 1),
           displayName: 'Fictional pickup store ' + (storeIndex + 1),
-          address: (100 + storeIndex) + ' Sample Street · fictional sample',
+          address: (100 + storeIndex) + ' Sample Street - fictional sample',
           distanceMiles: { market: 0.1 + (storeIndex % 49) / 10, 'north-beach': 0.1 + (storeIndex % 49) / 10 },
           offers: (['nuggets', 'tenders'] as const).flatMap((category) => Array.from({ length: 10 }, (_, offerIndex) => copyOffer(originalFor(category), {
             id: locationId + '-' + category + '-' + offerIndex,
@@ -80,18 +80,18 @@ function buildFixture(mode: Mode): Fixture {
   ];
   const itemNames = [
     '10 pc Buttermilk Chicken Nuggets with Garlic, Herbs & Cracked Black Pepper',
-    '1,284 pc Chicken Nuggets · advance-order catering tray',
+    '1,284 pc Chicken Nuggets - advance-order catering tray',
     '6 pc Crispy Chicken Nuggets — Salt & Pepper',
     '10 pc Hähnchennuggetsspezialitäten',
     '4 pc Gà rán giòn — tỏi, tiêu & nước mắm',
-    'Crispy Chicken Tenders · count not supplied',
+    'Crispy Chicken Tenders - count not supplied',
     '3 pc 香酥炸雞柳 — 原味',
     '5 pc Classic Tenders\nGarlic & herb pickup special',
-    '8 pc Nuggets · unavailable',
+    '8 pc Nuggets - unavailable',
     '8 pc Chicken Nuggets <b>classic</b> &amp; garlic',
     '12 pc Chicken Nuggets — same name',
     '3 pc Chicken Tenders — same name',
-    'Chicken Nuggets · price not supplied',
+    'Chicken Nuggets - price not supplied',
   ];
   let offerIndex = 0;
   const locations = DEMO_LOCATIONS.map((location, storeIndex) => {
@@ -100,8 +100,8 @@ function buildFixture(mode: Mode): Fixture {
       ...location,
       id: locationId,
       chain: chainNames[storeIndex],
-      displayName: storeIndex === 1 ? 'J' : storeIndex === 2 ? 'Đặng Thị Ngọc Hân · chợ khu phố' : 'San Francisco International Market & Community Pickup Annex · fictional sample',
-      address: storeIndex === 2 ? '王府井大街壹佰貳拾捌號國際廣場地下一層 · fictional address' : '1284 Martin Luther King Junior Memorial Boulevard, Suite 128 · fictional address',
+      displayName: storeIndex === 1 ? 'J' : storeIndex === 2 ? 'Đặng Thị Ngọc Hân - chợ khu phố' : 'San Francisco International Market & Community Pickup Annex - fictional sample',
+      address: storeIndex === 2 ? '王府井大街壹佰貳拾捌號國際廣場地下一層 - fictional address' : '1284 Martin Luther King Junior Memorial Boulevard, Suite 128 - fictional address',
       distanceMiles: { market: 0.1 + storeIndex * 0.8, 'north-beach': 0.1 + storeIndex * 0.8 },
       offers: location.offers.map((offer) => {
         const index = offerIndex++;
@@ -110,7 +110,7 @@ function buildFixture(mode: Mode): Fixture {
           locationId,
           itemName: itemNames[index],
           sourceRecordId: index === 0 ? 'SYNTHETIC-MENU-IMPORT-20261024-SANFRANCISCO-PICKUP-9f8e7d6c-5b4a-4c3d-8e2f-1a0b9c8d7e6f' : 'STRESS-' + String(index + 1).padStart(3, '0'),
-          mockChecked: index === 0 ? 'sample check · just now' : index === 2 ? 'sample check · 3 years ago' : index === 3 ? 'sample check · in 3 days' : offer.mockChecked,
+          mockChecked: index === 0 ? 'sample check - just now' : index === 2 ? 'sample check - 3 years ago' : index === 3 ? 'sample check - in 3 days' : offer.mockChecked,
           ...(index === 1 ? { pieceCount: 1284, priceCents: 69999 } : {}),
           ...(index === 4 ? { pieceCount: 1, priceCents: 149 } : {}),
         });
@@ -121,11 +121,11 @@ function buildFixture(mode: Mode): Fixture {
   for (const category of ['nuggets', 'tenders'] as const) {
     locations[4].offers.push(copyOffer(originalFor(category), {
       id: 'stress-missing-' + category, locationId: locations[4].id, category,
-      itemName: 'Chicken ' + category + ' · count not supplied', pieceCount: null, priceCents: 549, freshness: 'incomplete',
+      itemName: 'Chicken ' + category + ' - count not supplied', pieceCount: null, priceCents: 549, freshness: 'incomplete',
     }));
     locations[4].offers.push(copyOffer(originalFor(category), {
       id: 'stress-unavailable-' + category, locationId: locations[4].id, category,
-      itemName: 'Chicken ' + category + ' · unavailable', pieceCount: 8, priceCents: null, freshness: 'unavailable',
+      itemName: 'Chicken ' + category + ' - unavailable', pieceCount: 8, priceCents: null, freshness: 'unavailable',
     }));
   }
   return { locations, detailIds };
@@ -157,7 +157,7 @@ export function useCompareStress() {
 export function CompareStressControls({ mode, onChange }: { mode: Mode; onChange: (mode: Mode) => void }) {
   return (
     <View style={styles.toolbar} testID="compare-stress-toolbar">
-      <Text style={styles.note}>DEV · Compare layout fixtures. Detail links show original demo records.</Text>
+      <Text style={styles.note}>DEV - Compare layout fixtures. Detail links show original demo offers.</Text>
       <ScrollView horizontal contentContainerStyle={styles.segments} showsHorizontalScrollIndicator>
         {MODES.map((option) => (
           <Pressable

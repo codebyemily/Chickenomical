@@ -39,6 +39,19 @@ const PLATFORM_CHANNELS: Record<MarketplacePlatform, [string, string]> = {
   ubereats: ["ubereats_pickup", "ubereats_delivery"],
 };
 
+const BRAND_ALIASES: Record<string, string[]> = {
+  "raising-canes": ["raisingcanes", "raisingcane"],
+  jollibee: ["jollibee"],
+  wingstop: ["wingstop"],
+  popeyes: ["popeyes"],
+  wendys: ["wendys"],
+  mcdonalds: ["mcdonalds"],
+  "chick-fil-a": ["chickfila"],
+  subway: ["subway"],
+  kfc: ["kfc"],
+  "burger-king": ["burgerking"],
+};
+
 type ApifyEnv =
   | "APIFY_TOKEN"
   | "APIFY_DOORDASH_ACTOR_ID"
@@ -197,6 +210,23 @@ export function assertUberEatsUrl(rawUrl: string) {
   }
 }
 
+/**
+ * Marketplace search can return a nearby restaurant for a brand query. Only
+ * reject when the returned store explicitly identifies itself as another
+ * known chain; unnamed location-style store titles remain valid.
+ */
+export function marketplaceStoreMatchesChain(
+  chainId: string,
+  storeName: string | null | undefined,
+  storeUrl: string | null | undefined,
+) {
+  const text = normalizeBrand(`${storeName ?? ""} ${storeUrl ?? ""}`);
+  const mentioned = Object.entries(BRAND_ALIASES)
+    .filter(([, aliases]) => aliases.some((alias) => text.includes(alias)))
+    .map(([id]) => id);
+  return mentioned.every((id) => id === chainId);
+}
+
 function flattenMarketplaceItems(records: unknown[]): Record<string, unknown>[] {
   return records.flatMap((record) => {
     if (!record || typeof record !== "object") return [];
@@ -294,6 +324,10 @@ function validateContext(context: MarketplaceContext) {
   if (!hosts.some((suffix) => host === suffix || host.endsWith(`.${suffix}`))) {
     throw new Error(`store_url must be on ${hosts.join(" or ")}.`);
   }
+}
+
+function normalizeBrand(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
 function stringAt(item: Record<string, unknown> | null | undefined, keys: string[]) {

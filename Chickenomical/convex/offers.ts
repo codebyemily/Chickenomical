@@ -1,12 +1,16 @@
 import { v } from 'convex/values';
 import { query } from './_generated/server';
+import { marketplaceStoreMatchesChain } from './lib/apifyMarketplace';
+
+const OFFER_VALIDATION_SCAN_LIMIT = 500;
 
 /** Bounded list of recently stored offers, newest first. */
 export const listRecent = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const limit = Math.min(Math.max(args.limit ?? 50, 1), 200);
-    return await ctx.db.query('menuOffers').order('desc').take(limit);
+    const rows = await ctx.db.query('menuOffers').order('desc').take(OFFER_VALIDATION_SCAN_LIMIT);
+    return rows.filter(isValidStoredOffer).slice(0, limit);
   },
 });
 
@@ -61,7 +65,7 @@ export const board = query({
       ? await ctx.db.get(args.jobId)
       : (await ctx.db.query('scrapeJobs').order('desc').take(1))[0] ?? null;
 
-    const rows = await ctx.db.query('menuOffers').order('desc').take(500);
+    const rows = (await ctx.db.query('menuOffers').order('desc').take(500)).filter(isValidStoredOffer);
     const offers = job?.requested_at
       ? rows.filter((offer) => offer.observed_at >= job.requested_at)
       : rows;
@@ -256,6 +260,10 @@ function isEligible(o: { comparable: boolean; quantity: number | null; list_pric
     && o.list_price_cents != null && o.list_price_cents >= 0
     && (!chainId || o.chain_id === chainId)
     && (!channel || o.ordering_channel === channel);
+}
+
+function isValidStoredOffer(offer: { chain_id: string; store_name: string | null; source_url: string }) {
+  return marketplaceStoreMatchesChain(offer.chain_id, offer.store_name, offer.source_url);
 }
 
 /**

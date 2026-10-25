@@ -4,6 +4,7 @@ import { env, internalAction, internalMutation, query } from "./_generated/serve
 import { offerValidator } from "./schema";
 import {
   doorDashActorId,
+  marketplaceStoreMatchesChain,
   normalizeMarketplaceDualChannel,
   normalizeMarketplaceItems,
   runApifyActor,
@@ -334,6 +335,11 @@ async function scrapeDoorDashNear({
     if (!storeUrl || !/doordash\.com/i.test(storeUrl)) continue;
     const storeAddress = storeAddressFromRecord(store)
       ?? stringField(store, ["displayAddress", "address", "street"]);
+    const storeName = stringField(store, ["storeName", "name", "businessName", "title"]);
+    if (!marketplaceStoreMatchesChain(chainId, storeName, storeUrl)) {
+      console.warn(`Skip DoorDash store for ${chainId} with mismatched identity: ${storeName ?? storeUrl}`);
+      continue;
+    }
     const storeId = stringField(store, ["storeId", "store_id", "businessId", "id"]);
     const { locationId } = tieLocationId(chainId, "doordash", storeAddress, storeId, directStores);
     const coords = storeCoordsFromRecord(store);
@@ -348,7 +354,7 @@ async function scrapeDoorDashNear({
           chain_id: chainId,
           location_id: locationId,
           store_url: storeUrl,
-          store_name: stringField(store, ["storeName", "name", "businessName", "title"]) ?? CHAIN_NAMES[chainId],
+          store_name: storeName ?? CHAIN_NAMES[chainId],
           address: storeAddress,
           latitude: lat,
           longitude: lng,
@@ -425,6 +431,10 @@ async function scrapeUberEatsNear({
         : `https://www.ubereats.com${storeUrl.startsWith("/") ? "" : "/"}${storeUrl}`;
       const storeAddress = storeAddressFromRecord(store);
       const storeName = stringField(store, ["title", "name", "store_name"]) ?? query;
+      if (!marketplaceStoreMatchesChain(chainId, storeName, normalizedUrl)) {
+        console.warn(`Skip Uber Eats store for ${chainId} with mismatched identity: ${storeName}`);
+        continue;
+      }
       const storeId = stringField(store, ["uuid", "store_id", "storeId", "id"]);
       const { locationId } = tieLocationId(chainId, "ubereats", storeAddress, storeId, directStores);
       const coords = storeCoordsFromRecord(store);

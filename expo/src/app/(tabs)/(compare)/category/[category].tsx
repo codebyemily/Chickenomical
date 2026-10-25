@@ -1,15 +1,17 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppFrame, NoticeBand } from '@/components/app-frame';
+import { AppFrame, BackLink, NoticeBand } from '@/components/app-frame';
 import { HeadingText } from '@/components/heading-text';
 import { CompareOfferCard } from '@/components/compare-offer-card';
 import { FormField } from '@/components/form-field';
 import { LinkPressable } from '@/components/link-pressable';
-import { useLiveOffersQuery, useRecentOffersQuery, type OfferRecord } from '@/data/live-offers';
+import { useRecentOffersQuery, useStoredOffersQuery, type OfferRecord } from '@/data/live-offers';
 import { categoryInfo } from '@/data/menu-schema';
 import { comparisonMatrixGroups, exclusionText, isRankable, unitPrice } from '@/lib/compare';
+import { decorative } from '@/lib/a11y';
+import { withStraightLineDistance } from '@/lib/distance';
 import { offerDetailRoute } from '@/lib/live-offer-routes';
 import { usePrototype } from '@/state/prototype-context';
 import { pageMetadata } from '@/data/page-metadata';
@@ -21,12 +23,12 @@ type SortKey = 'unit' | 'total' | 'distance' | 'chain';
 export const generateMetadata: GenerateMetadataFunction = (_request, params) => {
   const routeCategory = Array.isArray(params.category) ? params.category[0] : params.category;
   const label = routeCategory ? categoryInfo(routeCategory).label : 'Chicken';
-  return pageMetadata(`${label} prices nearby`, `Compare recent ${label.toLocaleLowerCase()} menu prices and source records by store.`);
+  return pageMetadata(`${label} prices nearby`, `Compare recent ${label.toLocaleLowerCase()} menu prices by restaurant.`);
 };
 
 export default function CategoryResultsScreen() {
   const params = useLocalSearchParams<{ category?: string | string[] }>();
-  const { locationLabel, radiusMiles } = usePrototype();
+  const { locationLabel, radiusMiles, searchSession } = usePrototype();
   const category = normalizeCategory(params.category);
   const details = categoryInfo(category);
   const [search, setSearch] = useState('');
@@ -34,10 +36,10 @@ export default function CategoryResultsScreen() {
   const [selectedChainId, setSelectedChainId] = useState('all');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [showUnrankable, setShowUnrankable] = useState(false);
-  const query = useLiveOffersQuery();
+  const query = useStoredOffersQuery();
   const recentQuery = useRecentOffersQuery();
 
-  const boardRecords = query.status === 'success' ? query.data : [];
+  const boardRecords = query.status === 'success' ? withStraightLineDistance(query.data, searchSession) : [];
   const categoryRows = category
     ? boardRecords.filter(({ offer }) => offer.category === category)
     : [];
@@ -60,9 +62,8 @@ export default function CategoryResultsScreen() {
       records: sortRecords(group.records, sortBy),
     }))
     .sort((a, b) => compareRecords(a.records[0], b.records[0], sortBy) || a.label.localeCompare(b.label));
-  const origin = query.status === 'success'
-    ? query.metadata.query.address?.trim() || locationLabel
-    : locationLabel;
+  const origin = searchSession?.address
+    ?? (query.status === 'success' ? query.metadata.query.address?.trim() || locationLabel : locationLabel);
   const allCategoryRows = query.status === 'success' ? categoryRows : [];
   const excludedFromRadius = allCategoryRows.length - nearbyRows.length;
   const recentCategoryCount = recentQuery.status === 'success'
@@ -71,26 +72,27 @@ export default function CategoryResultsScreen() {
   const hasNoCurrentOffers = query.status === 'success' && nearbyRows.length === 0;
 
   return (
-    <AppFrame compact showDataNotice={false}>
-      <View style={styles.hero}>
-        <LinkPressable
-          href="/"
-          replace
-          accessibilityLabel="Back to Compare"
-          style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
-          <Text style={styles.backArrow}>‹</Text>
-          <Text style={styles.backText}>Compare</Text>
-        </LinkPressable>
-        <Text style={styles.eyebrow}>LIVE CONVEX BOARD · {origin.toUpperCase()}</Text>
+    <AppFrame compact edgeToEdgeTop nativeSurface="compare" surface="compare" showDataNotice={false}>
+      <View style={[styles.hero, Platform.OS !== 'web' && styles.heroNative, Platform.OS === 'web' && styles.heroWeb]}>
+        {Platform.OS === 'web' ? (
+          <LinkPressable
+            href="/"
+            replace
+            accessibilityLabel="Back to Compare"
+            style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
+            <Text style={styles.backArrow}>‹</Text>
+            <Text style={styles.backText}>Compare</Text>
+          </LinkPressable>
+        ) : <BackLink label="Compare" tone="orange" />}
           <HeadingText level={1} style={styles.title}>{details.label} prices nearby</HeadingText>
         <Text style={styles.description}>
-          Current scrape offers within {radiusMiles} miles, ranked by comparable pickup price.
+          Current offers within {radiusMiles} miles, ranked by comparable pickup price.
         </Text>
       </View>
 
       <View style={styles.content}>
         <View style={styles.searchBox}>
-          <Text style={styles.searchIcon} accessibilityElementsHidden>⌕</Text>
+          <Text {...decorative} style={styles.searchIcon}>⌕</Text>
           <FormField
             label={`Search ${details.label} offers`}
             placeholder={`Search ${details.label.toLocaleLowerCase()}, stores, or sources`}
@@ -108,14 +110,14 @@ export default function CategoryResultsScreen() {
 
         <View style={styles.titleRow}>
           <View style={styles.titleCopy}>
-            <Text style={styles.sectionEyebrow}>{sortHeading(sortBy, details.unit)}</Text>
             <Text style={styles.sectionTitle}>{query.status === 'success' ? `${comparable.length} comparable offers` : 'Nearby offers'}</Text>
             <Text style={styles.subtitle}>
-              {origin} · {radiusMiles} mi · {chainOptions.length} {chainOptions.length === 1 ? 'chain' : 'chains'}
+              {origin} - {radiusMiles} mi - {chainOptions.length} {chainOptions.length === 1 ? 'restaurant' : 'restaurants'}
             </Text>
           </View>
           <Pressable
             accessibilityRole="button"
+            accessibilityLabel={filtersOpen ? 'Done' : 'Filter'}
             accessibilityState={{ expanded: filtersOpen }}
             aria-expanded={filtersOpen}
             onPress={() => setFiltersOpen((open) => !open)}
@@ -127,7 +129,6 @@ export default function CategoryResultsScreen() {
 
         {filtersOpen ? (
           <View style={styles.filterPanel}>
-            <Text style={styles.sectionEyebrow}>RESTAURANT CHAIN</Text>
             <View style={styles.chips}>
               <FilterChip label="All chains" selected={selectedChainId === 'all'} onPress={() => setSelectedChainId('all')} />
               {chainOptions.map((chain) => (
@@ -143,7 +144,6 @@ export default function CategoryResultsScreen() {
         ) : null}
 
         <View style={styles.sortSection}>
-          <Text style={styles.sectionEyebrow}>SORT BY</Text>
           <View style={styles.chips}>
             {([
               { id: 'total', label: 'Total' },
@@ -162,7 +162,7 @@ export default function CategoryResultsScreen() {
         </View>
 
         {query.status === 'loading' ? (
-          <NoticeBand title="Loading nearby menu records">Reading the current category board from Convex…</NoticeBand>
+          <NoticeBand title="Loading nearby offers">Reading the latest menu data…</NoticeBand>
         ) : null}
         {query.status === 'error' ? (
           <NoticeBand title="Could not load nearby offers" tone="error">Menu data is temporarily unavailable. Try again in a moment.</NoticeBand>
@@ -174,13 +174,13 @@ export default function CategoryResultsScreen() {
               <View style={styles.snapshotTop}>
                 <View style={[styles.statusDot, query.metadata.job?.status === 'running' && styles.statusDotRunning, query.metadata.job?.status === 'failed' && styles.statusDotFailed]} />
                 <Text style={styles.snapshotTitle}>{jobStatus(query.metadata.job?.status ?? null)}</Text>
-                <Text style={styles.snapshotCount}>{nearbyRows.length} nearby rows</Text>
+                <Text style={styles.snapshotCount}>{nearbyRows.length} nearby offers</Text>
               </View>
               <Text style={styles.snapshotCopy}>
-                {query.metadata.observed_at ? `Observed ${formatTime(query.metadata.observed_at)}` : 'Observation time unavailable'} · {query.metadata.offer_count} board offers
+                {query.metadata.observed_at ? `Updated ${formatTime(query.metadata.observed_at)}` : 'Update time unavailable'} - {query.metadata.offer_count} offers
               </Text>
               {query.metadata.job?.status === 'failed' ? (
-                <Text style={styles.snapshotError}>The latest menu check did not finish. These records may be from an earlier check.</Text>
+                <Text style={styles.snapshotError}>The latest menu update did not finish. These offers may be from an earlier update.</Text>
               ) : null}
             </View>
 
@@ -189,8 +189,8 @@ export default function CategoryResultsScreen() {
                 {categoryRows.length > 0
                   ? `The current board returned ${categoryRows.length} ${categoryRows.length === 1 ? 'offer' : 'offers'} for this category, but none has a distance within ${radiusMiles} miles of ${origin}.`
                   : query.metadata.job?.status === 'running'
-                    ? 'The current scrape is still running. Results will appear here when this board updates.'
-                    : `The current Convex board has no ${details.label.toLocaleLowerCase()} offers for this area yet.`}
+                    ? 'The current update is still running. Results will appear here when it finishes.'
+                    : `There are no ${details.label.toLocaleLowerCase()} offers for this area yet.`}
               </NoticeBand>
             ) : null}
 
@@ -202,7 +202,7 @@ export default function CategoryResultsScreen() {
 
             {comparable.length > 0 && sortedGroups.length === 0 ? (
               <NoticeBand title="Offers could not be grouped for a fair comparison" tone="warning">
-                These records do not share a complete comparable category and price variant.
+                These offers do not share a complete category and price variant.
               </NoticeBand>
             ) : null}
 
@@ -229,13 +229,13 @@ export default function CategoryResultsScreen() {
               <View style={styles.unrankedSection}>
                 <Pressable
                   accessibilityRole="button"
+                  accessibilityLabel={showUnrankable ? 'Hide other current offers' : 'Show other current offers'}
                   accessibilityState={{ expanded: showUnrankable }}
                   aria-expanded={showUnrankable}
                   onPress={() => setShowUnrankable((open) => !open)}
                   style={({ pressed }) => [styles.unrankedToggle, pressed && styles.pressed]}>
                   <View style={styles.titleCopy}>
-                    <Text style={styles.sectionEyebrow}>SEPARATE FROM CHEAPEST RANKING</Text>
-                    <Text style={styles.sectionTitle}>Other current offers · {unrankable.length}</Text>
+                    <Text style={styles.sectionTitle}>Other current offers - {unrankable.length}</Text>
                   </View>
                   <Text style={styles.disclosure}>{showUnrankable ? '−' : '+'}</Text>
                 </Pressable>
@@ -256,26 +256,25 @@ export default function CategoryResultsScreen() {
               <NoticeBand title="No offers for this chain in the selected area" tone="warning">Choose All chains to see other current board results.</NoticeBand>
             ) : null}
             {excludedFromRadius > 0 ? (
-              <Text style={styles.radiusNote}>{excludedFromRadius} current board offer{excludedFromRadius === 1 ? '' : 's'} omitted because the database did not return a distance within {radiusMiles} miles.</Text>
+              <Text style={styles.radiusNote}>{excludedFromRadius} offer{excludedFromRadius === 1 ? '' : 's'} omitted because a distance within {radiusMiles} miles was not available.</Text>
             ) : null}
           </>
         ) : null}
 
         {hasNoCurrentOffers ? (
           <View style={styles.historyCard}>
-            <Text style={styles.historyEyebrow}>RECENT STORED RECORDS</Text>
             {recentQuery.status === 'loading' ? (
-              <Text style={styles.historyCopy}>Checking saved Convex records…</Text>
+              <Text style={styles.historyCopy}>Checking saved offers…</Text>
             ) : recentQuery.status === 'error' ? (
-              <Text style={styles.historyCopy}>Saved-record coverage is temporarily unavailable.</Text>
+              <Text style={styles.historyCopy}>Saved offers are temporarily unavailable.</Text>
             ) : (
               <Text style={styles.historyCopy}>
                 {recentCategoryCount > 0
-                  ? `${recentCategoryCount} saved ${recentCategoryCount === 1 ? 'record exists' : 'records exist'} for ${details.label.toLocaleLowerCase()} from other scrape times or locations.`
-                  : `No saved ${details.label.toLocaleLowerCase()} records were returned in the latest database sample.`}
+                  ? `${recentCategoryCount} saved ${recentCategoryCount === 1 ? 'offer is' : 'offers are'} available for ${details.label.toLocaleLowerCase()} from other locations.`
+                  : `No saved ${details.label.toLocaleLowerCase()} offers were found in the latest update.`}
               </Text>
             )}
-            <Text style={styles.historyNote}>These records are not included in the nearby ranking.</Text>
+            <Text style={styles.historyNote}>Their coordinates are included in the nearby ranking when they fall inside this distance.</Text>
             <LinkPressable href="/sources" style={({ pressed }) => [styles.sourcesLink, pressed && styles.pressed]}>
               <Text style={styles.sourcesLinkText}>Browse Sources</Text>
               <Text style={styles.sourcesArrow}>→</Text>
@@ -335,17 +334,11 @@ function compareRecords(a: OfferRecord, b: OfferRecord, sortBy: SortKey) {
   return delta || a.chain.name.localeCompare(b.chain.name) || aTotal - bTotal;
 }
 
-function sortHeading(sortBy: SortKey, unit: string) {
-  if (sortBy === 'unit') return `LOWEST PRICE PER ${unit.toUpperCase()}`;
-  if (sortBy === 'total') return 'LOWEST TOTAL';
-  if (sortBy === 'distance') return 'CLOSEST FIRST';
-  return 'BY RESTAURANT CHAIN';
-}
-
 function FilterChip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={label}
       accessibilityState={{ selected }}
       aria-pressed={selected}
       onPress={onPress}
@@ -365,7 +358,7 @@ function UnrankableRow({ record, jobId }: { record: OfferRecord; jobId?: string 
         <Text style={styles.unrankableChain}>{record.chain.name}</Text>
         <Text style={styles.unrankableName}>{record.offer.original_name}</Text>
         <Text numberOfLines={1} style={styles.unrankableLocation}>
-          {record.location.store_name ?? record.location.address ?? 'Store unavailable'} · {record.distance_miles?.toFixed(1) ?? '—'} mi
+          {record.location.store_name ?? record.location.address ?? 'Store unavailable'} - {record.distance_miles?.toFixed(1) ?? '—'} mi
         </Text>
         <Text style={styles.unrankableReason}>{exclusionText(record.offer)}</Text>
       </View>
@@ -375,11 +368,11 @@ function UnrankableRow({ record, jobId }: { record: OfferRecord; jobId?: string 
 }
 
 function jobStatus(status: string | null) {
-  if (!status) return 'No scrape job recorded';
-  if (status === 'running') return 'Scrape running';
-  if (status === 'succeeded') return 'Latest scrape completed';
-  if (status === 'failed') return 'Latest scrape failed';
-  return `Scrape ${status}`;
+  if (!status) return 'Latest offers';
+  if (status === 'running') return 'Updating';
+  if (status === 'succeeded') return 'Up to date';
+  if (status === 'failed') return 'Needs an update';
+  return 'Updating';
 }
 
 function formatTime(value: string) {
@@ -396,10 +389,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.orange,
     borderRadius: 28,
   },
+  heroNative: { marginHorizontal: -spacing.lg, borderTopLeftRadius: 0, borderTopRightRadius: 0 },
+  heroWeb: { marginHorizontal: 0, borderTopLeftRadius: 0, borderTopRightRadius: 0 },
   backButton: { minHeight: 48, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   backArrow: { color: colors.black, fontFamily: fonts.regular, fontSize: 26, lineHeight: 29 },
   backText: { color: colors.black, fontFamily: fonts.bold, fontSize: 13 },
-  eyebrow: { color: colors.black, fontFamily: fonts.monoBold, fontSize: 10, lineHeight: 15, letterSpacing: 0.55 },
   title: { color: colors.black, fontFamily: fonts.bold, fontSize: 31, lineHeight: 35, letterSpacing: -0.8 },
   description: { color: colors.black, fontFamily: fonts.medium, fontSize: 13, lineHeight: 19 },
   content: { gap: spacing.lg, paddingTop: spacing.lg },
@@ -410,7 +404,6 @@ const styles = StyleSheet.create({
   clearSearch: { color: colors.purple, fontFamily: fonts.bold, fontSize: 22, paddingHorizontal: spacing.xs },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   titleCopy: { flex: 1, minWidth: 0, gap: 2 },
-  sectionEyebrow: { color: colors.purple, fontFamily: fonts.monoBold, fontSize: 10, lineHeight: 15, letterSpacing: 0.55 },
   sectionTitle: { color: colors.black, fontFamily: fonts.bold, fontSize: 18, lineHeight: 23 },
   subtitle: { color: colors.muted, fontFamily: fonts.regular, fontSize: 12, lineHeight: 17 },
   filterButton: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.md, borderWidth: 1.5, borderColor: colors.black, borderRadius: 24, backgroundColor: colors.white },
@@ -425,7 +418,7 @@ const styles = StyleSheet.create({
   chipTextSelected: { color: colors.white, fontFamily: fonts.bold },
   snapshot: { gap: 4, padding: spacing.md, borderWidth: 1, borderColor: colors.warmRule, borderRadius: 18, backgroundColor: colors.white },
   snapshotTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  statusDot: { width: 8, height: 8, borderRadius: 5, backgroundColor: '#5A8C2C' },
+  statusDot: { width: 8, height: 8, borderRadius: 5, backgroundColor: colors.statusOlive },
   statusDotRunning: { backgroundColor: colors.orange },
   statusDotFailed: { backgroundColor: colors.danger },
   snapshotTitle: { flex: 1, color: colors.black, fontFamily: fonts.bold, fontSize: 12 },
@@ -448,7 +441,6 @@ const styles = StyleSheet.create({
   unrankableArrow: { color: colors.purple, fontSize: 23 },
   radiusNote: { color: colors.muted, fontFamily: fonts.regular, fontSize: 11, lineHeight: 16 },
   historyCard: { gap: spacing.sm, padding: spacing.lg, backgroundColor: colors.sky, borderRadius: 22 },
-  historyEyebrow: { color: colors.purple, fontFamily: fonts.monoBold, fontSize: 10, lineHeight: 15, letterSpacing: 0.5 },
   historyCopy: { color: colors.black, fontFamily: fonts.medium, fontSize: 13, lineHeight: 19 },
   historyNote: { color: colors.muted, fontFamily: fonts.regular, fontSize: 11, lineHeight: 16 },
   sourcesLink: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, borderRadius: 24, backgroundColor: colors.purple },

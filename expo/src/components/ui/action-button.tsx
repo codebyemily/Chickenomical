@@ -19,7 +19,7 @@ export function ActionButton({ children, onPress, kind = 'secondary', disabled, 
   const label = typeof children === 'string' ? children : undefined;
   const presentation = getActionButtonPresentation({ kind, disabled, selected, width, label });
   return (
-    <Host matchContents seedColor={colors.black} colorScheme="light" style={{ maxWidth: '100%' }}>
+    <Host matchContents={width == null ? true : { vertical: true }} seedColor={colors.black} colorScheme="light" style={width == null ? { maxWidth: '100%' } : { width, maxWidth: '100%' }}>
       <Button
         label={label}
         onPress={onPress}

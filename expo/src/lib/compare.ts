@@ -29,33 +29,37 @@ export function freshnessText(offer: MenuOffer) {
 
   const observedAt = Date.parse(offer.observed_at);
   if (Number.isFinite(observedAt) && Date.now() - observedAt > 24 * 60 * 60 * 1000) {
-    return 'STALE SAMPLE · RECHECK BEFORE ORDERING';
+    return 'Older price. Check before ordering';
   }
-  return 'SAMPLE · VERIFIED FIELDS';
+  return 'Verified price';
 }
 
 export function exclusionText(offer: MenuOffer) {
   if (offer.validation_status === 'excluded') return 'EXCLUDED FROM COMPARISON';
-  if (offer.validation_status !== 'verified') return `VALIDATION STATUS "${offer.validation_status}" IS NOT VERIFIED`;
+  if (offer.validation_status !== 'verified') return 'Price details need a check before comparison';
   if (offer.offer_kind !== 'ala_carte') {
     if (offer.offer_kind === 'combo' || offer.offer_kind === 'family_meal' || offer.offer_kind === 'kids_meal') {
-      return 'BUNDLE · SCRATCHED FROM UNIT RANKING';
+      return 'Bundle offer not included in price comparison';
     }
-    return `OFFER KIND "${offer.offer_kind}" IS NOT ELIGIBLE FOR UNIT-PRICE RANKING`;
+    return 'This offer is not included in price comparison';
   }
-  if (offer.quantity == null) return 'QUANTITY NOT STATED · SCRATCHED FROM RANKING';
-  if (!Number.isInteger(offer.quantity) || offer.quantity <= 0) return 'QUANTITY MUST BE A POSITIVE INTEGER';
-  if (offer.list_price_cents == null) return 'PRICE NOT RETURNED · SCRATCHED FROM RANKING';
-  if (!Number.isInteger(offer.list_price_cents) || offer.list_price_cents <= 0) return 'PRICE MUST BE A POSITIVE WHOLE-CENT VALUE';
-  if (offer.ordering_channel !== 'first_party_pickup') return 'CHANNEL DOES NOT MATCH PICKUP RANKING';
-  return 'NOT COMPARABLE · SCRATCHED FROM RANKING';
+  if (offer.quantity == null) return 'Quantity not stated so this offer is not included';
+  if (!Number.isInteger(offer.quantity) || offer.quantity <= 0) return 'Quantity is not available for comparison';
+  if (offer.list_price_cents == null) return 'Price not available for comparison';
+  if (!Number.isInteger(offer.list_price_cents) || offer.list_price_cents <= 0) return 'Price is not available for comparison';
+  if (!isPickupChannel(offer.ordering_channel)) return 'Pickup prices are needed for this comparison';
+  return 'This offer is not included in price comparison';
+}
+
+function isPickupChannel(channel: string) {
+  return channel.endsWith('_pickup');
 }
 
 export function isRankable(offer: MenuOffer): offer is MenuOffer & { category: MenuCategory; quantity: number; list_price_cents: number } {
   return offer.comparable &&
     offer.validation_status === 'verified' &&
     offer.offer_kind === 'ala_carte' &&
-    offer.ordering_channel === 'first_party_pickup' &&
+    isPickupChannel(offer.ordering_channel) &&
     offer.category != null &&
     offer.quantity != null &&
     Number.isInteger(offer.quantity) &&
@@ -103,16 +107,16 @@ export function offerVariantLabel(offer: MenuOffer) {
         const count = offer.cut_mix?.[key];
         return count == null ? [] : [`${count} ${key}${count === 1 ? '' : 's'}`];
       })
-      .join(' · ');
+      .join(' - ');
     if (mix) details.push(mix);
   }
   if (offer.meat) details.push(`${capitalize(offer.meat)} meat`);
   if (offer.protein_pieces != null) details.push(`${offer.protein_pieces} chicken ${offer.protein_pieces === 1 ? 'piece' : 'pieces'}`);
   if (offer.protein_category) details.push(`Chicken: ${offer.protein_category.replaceAll('-', ' ')}`);
 
-  const variant = details.length > 0 ? details.join(' · ') : 'Variant not stated';
+  const variant = details.length > 0 ? details.join(' - ') : 'Variant not stated';
   const channel = offer.ordering_channel.replaceAll('_', ' ');
-  return `${variant} · ${offer.currency} · ${capitalize(channel)}`;
+  return `${variant} - ${offer.currency} - ${capitalize(channel)}`;
 }
 
 export type ComparisonMatrixGroup = {

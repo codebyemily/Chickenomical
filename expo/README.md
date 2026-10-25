@@ -1,10 +1,10 @@
 # Chickenomical Expo prototype
 
-An adaptive Expo Router prototype for comparing nearby chicken offers. iOS and Android use Expo Router native tabs, Expo UI controls, and native stack navigation; Expo Web keeps a responsive browser layout.
+An adaptive Expo Router prototype for comparing nearby chicken offers. Native uses Expo Router stack navigation and Expo UI controls; Expo Web keeps a responsive browser layout with top navigation.
 
 The compact Compare screen puts restaurant chains in columns and menu quantities in rows. Each cell leads with that chain's lowest nearby pickup price per unit, with the total underneath; the lowest per-unit chain price is highlighted. Matrices keep documented schema variants, currency, and pickup channel matched, and a price opens its source-linked menu offer. The Explore tab filters stored menu offers by chain and category; the current backend schema has no deals table.
 
-The visual reference is `../visualizer/`: the field-report masthead, yellow price signal, DM Sans / Space Mono typography, offer board, and store coverage panel are recreated through the existing React Native shared components. The visualizer reads the grouped `offers:board` Convex query and starts scrapes through its secret-protected site endpoint. Expo subscribes to that same board query for read-only menu data; it does not start scrapes. Expo Web uses a table at wide board widths and stacked offer rows on small screens. Native retains the system tabs, stack navigation, and Expo UI controls.
+The visual reference is `../visualizer/`: the field-report masthead, yellow price signal, DM Sans / Space Mono typography, offer board, and store coverage panel are recreated through the existing React Native shared components. The visualizer reads the grouped `offers:board` Convex query and starts scrapes through its secret-protected site endpoint. Expo subscribes to that same board query for read-only menu data; it does not start scrapes. Expo Web uses a table at wide board widths and stacked offer rows on small screens. Native retains stack navigation and Expo UI controls.
 
 ## Start the web app
 

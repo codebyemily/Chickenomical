@@ -1,6 +1,8 @@
 import { ScrollViewStyleReset, useServerDocumentContext } from 'expo-router/html';
 import type { PropsWithChildren } from 'react';
 
+import { colors } from '@/theme';
+
 export default function Root({ children }: PropsWithChildren) {
   const { bodyAttributes, bodyNodes, htmlAttributes, headNodes } = useServerDocumentContext();
 
@@ -10,11 +12,14 @@ export default function Root({ children }: PropsWithChildren) {
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <title>Chickenomical | Nearby chicken menu comparisons</title>
-        <meta name="description" content="Compare recent chicken menu prices, pack sizes, locations, and source records." />
+        <meta name="description" content="Compare recent chicken menu prices, pack sizes, locations, and sources." />
         <meta name="application-name" content="Chickenomical" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-title" content="Chickenomical" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <link rel="icon" type="image/png" sizes="48x48" href="/chickenomical.png" />
-        <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/manifest.webmanifest" />
         <meta
           name="viewport"
@@ -22,8 +27,9 @@ export default function Root({ children }: PropsWithChildren) {
         />
         {/* The visual reference intentionally uses the same light surface in both OS themes. */}
         <meta name="color-scheme" content="light" />
-        <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f1f2f2" />
-        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#f1f2f2" />
+        <meta name="theme-color" media="(prefers-color-scheme: light)" content={colors.gray} />
+        <meta name="theme-color" media="(prefers-color-scheme: dark)" content={colors.gray} />
+        <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.15.0/dist/maplibre-gl.css" />
         <ScrollViewStyleReset />
         {headNodes}
       </head>

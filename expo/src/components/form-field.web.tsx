@@ -16,6 +16,10 @@ export function FormField({
   help,
   error,
   appearance = 'default',
+  inputRef,
+  autoComplete,
+  textContentType,
+  blurOnSubmit,
 }: FormFieldProps) {
   const [focused, setFocused] = useState(false);
 
@@ -27,7 +31,11 @@ export function FormField({
         appearance === 'search' && (focused ? styles.searchInputHostFocused : styles.searchInputHost),
       ]}>
         <TextInput
+          ref={inputRef}
           accessibilityLabel={label}
+          autoComplete={autoComplete}
+          textContentType={textContentType}
+          blurOnSubmit={blurOnSubmit}
           accessibilityHint={error ?? help}
           value={value}
           onChangeText={onChangeText}
@@ -58,11 +66,13 @@ export function FormField({
 
 const styles = StyleSheet.create({
   field: { gap: 7, flex: 1, minWidth: 0 },
-  label: { color: colors.black, fontFamily: fonts.monoBold, fontSize: 11, lineHeight: 16, letterSpacing: 0.3 },
-  searchLabel: { color: colors.muted, fontSize: 10, letterSpacing: 0.7 },
+  label: { color: colors.black, fontFamily: fonts.monoBold, fontSize: 12, lineHeight: 16, letterSpacing: 0.3 },
+  searchLabel: { color: colors.black, fontSize: 12, lineHeight: 16, letterSpacing: 0.4 },
   inputHost: { width: '100%', borderRadius: radii.md },
-  searchInputHost: { borderBottomWidth: 2, borderBottomColor: colors.black },
-  searchInputHostFocused: { borderBottomWidth: 3, borderBottomColor: colors.black },
+  // The search field is already framed by its parent pill. A second rule here
+  // makes the control look like an input inside an input, especially on focus.
+  searchInputHost: { borderBottomWidth: 0 },
+  searchInputHostFocused: { borderBottomWidth: 0 },
   input: { width: '100%', height: 48, paddingHorizontal: 13, borderColor: colors.black, borderWidth: 1, borderRadius: radii.md, backgroundColor: colors.white, color: colors.black, fontFamily: fonts.regular, fontSize: 16, outlineWidth: 0 },
   inputFocused: { borderWidth: 2, paddingHorizontal: 12 },
   searchInput: { height: 48, paddingHorizontal: 0, borderWidth: 0, borderColor: 'transparent', borderRadius: 0, backgroundColor: 'transparent' },

@@ -19,44 +19,41 @@ export function OfferRow({ record, rank, featured = false }: Props) {
   const status = freshnessText(offer);
   const stale = status.startsWith('STALE');
   const quantity = offer.quantity_label ?? (offer.quantity == null ? 'Quantity not stated' : `${offer.quantity} ${categoryUnit(offer.category, offer.quantity)}`);
-  const sourceId = offer.source_item_id ?? offer.id;
   const channel = offer.ordering_channel.replaceAll('_', ' ');
-  const distanceText = distance == null ? 'Distance not recorded' : `${distance.toFixed(1)} mi saved distance`;
+  const distanceText = distance == null ? 'Distance unavailable' : `${distance.toFixed(1)} mi away`;
   const storeName = location.store_name ?? 'Store name unavailable';
-  const locationText = [storeName, location.address].filter(Boolean).join(' · ');
+  const locationText = [storeName, location.address].filter(Boolean).join(', ');
 
   if (Platform.OS !== 'web') {
     return (
       <View style={[styles.nativeRow, featured && styles.nativeFeatured]}>
         <View style={styles.nativeTopline}>
           <View style={styles.titleStack}>
-            <Text style={[styles.rank, featured && styles.featuredInk]}>
-              {featured ? 'LOWEST SAMPLE UNIT PRICE' : `OFFER ${String(rank ?? 1).padStart(2, '0')}`}
-            </Text>
             <Text style={[styles.nativeRestaurant, featured && styles.featuredInk]}>{chain.name}</Text>
             <Text style={[styles.location, featured && styles.featuredMuted]}>{storeName}</Text>
           </View>
           <View style={styles.nativeUnitBlock}>
             <Text style={[styles.nativeUnitPrice, featured && styles.featuredInk, tabular]}>{unitMoney(offer)}</Text>
-            <Text style={[styles.unitLabel, featured && styles.featuredInk]}>PER {categoryUnit(offer.category, 1).toUpperCase()}</Text>
+            <Text style={[styles.unitLabel, featured && styles.featuredInk]}>per {categoryUnit(offer.category, 1)}</Text>
           </View>
         </View>
         <View style={[styles.separator, featured && styles.featuredSeparator]} />
-        <Text style={[styles.nativeItem, featured && styles.featuredInk]}>{offer.original_name} · {quantity}</Text>
+        <Text style={[styles.nativeItem, featured && styles.featuredInk]}>{offer.original_name} - {quantity}</Text>
         <Text style={[styles.nativeFacts, featured && styles.featuredInk, tabular]}>
-          {money(offer.list_price_cents, offer.currency)} total · {distanceText}
+          {money(offer.list_price_cents, offer.currency)} total - {distanceText}
         </Text>
         <View style={styles.nativeProvenance}>
           <Text style={[styles.status, stale && styles.staleStatus, featured && styles.featuredInk]}>{status}</Text>
           <Text style={[styles.source, featured && styles.featuredMuted]}>
-            {offer.source_provider} · {sourceId}
+            {channel} - {offer.source_provider}
           </Text>
           <Text style={[styles.source, featured && styles.featuredMuted]}>
-            {channel} · checked {formatDate(offer.observed_at)}
+            Updated {formatDate(offer.observed_at)}
           </Text>
         </View>
         <Pressable
           accessibilityRole="link"
+          accessibilityLabel="Inspect offer"
           onPress={() => router.push(`/offer/${offer.id}` as never)}
           style={({ pressed }) => [styles.nativeDetail, pressed && styles.pressed]}>
           <Text style={styles.nativeDetailText}>Inspect offer</Text>
@@ -70,15 +67,12 @@ export function OfferRow({ record, rank, featured = false }: Props) {
     <View style={[styles.row, featured && styles.featured]}>
       <View style={styles.topline}>
         <View style={styles.titleStack}>
-          <Text style={[styles.rank, featured && styles.featuredInk]}>
-            {featured ? 'LOWEST SAMPLE UNIT PRICE' : rank ? `OFFER ${String(rank).padStart(2, '0')}` : 'NEARBY OFFER'}
-          </Text>
           <Text style={[styles.restaurant, featured && styles.featuredInk]}>{chain.name}</Text>
           <Text style={[styles.location, featured && styles.featuredMuted]}>{locationText}</Text>
         </View>
         <View style={styles.unitBlock}>
-          <Text style={[styles.unitLabel, featured && styles.featuredInk]}>PER {categoryUnit(offer.category, 1).toUpperCase()}</Text>
           <Text style={[styles.unitPrice, featured && styles.featuredInk, tabular]}>{unitMoney(offer)}</Text>
+          <Text style={[styles.unitLabel, featured && styles.featuredInk]}>per {categoryUnit(offer.category, 1)}</Text>
         </View>
       </View>
       <View style={[styles.separator, featured && styles.featuredSeparator]} />
@@ -92,10 +86,10 @@ export function OfferRow({ record, rank, featured = false }: Props) {
         <View style={styles.provenanceText}>
           <Text style={[styles.status, stale && styles.staleStatus, featured && styles.featuredInk]}>{status}</Text>
           <Text style={[styles.source, featured && styles.featuredMuted]}>
-            {offer.source_provider} · {sourceId}
+            {channel} - {offer.source_provider}
           </Text>
           <Text style={[styles.source, featured && styles.featuredMuted]}>
-            {channel} · checked {formatDate(offer.observed_at)}
+            Updated {formatDate(offer.observed_at)}
           </Text>
         </View>
         <View style={styles.action}>
@@ -160,6 +154,6 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.64 },
   source: { color: colors.muted, fontFamily: fonts.regular, fontSize: 11, lineHeight: 16 },
   featuredInk: { color: colors.black },
-  featuredMuted: { color: '#353535' },
+  featuredMuted: { color: colors.inkSoft },
   action: { minWidth: 132 },
 });

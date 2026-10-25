@@ -7,7 +7,7 @@ import type { ErrorBoundaryProps } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
 import { useEffect } from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { ConvexProvider } from 'convex/react';
 
 import { AppFrame } from '@/components/app-frame';
@@ -44,7 +44,7 @@ export default function RootLayout() {
       <PrototypeProvider>
         <Stack
           screenOptions={{
-            headerShown: Platform.OS !== 'web',
+            headerShown: false,
             statusBarStyle: 'dark',
             contentStyle: { backgroundColor: colors.cream },
             headerStyle: { backgroundColor: colors.cream },
@@ -62,9 +62,7 @@ export default function RootLayout() {
           />
           <Stack.Screen name="location" options={{ title: 'Distance filter' }} />
           <Stack.Screen name="offer/[id]" options={{ title: 'Offer details' }} />
-          <Stack.Screen name="source/[id]" options={{ title: 'Source record' }} />
-          <Stack.Screen name="states/index" options={{ title: 'Recovery states' }} />
-          <Stack.Screen name="states/[scenario]" options={{ title: 'State preview' }} />
+          <Stack.Screen name="source/[id]" options={{ title: 'Source details' }} />
           <Stack.Screen name="+not-found" options={{ title: 'Page not found' }} />
         </Stack>
       </PrototypeProvider>
@@ -76,7 +74,6 @@ export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
   return (
     <AppFrame showDataNotice={false}>
       <View style={styles.errorContent}>
-        <Text style={styles.errorEyebrow}>CHICKENOMICAL / RECOVERY</Text>
         <HeadingText level={1} style={styles.errorTitle}>This screen couldn’t load.</HeadingText>
         <Text style={styles.errorMessage}>The screen hit a snag. Try it again, or head back to the live comparison.</Text>
         <ActionButton kind="primary" onPress={retry}>Try again</ActionButton>
@@ -90,7 +87,6 @@ export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
 
 const styles = StyleSheet.create({
   errorContent: { flex: 1, justifyContent: 'center', gap: spacing.md, padding: spacing.xl },
-  errorEyebrow: { color: colors.purple, fontFamily: fonts.monoBold, fontSize: 11, lineHeight: 16, letterSpacing: 1.2 },
   errorTitle: { color: colors.black, fontFamily: fonts.bold, fontSize: 30, lineHeight: 37 },
   errorMessage: { color: colors.muted, fontFamily: fonts.regular, fontSize: 15, lineHeight: 23, marginBottom: spacing.md },
   homeButton: { alignItems: 'center', backgroundColor: colors.cream, borderRadius: radii.pill, justifyContent: 'center', minHeight: 48, paddingHorizontal: spacing.lg },

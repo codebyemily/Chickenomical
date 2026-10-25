@@ -33,16 +33,12 @@ export function OfferPick({ kind, record }: Props) {
         <View style={styles.bubbleTiny} />
       </View>
       <View style={styles.pickContent}>
-        <View style={styles.topline}>
-          <Text style={styles.pickLabel}>{isValue ? 'BEST PRICE PER PIECE' : 'LOWEST TOTAL'}</Text>
-          <Text style={styles.pickArrow}>View offer</Text>
-        </View>
         <Text style={[styles.amount, tabular]}>{amount}</Text>
         <Text style={styles.amountHint}>{isValue ? `per ${offer.category ?? 'item'}` : 'for this order'}</Text>
         <View style={styles.pickRule} />
         <Text style={styles.restaurant}>{chainName}</Text>
-        <Text style={styles.item} numberOfLines={2}>{offer.original_name} · {offer.quantity_label || quantityText(offer.category, offer.quantity)}</Text>
-        <Text style={[styles.meta, tabular]}>{storeName} · {total} total · {distance == null ? 'Distance unavailable' : `${distance.toFixed(1)} mi away`}</Text>
+        <Text style={styles.item} numberOfLines={2}>{offer.original_name} - {offer.quantity_label || quantityText(offer.category, offer.quantity)}</Text>
+        <Text style={[styles.meta, tabular]}>{storeName} - {total} total - {distance == null ? 'Distance unavailable' : `${distance.toFixed(1)} mi away`}</Text>
       </View>
     </Pressable>
   );
@@ -69,9 +65,6 @@ const styles = StyleSheet.create({
   bubbleSmall: { position: 'absolute', width: 40, height: 40, borderRadius: radii.pill, right: 61, top: 33, backgroundColor: 'rgba(255,255,255,0.28)' },
   bubbleTiny: { position: 'absolute', width: 16, height: 16, borderRadius: radii.pill, right: 34, top: 61, backgroundColor: 'rgba(255,255,255,0.42)' },
   pickContent: { flex: 1, justifyContent: 'space-between', gap: spacing.xs, zIndex: 1 },
-  topline: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm },
-  pickLabel: { color: colors.black, fontFamily: fonts.bold, fontSize: 10, letterSpacing: 0.55 },
-  pickArrow: { color: colors.purple, fontFamily: fonts.bold, fontSize: 11 },
   amount: { color: colors.black, fontFamily: fonts.bold, fontSize: 34, lineHeight: 40 },
   amountHint: { color: colors.black, fontFamily: fonts.medium, fontSize: 12 },
   pickRule: { height: 1, backgroundColor: colors.black, opacity: 0.2, marginVertical: spacing.xs },
