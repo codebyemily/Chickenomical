@@ -39,6 +39,103 @@ export const channelSummary = query({
   },
 });
 
+const CHAIN_NAMES: Record<string, string> = {
+  'raising-canes': "Raising Cane's",
+  jollibee: 'Jollibee',
+  wingstop: 'Wingstop',
+  popeyes: 'Popeyes',
+  wendys: "Wendy's",
+  mcdonalds: "McDonald's",
+  'chick-fil-a': 'Chick-fil-A',
+};
+
+/**
+ * Visualizer board payload: offers from the latest scrape job (or all recent
+ * offers if no job exists yet), grouped for the offer-board UI.
+ */
+export const board = query({
+  args: { jobId: v.optional(v.id('scrapeJobs')) },
+  handler: async (ctx, args) => {
+    const job = args.jobId
+      ? await ctx.db.get(args.jobId)
+      : (await ctx.db.query('scrapeJobs').order('desc').take(1))[0] ?? null;
+
+    const rows = await ctx.db.query('menuOffers').order('desc').take(500);
+    const offers = job?.requested_at
+      ? rows.filter((offer) => offer.observed_at >= job.requested_at)
+      : rows;
+
+    const chainMap = new Map<string, {
+      chain_id: string;
+      name: string;
+      stores: Map<string, {
+        id: string;
+        name: string | null;
+        address: string | null;
+        distance_miles: number | null;
+        pickup: boolean;
+        offers: typeof offers;
+      }>;
+    }>();
+
+    for (const offer of offers) {
+      if (!chainMap.has(offer.chain_id)) {
+        chainMap.set(offer.chain_id, {
+          chain_id: offer.chain_id,
+          name: CHAIN_NAMES[offer.chain_id] ?? offer.chain_id,
+          stores: new Map(),
+        });
+      }
+      const chain = chainMap.get(offer.chain_id)!;
+      if (!chain.stores.has(offer.location_id)) {
+        chain.stores.set(offer.location_id, {
+          id: offer.location_id,
+          name: offer.store_name,
+          address: offer.address,
+          distance_miles: offer.distance_miles,
+          pickup: true,
+          offers: [],
+        });
+      }
+      chain.stores.get(offer.location_id)!.offers.push(offer);
+    }
+
+    const chains = [...chainMap.values()].map((chain) => ({
+      chain_id: chain.chain_id,
+      name: chain.name,
+      stores: [...chain.stores.values()]
+        .map((store) => ({
+          ...store,
+          offer_count: store.offers.length,
+        }))
+        .sort((a, b) => (a.distance_miles ?? 999) - (b.distance_miles ?? 999)),
+    }));
+
+    return {
+      query: {
+        address: job?.address ?? null,
+        latitude: job?.latitude ?? null,
+        longitude: job?.longitude ?? null,
+        radius_miles: job?.radius_miles ?? null,
+        ordering_channel: 'first_party_pickup',
+      },
+      observed_at: job?.completed_at ?? job?.requested_at ?? offers[0]?.observed_at ?? null,
+      job: job
+        ? {
+          _id: job._id,
+          status: job.status,
+          offer_count: job.offer_count,
+          error: job.error,
+          requested_at: job.requested_at,
+          completed_at: job.completed_at,
+        }
+        : null,
+      chains,
+      offer_count: offers.length,
+    };
+  },
+});
+
 const MAX_SCAN = 2000;
 
 type EligibleOffer = {

@@ -18,10 +18,32 @@
         <div class="freshness"><span class="live-dot"></span><span id="observedAt">Loading observation…</span></div>
       </header>
 
+      <section class="scrape-bar" aria-label="End-to-end scrape">
+        <form id="scrapeForm" class="scrape-form">
+          <label class="scrape-field">
+            <span class="label">LOCATION</span>
+            <input id="addressInput" type="text" name="address" placeholder="San Francisco, CA" value="San Francisco, CA" required />
+          </label>
+          <label class="scrape-field scrape-radius">
+            <span class="label">RADIUS MI</span>
+            <input id="radiusInput" type="number" name="radius" min="1" max="25" step="1" value="8" />
+          </label>
+          <fieldset class="scrape-chains">
+            <legend class="label">CHAINS</legend>
+            <label><input type="checkbox" name="chain" value="jollibee" checked /> Jollibee</label>
+            <label><input type="checkbox" name="chain" value="raising-canes" checked /> Cane's</label>
+            <label><input type="checkbox" name="chain" value="wingstop" checked /> Wingstop</label>
+            <label><input type="checkbox" name="chain" value="popeyes" checked /> Popeyes</label>
+          </fieldset>
+          <button id="scrapeButton" type="submit">Scrape → Convex</button>
+        </form>
+        <p class="scrape-status" id="scrapeStatus">Load offers from Convex, or run a scrape for a location.</p>
+      </section>
+
       <section class="location-strip">
         <div>
           <span class="label">SEARCH ORIGIN</span>
-          <strong id="searchAddress">Loading location…</strong>
+          <strong id="searchAddress">No scrape loaded yet</strong>
         </div>
         <div class="location-stat"><span class="label">RADIUS</span><strong id="radius">—</strong></div>
         <div class="location-stat"><span class="label">CHANNEL</span><strong id="channel">—</strong></div>

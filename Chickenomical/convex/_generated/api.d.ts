@@ -10,8 +10,13 @@
 
 import type * as http from "../http.js";
 import type * as ingest from "../ingest.js";
+import type * as lib_brightData from "../lib/brightData.js";
+import type * as lib_geo from "../lib/geo.js";
+import type * as lib_offerShape from "../lib/offerShape.js";
+import type * as lib_takeout from "../lib/takeout.js";
 import type * as myFunctions from "../myFunctions.js";
 import type * as offers from "../offers.js";
+import type * as scrapeNear from "../scrapeNear.js";
 import type * as scrapers from "../scrapers.js";
 
 import type {
@@ -23,8 +28,13 @@ import type {
 declare const fullApi: ApiFromModules<{
   http: typeof http;
   ingest: typeof ingest;
+  "lib/brightData": typeof lib_brightData;
+  "lib/geo": typeof lib_geo;
+  "lib/offerShape": typeof lib_offerShape;
+  "lib/takeout": typeof lib_takeout;
   myFunctions: typeof myFunctions;
   offers: typeof offers;
+  scrapeNear: typeof scrapeNear;
   scrapers: typeof scrapers;
 }>;
 

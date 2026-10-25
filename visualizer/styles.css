@@ -11,6 +11,21 @@ body { margin:0; background:var(--gray); color:var(--black); font-family:'DM San
 h1,h2,p { margin:0; } h1 { font-size:clamp(25px,3vw,42px); line-height:1.05; letter-spacing:-.04em; } h2 { font-size:24px; letter-spacing:-.035em; }
 .freshness { display:flex; gap:9px; align-items:center; color:var(--muted); font:400 11px 'Space Mono',monospace; text-transform:uppercase; }
 .live-dot { width:8px;height:8px;background:#35a162;border-radius:50%; }
+.scrape-bar { margin:18px 0 0; padding:18px 20px; background:var(--white); border:2px solid var(--black); }
+.scrape-form { display:flex; flex-wrap:wrap; gap:16px 20px; align-items:end; }
+.scrape-field { display:flex; flex-direction:column; gap:6px; min-width:220px; flex:1; }
+.scrape-radius { max-width:110px; flex:0; min-width:90px; }
+.scrape-field input[type="text"], .scrape-field input[type="number"] { width:100%; padding:10px 0; border:0; border-bottom:2px solid var(--black); background:transparent; font:500 15px 'DM Sans',sans-serif; }
+.scrape-chains { margin:0; padding:0; border:0; display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center; }
+.scrape-chains legend { width:100%; margin-bottom:4px; }
+.scrape-chains label { display:flex; gap:6px; align-items:center; font:500 13px 'DM Sans',sans-serif; }
+.scrape-chains input { width:auto; }
+#scrapeButton { appearance:none; border:0; background:var(--black); color:var(--yellow); padding:12px 18px; font:700 12px 'Space Mono',monospace; letter-spacing:.04em; cursor:pointer; }
+#scrapeButton:disabled { opacity:.55; cursor:wait; }
+.scrape-status { margin:12px 0 0; color:var(--muted); font:12px 'Space Mono',monospace; }
+.scrape-status.is-running { color:#3e3c00; }
+.scrape-status.is-error { color:#a12828; }
+.scrape-status.is-ok { color:#1f6b3a; }
 .location-strip { display:grid; grid-template-columns:1fr auto auto; gap:48px; padding:16px 0 22px; border-bottom:1px solid var(--line); }
 .location-strip strong { display:block; margin-top:5px; font-size:15px; } .location-stat { min-width:110px; }
 .signal-grid { display:grid; grid-template-columns:2fr 1fr; gap:12px; padding:12px 0 30px; }
